@@ -1,0 +1,98 @@
+<%- include('partials/header', { title: '마이페이지', active: 'profile' }) %>
+
+<div class="profile-top card">
+  <div class="profile-avatar"><%- renderAvatar(me.avatar_id, me.border_id, 96) %></div>
+  <div class="profile-info">
+    <h1><%= me.nickname %> <% if (me.is_admin) { %><span class="badge badge-notice">운영자</span><% } %></h1>
+    <p class="accent big"><%= me.points.toLocaleString() %>P</p>
+    <div class="profile-stats">
+      <span>게시글 <strong><%= stats.posts %></strong></span>
+      <span>댓글 <strong><%= stats.comments %></strong></span>
+      <span>받은 추천 <strong><%= stats.likesReceived %></strong></span>
+      <span>출석 <strong><%= stats.attendance %></strong>일</span>
+    </div>
+  </div>
+</div>
+
+<h2 class="section-title">아바타 해금 가이드</h2>
+<p class="muted">게시판 활동 포인트로 다양한 아바타를 열어보세요. 포인트가 기준에 도달하면 자동으로 해금돼요!</p>
+
+<% groups.forEach(function (g) { %>
+  <div class="card tier-card">
+    <div class="tier-head">
+      <h3><%= g.info.label %></h3>
+      <% if (g.tier === 'event') { %>
+        <span class="badge badge-pick">시즌 한정</span>
+      <% } else if (g.info.need > 0) { %>
+        <span class="badge <%= me.points >= g.info.need ? 'badge-hot' : 'badge-lock' %>">
+          <%= g.info.need.toLocaleString() %>P 해금
+        </span>
+      <% } else { %>
+        <span class="badge badge-free">무료</span>
+      <% } %>
+      <span class="muted"><%= g.info.desc %></span>
+    </div>
+    <div class="avatar-grid">
+      <% g.avatars.forEach(function (a) { %>
+        <% if (a.unlocked) { %>
+          <form method="post" action="/profile/avatar" class="avatar-pick <%= me.avatar_id === a.id ? 'selected' : '' %>">
+            <input type="hidden" name="avatar_id" value="<%= a.id %>">
+            <button type="submit" title="<%= a.name %>">
+              <%- renderAvatar(a.id, null, 64) %>
+              <span class="avatar-name"><%= a.name %></span>
+              <% if (me.avatar_id === a.id) { %><span class="using">사용 중</span><% } %>
+            </button>
+          </form>
+        <% } else { %>
+          <div class="avatar-pick locked" title="<%= a.name %>">
+            <%- renderAvatar(a.id, null, 64) %>
+            <span class="lock-overlay">🔒</span>
+            <span class="avatar-name"><%= a.name %></span>
+            <span class="lock-note">
+              <%= a.tier === 'event' ? (a.months.join('·') + '월 오픈') : (a.need.toLocaleString() + 'P 필요') %>
+            </span>
+          </div>
+        <% } %>
+      <% }) %>
+    </div>
+  </div>
+<% }) %>
+
+<div class="card tier-card">
+  <div class="tier-head">
+    <h3>움직이는 테두리</h3>
+    <span class="badge <%= me.points >= 20000 ? 'badge-hot' : 'badge-lock' %>">20,000P 해금</span>
+    <span class="muted">반짝이는 효과와 애니메이션 느낌의 테두리</span>
+  </div>
+  <div class="avatar-grid">
+    <% borders.forEach(function (b) { %>
+      <% if (b.unlocked) { %>
+        <form method="post" action="/profile/border" class="avatar-pick <%= me.border_id === b.id ? 'selected' : '' %>">
+          <input type="hidden" name="border_id" value="<%= b.id %>">
+          <button type="submit" title="<%= b.name %>">
+            <%- renderAvatar(me.avatar_id, b.id, 64) %>
+            <span class="avatar-name"><%= b.name %></span>
+            <% if (me.border_id === b.id) { %><span class="using">사용 중</span><% } %>
+          </button>
+        </form>
+      <% } else { %>
+        <div class="avatar-pick locked" title="<%= b.name %>">
+          <%- renderAvatar(me.avatar_id, b.id, 64) %>
+          <span class="lock-overlay">🔒</span>
+          <span class="avatar-name"><%= b.name %></span>
+          <span class="lock-note">20,000P 필요</span>
+        </div>
+      <% } %>
+    <% }) %>
+    <% if (me.border_id) { %>
+      <form method="post" action="/profile/border" class="avatar-pick">
+        <button type="submit" title="테두리 해제">
+          <%- renderAvatar(me.avatar_id, null, 64) %>
+          <span class="avatar-name">테두리 없음</span>
+        </button>
+      </form>
+    <% } %>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

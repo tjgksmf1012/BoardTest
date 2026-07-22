@@ -1,0 +1,148 @@
+<%- include('partials/header', { title: post.title, active: 'board' }) %>
+
+<article class="card post-detail">
+  <div class="post-detail-head">
+    <h1>
+      <% if (post.is_notice) { %><span class="badge badge-notice">공지</span><% } %>
+      <% if (post.is_popular) { %><span class="badge badge-hot">인기</span><% } %>
+      <% if (post.admin_picked) { %><span class="badge badge-pick">운영자 추천</span><% } %>
+      <%= post.title %>
+    </h1>
+    <div class="post-author">
+      <% if (post.is_anonymous) { %>
+        <%- renderAvatar('basic-12', null, 44) %>
+        <div><strong>익명</strong><br><span class="muted"><%= post.created_at.slice(0, 16) %> · 조회 <%= post.views %></span></div>
+      <% } else { %>
+        <%- renderAvatar(post.avatar_id, post.border_id, 44) %>
+        <div><strong><%= post.nickname %></strong><br><span class="muted"><%= post.created_at.slice(0, 16) %> · 조회 <%= post.views %></span></div>
+      <% } %>
+      <div class="spacer"></div>
+      <span class="muted">💬 <%= commentCount %> · 👍 <%= post.like_count %></span>
+    </div>
+  </div>
+
+  <div class="post-body"><%= post.content %></div>
+
+  <% if (images.length > 0) { %>
+    <div class="post-images">
+      <% images.forEach(function (img) { %>
+        <img src="/uploads/<%= img.filename %>" alt="첨부 이미지" loading="lazy">
+      <% }) %>
+    </div>
+  <% } %>
+
+  <div class="post-actions">
+    <a class="btn btn-ghost" href="/board">목록</a>
+    <div class="spacer"></div>
+
+    <% if (me && !post.is_notice) { %>
+      <form action="/board/<%= post.id %>/report" method="post" class="inline">
+        <button class="btn btn-ghost" type="submit">🚨 신고</button>
+      </form>
+    <% } %>
+    <% if (me && me.is_admin && !post.admin_picked && !post.is_notice) { %>
+      <form action="/board/<%= post.id %>/admin-pick" method="post" class="inline">
+        <button class="btn btn-ghost" type="submit">⭐ 운영자 추천</button>
+      </form>
+    <% } %>
+    <% if (me && (me.id === post.user_id || me.is_admin)) { %>
+      <% if (me.id === post.user_id) { %>
+        <a class="btn btn-ghost" href="/board/<%= post.id %>/edit">수정</a>
+      <% } %>
+      <form action="/board/<%= post.id %>/delete" method="post" class="inline"
+            onsubmit="return confirm('정말 삭제할까요?')">
+        <button class="btn btn-ghost danger" type="submit">삭제</button>
+      </form>
+    <% } %>
+
+    <% if (post.is_anonymous) { %>
+      <button class="btn btn-like" disabled title="익명글은 추천이 비활성화돼요">👍 추천 불가</button>
+    <% } else if (liked) { %>
+      <button class="btn btn-like liked" disabled>👍 추천 완료 <%= post.like_count %></button>
+    <% } else { %>
+      <form action="/board/<%= post.id %>/like" method="post" class="inline">
+        <button class="btn btn-like" type="submit">👍 추천 <%= post.like_count %></button>
+      </form>
+    <% } %>
+  </div>
+</article>
+
+<section class="card comments">
+  <h2>댓글 <span class="accent"><%= commentCount %></span></h2>
+
+  <% if (post.block_comments) { %>
+    <div class="empty">작성자가 댓글을 차단한 게시글이에요.</div>
+  <% } else { %>
+    <% comments.forEach(function (c) { %>
+      <div class="comment">
+        <%- renderAvatar(c.avatar_id, c.border_id, 38) %>
+        <div class="comment-body">
+          <div class="comment-head">
+            <strong><%= c.nickname %></strong>
+            <span class="muted"><%= c.created_at.slice(0, 16) %></span>
+            <% if (me && (me.id === c.user_id || me.is_admin)) { %>
+              <form action="/board/comments/<%= c.id %>/delete" method="post" class="inline">
+                <button class="link-btn" type="submit">삭제</button>
+              </form>
+            <% } %>
+          </div>
+          <p><%= c.content %></p>
+          <% if (me) { %>
+            <button class="link-btn" onclick="toggleReply(<%= c.id %>)">답글</button>
+            <form action="/board/<%= post.id %>/comments" method="post" class="reply-form" id="reply-<%= c.id %>" hidden>
+              <input type="hidden" name="parent_id" value="<%= c.id %>">
+              <input type="text" name="content" placeholder="답글을 입력해주세요" required maxlength="1000">
+              <button class="btn btn-primary btn-sm" type="submit">등록</button>
+            </form>
+          <% } %>
+
+          <% c.replies.forEach(function (r) { %>
+            <div class="comment reply">
+              <%- renderAvatar(r.avatar_id, r.border_id, 32) %>
+              <div class="comment-body">
+                <div class="comment-head">
+                  <strong><%= r.nickname %></strong>
+                  <span class="muted"><%= r.created_at.slice(0, 16) %></span>
+                  <% if (me && (me.id === r.user_id || me.is_admin)) { %>
+                    <form action="/board/comments/<%= r.id %>/delete" method="post" class="inline">
+                      <button class="link-btn" type="submit">삭제</button>
+                    </form>
+                  <% } %>
+                </div>
+                <p><%= r.content %></p>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+    <% }) %>
+
+    <% if (me) { %>
+      <form action="/board/<%= post.id %>/comments" method="post" class="comment-form">
+        <input type="text" name="content" placeholder="댓글을 입력해주세요 (+100P, 하루 10개까지)" required maxlength="1000">
+        <button class="btn btn-primary" type="submit">등록</button>
+      </form>
+    <% } else { %>
+      <div class="empty"><a href="/login">로그인</a>하고 댓글을 남겨보세요.</div>
+    <% } %>
+  <% } %>
+</section>
+
+<div class="prev-next">
+  <% if (next) { %>
+    <a class="pn" href="/board/<%= next.id %>"><span class="muted">다음글</span> <%= next.title %></a>
+  <% } %>
+  <% if (prev) { %>
+    <a class="pn" href="/board/<%= prev.id %>"><span class="muted">이전글</span> <%= prev.title %></a>
+  <% } %>
+</div>
+
+<script>
+  function toggleReply(id) {
+    var f = document.getElementById('reply-' + id);
+    f.hidden = !f.hidden;
+    if (!f.hidden) f.querySelector('input[name="content"]').focus();
+  }
+</script>
+
+<%- include('partials/footer') %>

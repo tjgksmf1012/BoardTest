@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' && title ? title + ' · ' : '' %>포인트라운지</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="logo" href="/board">포인트<span>라운지</span></a>
+      <div class="topbar-user">
+        <% if (me) { %>
+          <a href="/profile" class="me-chip">
+            <%- renderAvatar(me.avatar_id, me.border_id, 34) %>
+            <span class="me-name"><%= me.nickname %></span>
+            <span class="me-points"><%= me.points.toLocaleString() %>P</span>
+          </a>
+          <form action="/logout" method="post" class="inline">
+            <button class="btn btn-ghost btn-sm" type="submit">로그아웃</button>
+          </form>
+        <% } else { %>
+          <a class="btn btn-ghost btn-sm" href="/login">로그인</a>
+          <a class="btn btn-primary btn-sm" href="/signup">회원가입</a>
+        <% } %>
+      </div>
+    </div>
+    <nav class="tabs">
+      <div class="tabs-inner">
+        <a href="/board" class="tab <%= (typeof active !== 'undefined' && active === 'board') ? 'on' : '' %>">커뮤니티</a>
+        <a href="/attendance" class="tab <%= (typeof active !== 'undefined' && active === 'attendance') ? 'on' : '' %>">출석체크</a>
+        <a href="/points" class="tab <%= (typeof active !== 'undefined' && active === 'points') ? 'on' : '' %>">포인트</a>
+        <a href="/profile" class="tab <%= (typeof active !== 'undefined' && active === 'profile') ? 'on' : '' %>">마이페이지</a>
+      </div>
+    </nav>
+  </header>
+
+  <% if (flash) { %>
+    <div class="toast" id="toast"><%= flash %></div>
+    <script>setTimeout(function () { var t = document.getElementById('toast'); if (t) t.classList.add('hide'); }, 3200);</script>
+  <% } %>
+
+  <main class="container">

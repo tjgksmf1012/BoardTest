@@ -1,0 +1,57 @@
+<%- include('partials/header', { title: post ? '글 수정' : '글쓰기', active: 'board' }) %>
+
+<div class="card write-card">
+  <h1><%= post ? '글 수정' : '글쓰기' %></h1>
+  <% if (error) { %><div class="alert"><%= error %></div><% } %>
+
+  <form method="post" enctype="multipart/form-data"
+        action="<%= post ? '/board/' + post.id + '/edit' : '/board' %>" class="form">
+    <label>제목 <span class="req">*</span>
+      <input type="text" name="title" maxlength="50" required
+             placeholder="제목을 입력해주세요 (50자 이내)"
+             value="<%= post ? post.title : '' %>"
+             oninput="counter(this, 'title-count', 50)">
+      <span class="count" id="title-count"><%= post ? post.title.length : 0 %> / 50</span>
+    </label>
+
+    <label>내용 <span class="req">*</span>
+      <textarea name="content" rows="12" maxlength="5000" required
+                placeholder="내용을 입력해주세요 (5,000자 이내)"
+                oninput="counter(this, 'content-count', 5000)"><%= post ? post.content : '' %></textarea>
+      <span class="count" id="content-count"><%= post ? post.content.length : 0 %> / 5,000</span>
+    </label>
+
+    <% if (!post) { %>
+      <label>사진 첨부 <span class="muted">(선택 · 최대 5장 · JPG, PNG · 장당 10MB 이하)</span>
+        <input type="file" name="images" accept="image/jpeg,image/png" multiple
+               onchange="if (this.files.length > 5) { alert('사진은 최대 5장까지 첨부할 수 있어요.'); this.value = ''; }">
+      </label>
+    <% } %>
+
+    <div class="write-options">
+      <% if (!post) { %>
+        <label class="check"><input type="checkbox" name="is_anonymous">
+          익명으로 작성 <span class="muted">(닉네임 대신 익명으로 표시, 추천 비활성화, +100P)</span></label>
+      <% } %>
+      <label class="check"><input type="checkbox" name="block_comments"
+        <%= post && post.block_comments ? 'checked' : '' %>>
+        댓글 차단 <span class="muted">(다른 회원이 댓글을 달 수 없어요)</span></label>
+      <% if (!post && me && me.is_admin) { %>
+        <label class="check"><input type="checkbox" name="is_notice"> 공지로 등록 (운영자)</label>
+      <% } %>
+    </div>
+
+    <div class="write-actions">
+      <a class="btn btn-ghost" href="<%= post ? '/board/' + post.id : '/board' %>">취소</a>
+      <button class="btn btn-primary" type="submit"><%= post ? '수정하기' : '등록하기' %></button>
+    </div>
+  </form>
+</div>
+
+<script>
+  function counter(el, id, max) {
+    document.getElementById(id).textContent = el.value.length + ' / ' + max.toLocaleString();
+  }
+</script>
+
+<%- include('partials/footer') %>

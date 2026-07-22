@@ -1,0 +1,22 @@
+<%- include('partials/header', { title: '회원가입', active: null }) %>
+
+<div class="auth-card card">
+  <h1>회원가입</h1>
+  <p class="muted">가입 즉시 <strong>1,000P</strong>와 기본 아바타 12종이 열려요!</p>
+  <% if (error) { %><div class="alert"><%= error %></div><% } %>
+  <form method="post" action="/signup" class="form">
+    <label>아이디 (영문/숫자 4~20자)
+      <input type="text" name="username" value="<%= form.username || '' %>" required autofocus>
+    </label>
+    <label>닉네임 (2~10자)
+      <input type="text" name="nickname" value="<%= form.nickname || '' %>" required>
+    </label>
+    <label>비밀번호 (8자 이상)
+      <input type="password" name="password" required>
+    </label>
+    <button class="btn btn-primary btn-block" type="submit">가입하고 1,000P 받기</button>
+  </form>
+  <p class="muted center">이미 회원이신가요? <a href="/login">로그인</a></p>
+</div>
+
+<%- include('partials/footer') %>

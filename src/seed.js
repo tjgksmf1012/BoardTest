@@ -1,0 +1,69 @@
+// 최초 실행 시 데모용 데이터 생성 (운영자 계정 + 공지 + 샘플 게시글)
+const db = require('./db');
+const { hashPassword } = require('./routes/auth');
+
+function seed() {
+  if (db.prepare('SELECT COUNT(*) AS c FROM users').get().c > 0) return;
+
+  const insertUser = db.prepare(`
+    INSERT INTO users (username, password_hash, nickname, points, avatar_id, border_id, is_admin)
+    VALUES (?, ?, ?, ?, ?, ?, ?)`);
+  const insertPost = db.prepare(`
+    INSERT INTO posts (user_id, title, content, is_anonymous, is_notice, views, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime', ?))`);
+  const insertComment = db.prepare(
+    'INSERT INTO comments (post_id, user_id, parent_id, content) VALUES (?, ?, ?, ?)');
+  const insertLike = db.prepare('INSERT INTO likes (post_id, user_id) VALUES (?, ?)');
+  const insertLog = db.prepare(
+    "INSERT INTO point_logs (user_id, amount, reason, detail) VALUES (?, ?, 'signup', '회원가입')");
+
+  // 운영자: admin / admin1234
+  const admin = insertUser.run('admin', hashPassword('admin1234'), '운영자',
+    25000, 'outfit-01', 'border-sunset', 1).lastInsertRowid;
+
+  // 샘플 회원 (비밀번호는 모두 test1234)
+  const pw = hashPassword('test1234');
+  const cherry = insertUser.run('cherry', pw, '체리블라썸', 1800, 'basic-01', null, 0).lastInsertRowid;
+  const mint = insertUser.run('mint', pw, '민트소다', 6200, 'hair-02', null, 0).lastInsertRowid;
+  const street = insertUser.run('street', pw, '스트릿캡', 3400, 'basic-05', null, 0).lastInsertRowid;
+  const gold = insertUser.run('gold', pw, '골드웨이브', 12500, 'outfit-03', null, 0).lastInsertRowid;
+  [admin, cherry, mint, street, gold].forEach((id) => insertLog.run(id, 1000));
+
+  // 공지 2건
+  insertPost.run(admin, '커뮤니티 이용 규칙 안내 (필독)',
+    `안녕하세요, 운영자입니다.\n\n모두가 즐거운 커뮤니티를 위해 아래 규칙을 지켜주세요.\n\n1. 서로 존중하는 말투를 사용해주세요.\n2. 광고성 게시글은 사전 안내 없이 숨김 처리될 수 있어요.\n3. 다른 회원의 개인정보를 요구하거나 공개하지 마세요.\n4. 신고가 누적된 글은 운영자가 확인 후 조치합니다.\n\n감사합니다!`,
+    0, 1, 1254, '-30 days');
+  insertPost.run(admin, '포인트 적립 및 아바타 해금 안내',
+    `활동할수록 포인트가 쌓이고, 포인트로 아바타가 업그레이드돼요!\n\n[기본 포인트]\n- 회원가입 1,000P (최초 1회)\n- 출석체크 하루 100P\n- 일반 게시글 300P (하루 3개까지)\n- 익명 게시글 100P (하루 3개까지)\n- 댓글·대댓글 100P (하루 10개까지)\n- 게시글 추천받기 1개당 10P\n\n[추가 보상]\n- 인기글 선정 1,000P / 운영자 추천 1,500P\n- 연속 출석 3일 500P · 7일 1,000P · 30일 3,000P\n\n[아바타 해금]\n- 기본 12종: 무료\n- 스페셜 헤어: 5,000P\n- 프리미엄 의상: 10,000P\n- 움직이는 테두리: 20,000P\n- 이벤트 한정: 시즌마다 오픈\n\n자세한 내용은 마이페이지에서 확인하세요!`,
+    0, 1, 832, '-30 days');
+
+  // 샘플 게시글
+  const p1 = insertPost.run(cherry, '오늘도 좋은 하루 보내세요! ☺',
+    '다들 오늘 하루도 화이팅이에요!\n날씨가 좋아서 기분이 좋네요 ㅎㅎ', 0, 0, 88, '-5 days').lastInsertRowid;
+  const p2 = insertPost.run(street, '강남 쪽 카페 알바 구해요!',
+    '안녕하세요!\n강남 쪽에서 낮이나 저녁 카페 알바 구하고 있어요.\n경험은 없지만 밝은 성격이고 손도 빠른 편이에요 ㅎㅎ\n\n시급이나 근무 조건 괜찮은 곳 있으면 추천 부탁드려요!\n\n감사합니다 :)', 0, 0, 245, '-4 days').lastInsertRowid;
+  const p3 = insertPost.run(mint, '새벽 편의점 알바 경험담',
+    '새벽 타임 편의점 알바 3개월 해본 후기예요.\n\n장점: 손님이 적어서 여유롭고, 야간 수당이 붙어요.\n단점: 생활 패턴 유지가 진짜 어려워요...\n\n체력 관리가 제일 중요합니다!', 1, 0, 190, '-3 days').lastInsertRowid;
+  const p4 = insertPost.run(gold, '면접 볼 때 이것만은 꼭 확인하세요',
+    '알바 면접 다니면서 느낀 체크리스트 공유해요.\n\n1. 급여일이 언제인지\n2. 주휴수당 지급 여부\n3. 수습 기간과 수습 시급\n4. 4대보험 가입 여부\n\n꼭 확인하고 시작하세요!', 0, 0, 320, '-2 days').lastInsertRowid;
+  const p5 = insertPost.run(mint, '주말에 할만한 알바 추천 부탁드려요',
+    '평일에는 수업이 있어서 주말 알바를 찾고 있어요.\n카페, 편의점, 영화관 중에 고민 중인데 해보신 분들 조언 부탁드립니다!', 0, 0, 132, '-1 days').lastInsertRowid;
+
+  // 댓글
+  insertComment.run(p2, mint, null, '강남역 근처 카페 친구가 일하는데 분위기 괜찮다고 하더라구요!');
+  const c2 = insertComment.run(p2, gold, null, '저도 카페 알바 해봤는데 체력적으로 괜찮고 사장님이 좋으면 오래 다닐 수 있어요!').lastInsertRowid;
+  insertComment.run(p2, cherry, c2, '오 저도 그 말 듣고 지원해보려구요 ㅎㅎ 같이 화이팅해요!');
+  insertComment.run(p4, cherry, null, '주휴수당 얘기 진짜 공감해요. 모르고 넘어가는 경우 많더라구요.');
+  insertComment.run(p4, street, null, '수습 시급 부분 저장해갑니다!');
+  insertComment.run(p5, gold, null, '영화관 알바 재밌긴 한데 주말이 제일 바빠요 ㅋㅋ 참고하세요!');
+
+  // 추천 (익명글 p3 제외)
+  [[p1, mint], [p1, street], [p1, gold],
+   [p2, cherry], [p2, mint], [p2, gold], [p2, admin],
+   [p4, cherry], [p4, mint], [p4, street], [p4, admin],
+   [p5, cherry], [p5, street]].forEach(([post, user]) => insertLike.run(post, user));
+
+  console.log('데모 데이터를 생성했어요. (운영자: admin / admin1234, 샘플 회원: cherry·mint·street·gold / test1234)');
+}
+
+module.exports = seed;

@@ -1,0 +1,67 @@
+<%- include('partials/header', { title: '커뮤니티', active: 'board' }) %>
+
+<div class="board-head">
+  <div>
+    <h1>커뮤니티</h1>
+    <p class="muted">일상 이야기부터 고민까지 편하게 나누는 공간이에요. 글을 쓰면 포인트가 쌓여요!</p>
+  </div>
+  <a class="btn btn-primary" href="/board/new">✏️ 글쓰기</a>
+</div>
+
+<form class="search" method="get" action="/board">
+  <input type="text" name="q" value="<%= q %>" placeholder="제목이나 내용으로 검색">
+  <button class="btn btn-ghost" type="submit">검색</button>
+</form>
+
+<div class="post-list card">
+  <% notices.forEach(function (p) { %>
+    <a class="post-row notice" href="/board/<%= p.id %>">
+      <%- renderAvatar(p.avatar_id, p.border_id, 46) %>
+      <div class="post-mid">
+        <div class="post-title"><span class="badge badge-notice">공지</span> <%= p.title %></div>
+        <div class="post-meta"><%= p.nickname %> · <%= p.created_at.slice(0, 10) %></div>
+      </div>
+      <div class="post-stats">👁 <%= p.views.toLocaleString() %></div>
+    </a>
+  <% }) %>
+
+  <% if (posts.length === 0) { %>
+    <div class="empty">아직 게시글이 없어요. 첫 글을 써보세요!</div>
+  <% } %>
+
+  <% posts.forEach(function (p) { %>
+    <a class="post-row" href="/board/<%= p.id %>">
+      <% if (p.is_anonymous) { %>
+        <%- renderAvatar('basic-12', null, 46) %>
+      <% } else { %>
+        <%- renderAvatar(p.avatar_id, p.border_id, 46) %>
+      <% } %>
+      <div class="post-mid">
+        <div class="post-title">
+          <% if (p.is_popular) { %><span class="badge badge-hot">인기</span><% } %>
+          <% if (p.admin_picked) { %><span class="badge badge-pick">운영자 추천</span><% } %>
+          <%= p.title %>
+          <% if (p.image_count > 0) { %><span class="img-mark">🖼</span><% } %>
+        </div>
+        <div class="post-meta">
+          <%= p.is_anonymous ? '익명' : p.nickname %> · <%= p.created_at.slice(0, 10) %>
+        </div>
+      </div>
+      <div class="post-stats">
+        <span>💬 <%= p.comment_count %></span>
+        <span>👍 <%= p.like_count %></span>
+      </div>
+    </a>
+  <% }) %>
+</div>
+
+<% if (totalPages > 1) { %>
+  <div class="pager">
+    <% for (let i = 1; i <= totalPages; i++) { %>
+      <a class="page <%= i === page ? 'on' : '' %>"
+         href="/board?page=<%= i %><%= q ? '&q=' + encodeURIComponent(q) : '' %>"><%= i %></a>
+    <% } %>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>

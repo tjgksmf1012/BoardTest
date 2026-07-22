@@ -1,0 +1,47 @@
+<%- include('partials/header', { title: '출석체크', active: 'attendance' }) %>
+
+<div class="board-head">
+  <div>
+    <h1>출석체크</h1>
+    <p class="muted">하루 한 번 출석하고 100P를 받아가세요. 연속 출석하면 보너스가 커져요!</p>
+  </div>
+</div>
+
+<div class="att-grid">
+  <div class="card att-card">
+    <h2><%= year %>년 <%= month %>월</h2>
+    <div class="calendar">
+      <% ['일','월','화','수','목','금','토'].forEach(function (d) { %>
+        <div class="cal-head"><%= d %></div>
+      <% }) %>
+      <% for (let i = 0; i < firstWeekday; i++) { %><div class="cal-cell empty-cell"></div><% } %>
+      <% for (let d = 1; d <= daysInMonth; d++) { %>
+        <div class="cal-cell <%= checkedDays.has(d) ? 'checked' : '' %> <%= d === today ? 'today' : '' %>">
+          <span class="cal-day"><%= d %></span>
+          <% if (checkedDays.has(d)) { %><span class="cal-stamp">✓</span><% } %>
+        </div>
+      <% } %>
+    </div>
+
+    <% if (checkedToday) { %>
+      <button class="btn btn-primary btn-block" disabled>오늘 출석 완료! 내일 또 만나요 ✓</button>
+    <% } else { %>
+      <form action="/attendance/check" method="post">
+        <button class="btn btn-primary btn-block" type="submit">출석체크 하고 100P 받기</button>
+      </form>
+    <% } %>
+  </div>
+
+  <div class="card att-side">
+    <h2>연속 출석 현황</h2>
+    <p class="streak-now">🔥 현재 <strong><%= streak %></strong>일 연속 출석 중</p>
+    <ul class="streak-list">
+      <li class="<%= streak >= 3 ? 'done' : '' %>"><span>3일 연속</span><strong>+500P</strong></li>
+      <li class="<%= streak >= 7 ? 'done' : '' %>"><span>7일 연속</span><strong>+1,000P</strong></li>
+      <li class="<%= streak >= 30 ? 'done' : '' %>"><span>30일 연속</span><strong>+3,000P</strong></li>
+    </ul>
+    <p class="muted">연속 출석이 끊기면 처음부터 다시 시작돼요. 매일 잊지 말고 출석해주세요!</p>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

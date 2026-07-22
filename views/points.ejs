@@ -1,0 +1,60 @@
+<%- include('partials/header', { title: '포인트', active: 'points' }) %>
+
+<div class="board-head">
+  <div>
+    <h1>포인트</h1>
+    <p class="muted">활동할수록 포인트가 쌓여요. 포인트는 활동 제한이 아니라 지급 기준이에요!</p>
+  </div>
+</div>
+
+<div class="point-summary">
+  <div class="card stat">
+    <span class="muted">내 포인트</span>
+    <strong class="accent"><%= me.points.toLocaleString() %>P</strong>
+  </div>
+  <div class="card stat">
+    <span class="muted">오늘 적립</span>
+    <strong>+<%= todayTotal.toLocaleString() %>P</strong>
+  </div>
+</div>
+
+<div class="point-grid">
+  <div class="card">
+    <h2>적립 기준</h2>
+    <table class="rules">
+      <tr><td>회원가입 <span class="muted">(최초 1회)</span></td><td>1,000P</td></tr>
+      <tr><td>출석체크 <span class="muted">(하루 1회)</span></td><td>100P</td></tr>
+      <tr><td>일반 게시글 작성 <span class="muted">(하루 3개까지)</span></td><td>300P</td></tr>
+      <tr><td>익명 게시글 작성 <span class="muted">(하루 3개까지)</span></td><td>100P</td></tr>
+      <tr><td>댓글·대댓글 작성 <span class="muted">(하루 10개까지)</span></td><td>100P</td></tr>
+      <tr><td>일반 게시글 추천받기 <span class="muted">(추천 1개당)</span></td><td>10P</td></tr>
+      <tr><td>인기글 선정 <span class="muted">(추천 10개 이상)</span></td><td>1,000P</td></tr>
+      <tr><td>운영자 추천글 선정</td><td>1,500P</td></tr>
+      <tr><td>연속 출석 3일 / 7일 / 30일</td><td>500P / 1,000P / 3,000P</td></tr>
+    </table>
+    <div class="note">
+      <strong>익명글 규칙</strong> · 익명글 작성 시 100P 지급 · 익명글은 추천 버튼 비활성화 · 추천 포인트 적립 불가
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>적립 내역</h2>
+    <% if (logs.length === 0) { %>
+      <div class="empty">아직 적립 내역이 없어요.</div>
+    <% } else { %>
+      <ul class="log-list">
+        <% logs.forEach(function (l) { %>
+          <li>
+            <div>
+              <strong><%= l.detail %></strong>
+              <span class="muted"><%= l.created_at.slice(0, 16) %></span>
+            </div>
+            <span class="accent">+<%= l.amount.toLocaleString() %>P</span>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,15 @@
+<%- include('partials/header', { title: '로그인', active: null }) %>
+
+<div class="auth-card card">
+  <h1>로그인</h1>
+  <p class="muted">포인트라운지에 오신 걸 환영해요!</p>
+  <% if (error) { %><div class="alert"><%= error %></div><% } %>
+  <form method="post" action="/login" class="form">
+    <label>아이디 <input type="text" name="username" required autofocus></label>
+    <label>비밀번호 <input type="password" name="password" required></label>
+    <button class="btn btn-primary btn-block" type="submit">로그인</button>
+  </form>
+  <p class="muted center">아직 회원이 아니신가요? <a href="/signup">회원가입 하고 1,000P 받기</a></p>
+</div>
+
+<%- include('partials/footer') %>
