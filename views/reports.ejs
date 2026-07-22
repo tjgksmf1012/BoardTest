@@ -1,0 +1,28 @@
+<%- include('partials/header', { title: '신고 관리', active: null }) %>
+
+<div class="board-head">
+  <div>
+    <h1>신고 관리 <span class="badge badge-notice">운영자</span></h1>
+    <p class="muted">신고가 접수된 게시글이에요. 확인 후 필요하면 숨김(삭제) 처리하세요.</p>
+  </div>
+</div>
+
+<div class="card post-list">
+  <% if (items.length === 0) { %>
+    <div class="empty">신고된 게시글이 없어요. 👍</div>
+  <% } else { %>
+    <% items.forEach(function (p) { %>
+      <a class="post-row" href="/board/<%= p.id %>">
+        <span class="report-count">🚨 <%= p.report_count %></span>
+        <div class="post-mid">
+          <div class="post-title"><%= p.title %></div>
+          <div class="post-meta">
+            작성자 <%= p.is_anonymous ? '익명' : p.nickname %> · 최근 신고 <%= p.last_reported.slice(0, 16) %>
+          </div>
+        </div>
+      </a>
+    <% }) %>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

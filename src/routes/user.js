@@ -71,6 +71,31 @@ router.get('/points', requireLogin, (req, res) => {
   res.render('points', { logs, todayTotal, RULES });
 });
 
+// ---- 알림 ------------------------------------------------------------------
+router.get('/notifications', requireLogin, (req, res) => {
+  const items = db.prepare(
+    'SELECT * FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 50'
+  ).all(req.session.userId);
+  // 화면에 보여준 알림은 읽음 처리
+  db.prepare('UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0')
+    .run(req.session.userId);
+  res.render('notifications', { items });
+});
+
+// ---- 신고 관리 (운영자) --------------------------------------------------------
+router.get('/reports', requireLogin, (req, res) => {
+  if (!res.locals.me.is_admin) return res.redirect('/board');
+  const items = db.prepare(`
+    SELECT p.id, p.title, p.is_anonymous, u.nickname,
+      COUNT(r.id) AS report_count, MAX(r.created_at) AS last_reported
+    FROM reports r
+    JOIN posts p ON p.id = r.post_id
+    JOIN users u ON u.id = p.user_id
+    GROUP BY r.post_id
+    ORDER BY report_count DESC, last_reported DESC`).all();
+  res.render('reports', { items });
+});
+
 // ---- 포인트 랭킹 -------------------------------------------------------------
 router.get('/ranking', (req, res) => {
   const users = db.prepare(`
@@ -104,7 +129,21 @@ router.get('/profile', requireLogin, (req, res) => {
     attendance: db.prepare('SELECT COUNT(*) AS c FROM attendance WHERE user_id = ?').get(me.id).c,
   };
 
-  res.render('profile', { groups, borders, stats });
+  // 내 활동 모아보기 (최근 5개씩)
+  const myPosts = db.prepare(`
+    SELECT id, title, is_anonymous, created_at,
+      (SELECT COUNT(*) FROM comments c WHERE c.post_id = posts.id) AS comment_count
+    FROM posts WHERE user_id = ? AND is_notice = 0 ORDER BY id DESC LIMIT 5`).all(me.id);
+  const myComments = db.prepare(`
+    SELECT c.id, c.content, c.created_at, c.post_id, p.title AS post_title
+    FROM comments c JOIN posts p ON p.id = c.post_id
+    WHERE c.user_id = ? ORDER BY c.id DESC LIMIT 5`).all(me.id);
+  const myBookmarks = db.prepare(`
+    SELECT b.post_id, p.title, p.is_anonymous, u.nickname, b.created_at
+    FROM bookmarks b JOIN posts p ON p.id = b.post_id JOIN users u ON u.id = p.user_id
+    WHERE b.user_id = ? ORDER BY b.id DESC LIMIT 5`).all(me.id);
+
+  res.render('profile', { groups, borders, stats, myPosts, myComments, myBookmarks });
 });
 
 router.post('/profile/avatar', requireLogin, (req, res) => {

@@ -10,8 +10,25 @@
 
 <form class="search" method="get" action="/board">
   <input type="text" name="q" value="<%= q %>" placeholder="제목이나 내용으로 검색">
+  <% if (sort !== 'latest') { %><input type="hidden" name="sort" value="<%= sort %>"><% } %>
+  <% if (hot) { %><input type="hidden" name="filter" value="hot"><% } %>
   <button class="btn btn-ghost" type="submit">검색</button>
 </form>
+
+<div class="filter-bar">
+  <div class="chips">
+    <a class="chip <%= !hot ? 'on' : '' %>" href="/board?sort=<%= sort %><%= q ? '&q=' + encodeURIComponent(q) : '' %>">전체</a>
+    <a class="chip <%= hot ? 'on' : '' %>" href="/board?filter=hot&sort=<%= sort %><%= q ? '&q=' + encodeURIComponent(q) : '' %>">🔥 인기글</a>
+  </div>
+  <div class="chips">
+    <% ['latest', 'likes', 'views'].forEach(function (s) { %>
+      <a class="chip <%= sort === s ? 'on' : '' %>"
+         href="/board?sort=<%= s %><%= hot ? '&filter=hot' : '' %><%= q ? '&q=' + encodeURIComponent(q) : '' %>">
+        <%= s === 'latest' ? '최신순' : s === 'likes' ? '추천순' : '조회순' %>
+      </a>
+    <% }) %>
+  </div>
+</div>
 
 <div class="post-list card">
   <% notices.forEach(function (p) { %>
@@ -59,7 +76,7 @@
   <div class="pager">
     <% for (let i = 1; i <= totalPages; i++) { %>
       <a class="page <%= i === page ? 'on' : '' %>"
-         href="/board?page=<%= i %><%= q ? '&q=' + encodeURIComponent(q) : '' %>"><%= i %></a>
+         href="/board?page=<%= i %>&sort=<%= sort %><%= hot ? '&filter=hot' : '' %><%= q ? '&q=' + encodeURIComponent(q) : '' %>"><%= i %></a>
     <% } %>
   </div>
 <% } %>

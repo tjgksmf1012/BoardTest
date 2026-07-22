@@ -35,7 +35,14 @@
     <a class="btn btn-ghost" href="/board">목록</a>
     <div class="spacer"></div>
 
-    <% if (me && !post.is_notice) { %>
+    <% if (me) { %>
+      <form action="/board/<%= post.id %>/bookmark" method="post" class="inline">
+        <button class="btn btn-ghost <%= bookmarked ? 'active' : '' %>" type="submit">
+          <%= bookmarked ? '⭐ 스크랩됨' : '☆ 스크랩' %>
+        </button>
+      </form>
+    <% } %>
+    <% if (me && !post.is_notice && me.id !== post.user_id) { %>
       <form action="/board/<%= post.id %>/report" method="post" class="inline">
         <button class="btn btn-ghost" type="submit">🚨 신고</button>
       </form>

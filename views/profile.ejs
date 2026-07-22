@@ -14,6 +14,60 @@
   </div>
 </div>
 
+<% if (me.is_admin) { %>
+  <a class="btn btn-ghost admin-link" href="/reports">🚨 신고 관리 페이지로 이동</a>
+<% } %>
+
+<div class="my-activity">
+  <div class="card">
+    <h3 class="mini-title">내가 쓴 글</h3>
+    <% if (myPosts.length === 0) { %>
+      <div class="empty small">아직 쓴 글이 없어요.</div>
+    <% } else { %>
+      <ul class="mini-list">
+        <% myPosts.forEach(function (p) { %>
+          <li><a href="/board/<%= p.id %>">
+            <span class="mini-text"><%= p.title %></span>
+            <span class="muted">💬 <%= p.comment_count %> · <%= p.created_at.slice(5, 10) %></span>
+          </a></li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <h3 class="mini-title">내가 쓴 댓글</h3>
+    <% if (myComments.length === 0) { %>
+      <div class="empty small">아직 쓴 댓글이 없어요.</div>
+    <% } else { %>
+      <ul class="mini-list">
+        <% myComments.forEach(function (c) { %>
+          <li><a href="/board/<%= c.post_id %>">
+            <span class="mini-text"><%= c.content %></span>
+            <span class="muted">on <%= c.post_title %></span>
+          </a></li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <h3 class="mini-title">⭐ 스크랩한 글</h3>
+    <% if (myBookmarks.length === 0) { %>
+      <div class="empty small">스크랩한 글이 없어요.</div>
+    <% } else { %>
+      <ul class="mini-list">
+        <% myBookmarks.forEach(function (b) { %>
+          <li><a href="/board/<%= b.post_id %>">
+            <span class="mini-text"><%= b.title %></span>
+            <span class="muted"><%= b.is_anonymous ? '익명' : b.nickname %></span>
+          </a></li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+</div>
+
 <h2 class="section-title">아바타 해금 가이드</h2>
 <p class="muted">게시판 활동 포인트로 다양한 아바타를 열어보세요. 포인트가 기준에 도달하면 자동으로 해금돼요!</p>
 

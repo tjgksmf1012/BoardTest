@@ -63,6 +63,22 @@ function seed() {
    [p4, cherry], [p4, mint], [p4, street], [p4, admin],
    [p5, cherry], [p5, street]].forEach(([post, user]) => insertLike.run(post, user));
 
+  // 알림 샘플 (street 회원에게)
+  const insertNoti = db.prepare('INSERT INTO notifications (user_id, message, link, is_read) VALUES (?, ?, ?, ?)');
+  insertNoti.run(street, '👍 민트소다님이 회원님의 글을 추천했어요. (+10P)', `/board/${p2}`, 0);
+  insertNoti.run(street, '💬 골드웨이브님이 회원님의 글에 댓글을 남겼어요.', `/board/${p2}`, 0);
+  insertNoti.run(gold, '⭐ 회원님의 글이 운영자 추천글로 선정됐어요! (+1,500P)', `/board/${p4}`, 1);
+
+  // 스크랩 샘플
+  const insertBookmark = db.prepare('INSERT INTO bookmarks (user_id, post_id) VALUES (?, ?)');
+  insertBookmark.run(cherry, p4);
+  insertBookmark.run(mint, p4);
+
+  // 신고 샘플 (익명글에 신고 2건)
+  const insertReport = db.prepare('INSERT INTO reports (post_id, user_id) VALUES (?, ?)');
+  insertReport.run(p3, cherry);
+  insertReport.run(p3, gold);
+
   console.log('데모 데이터를 생성했어요. (운영자: admin / admin1234, 샘플 회원: cherry·mint·street·gold / test1234)');
 }
 

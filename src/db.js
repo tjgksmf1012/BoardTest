@@ -85,6 +85,23 @@ CREATE TABLE IF NOT EXISTS reports (
   created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
   UNIQUE(post_id, user_id)
 );
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  message    TEXT NOT NULL,
+  link       TEXT,
+  is_read    INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+);
+
+CREATE TABLE IF NOT EXISTS bookmarks (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+  UNIQUE(user_id, post_id)
+);
 `);
 
 module.exports = db;

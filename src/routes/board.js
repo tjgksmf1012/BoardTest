@@ -6,6 +6,7 @@ const express = require('express');
 const multer = require('multer');
 const db = require('../db');
 const { award, unlockMessage } = require('../points');
+const { notify } = require('../notify');
 
 const router = express.Router();
 
@@ -42,6 +43,8 @@ const PAGE_SIZE = 10;
 router.get('/', (req, res) => {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const q = (req.query.q || '').trim();
+  const sort = ['latest', 'likes', 'views'].includes(req.query.sort) ? req.query.sort : 'latest';
+  const hot = req.query.filter === 'hot';
 
   const notices = db.prepare(`
     SELECT p.*, u.nickname, u.avatar_id, u.border_id,
@@ -50,7 +53,11 @@ router.get('/', (req, res) => {
     FROM posts p JOIN users u ON u.id = p.user_id
     WHERE p.is_notice = 1 ORDER BY p.id DESC`).all();
 
-  const where = q ? `AND (p.title LIKE @like OR p.content LIKE @like)` : '';
+  const where = (q ? `AND (p.title LIKE @like OR p.content LIKE @like)` : '')
+    + (hot ? ' AND p.is_popular = 1' : '');
+  const orderBy = sort === 'likes' ? 'like_count DESC, p.id DESC'
+    : sort === 'views' ? 'p.views DESC, p.id DESC'
+    : 'p.id DESC';
   const params = { like: `%${q}%`, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
   const total = db.prepare(
     `SELECT COUNT(*) AS c FROM posts p WHERE p.is_notice = 0 ${where}`
@@ -62,10 +69,10 @@ router.get('/', (req, res) => {
       (SELECT COUNT(*) FROM post_images i WHERE i.post_id = p.id) AS image_count
     FROM posts p JOIN users u ON u.id = p.user_id
     WHERE p.is_notice = 0 ${where}
-    ORDER BY p.id DESC LIMIT @limit OFFSET @offset`).all(params);
+    ORDER BY ${orderBy} LIMIT @limit OFFSET @offset`).all(params);
 
   res.render('board', {
-    notices, posts, page, q,
+    notices, posts, page, q, sort, hot,
     totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
   });
 });
@@ -139,6 +146,9 @@ router.get('/:id(\\d+)', (req, res) => {
   const myLike = req.session.userId
     ? db.prepare('SELECT 1 FROM likes WHERE post_id = ? AND user_id = ?').get(post.id, req.session.userId)
     : null;
+  const myBookmark = req.session.userId
+    ? db.prepare('SELECT 1 FROM bookmarks WHERE post_id = ? AND user_id = ?').get(post.id, req.session.userId)
+    : null;
 
   const prev = db.prepare(
     'SELECT id, title FROM posts WHERE is_notice = 0 AND id < ? ORDER BY id DESC LIMIT 1').get(post.id);
@@ -148,8 +158,24 @@ router.get('/:id(\\d+)', (req, res) => {
   res.render('post', {
     post, images, comments,
     commentCount: rows.length,
-    liked: !!myLike, prev, next,
+    liked: !!myLike, bookmarked: !!myBookmark, prev, next,
   });
+});
+
+// ---- 스크랩 ----------------------------------------------------------------
+router.post('/:id(\\d+)/bookmark', requireLogin, (req, res) => {
+  const post = db.prepare('SELECT id FROM posts WHERE id = ?').get(req.params.id);
+  if (!post) return res.redirect('/board');
+  const exists = db.prepare('SELECT id FROM bookmarks WHERE post_id = ? AND user_id = ?')
+    .get(post.id, req.session.userId);
+  if (exists) {
+    db.prepare('DELETE FROM bookmarks WHERE id = ?').run(exists.id);
+    req.session.flash = '스크랩을 해제했어요.';
+  } else {
+    db.prepare('INSERT INTO bookmarks (post_id, user_id) VALUES (?, ?)').run(post.id, req.session.userId);
+    req.session.flash = '⭐ 스크랩했어요! 마이페이지에서 모아볼 수 있어요.';
+  }
+  res.redirect(`/board/${post.id}`);
 });
 
 // ---- 추천 ----------------------------------------------------------------
@@ -166,6 +192,8 @@ router.post('/:id(\\d+)/like', requireLogin, (req, res) => {
     try {
       db.prepare('INSERT INTO likes (post_id, user_id) VALUES (?, ?)').run(post.id, req.session.userId);
       award(post.user_id, 'like_received', `추천받기 (게시글 #${post.id})`);
+      notify(post.user_id, req.session.userId,
+        `👍 ${res.locals.me.nickname}님이 회원님의 글을 추천했어요. (+10P)`, `/board/${post.id}`);
       req.session.flash = '👍 추천했어요! 작성자에게 +10P 가 적립됐어요.';
 
       // 추천 10개 이상이면 인기글 선정 (+1,000P, 최초 1회)
@@ -173,6 +201,7 @@ router.post('/:id(\\d+)/like', requireLogin, (req, res) => {
       if (likeCount >= 10 && !post.is_popular) {
         db.prepare('UPDATE posts SET is_popular = 1 WHERE id = ?').run(post.id);
         award(post.user_id, 'popular', `인기글 선정 (게시글 #${post.id})`);
+        notify(post.user_id, 0, '🔥 회원님의 글이 인기글로 선정됐어요! (+1,000P)', `/board/${post.id}`);
       }
     } catch {
       req.session.flash = '이미 추천한 글이에요.';
@@ -204,6 +233,18 @@ router.post('/:id(\\d+)/comments', requireLogin, (req, res) => {
   }
   db.prepare('INSERT INTO comments (post_id, user_id, parent_id, content) VALUES (?, ?, ?, ?)')
     .run(post.id, req.session.userId, parentId, content);
+
+  // 글 작성자에게 알림, 답글이면 원 댓글 작성자에게도 알림 (중복 제외)
+  const myName = res.locals.me.nickname;
+  notify(post.user_id, req.session.userId,
+    `💬 ${myName}님이 회원님의 글에 댓글을 남겼어요.`, `/board/${post.id}`);
+  if (parentId) {
+    const parentAuthor = db.prepare('SELECT user_id FROM comments WHERE id = ?').get(parentId).user_id;
+    if (parentAuthor !== post.user_id) {
+      notify(parentAuthor, req.session.userId,
+        `↩️ ${myName}님이 회원님의 댓글에 답글을 남겼어요.`, `/board/${post.id}`);
+    }
+  }
 
   const r = award(req.session.userId, 'comment'); // 댓글 100P, 하루 10개까지
   req.session.flash = r.limited
@@ -298,6 +339,8 @@ router.post('/:id(\\d+)/admin-pick', requireLogin, (req, res) => {
   if (post && !post.admin_picked) {
     db.prepare('UPDATE posts SET admin_picked = 1 WHERE id = ?').run(post.id);
     award(post.user_id, 'admin_pick', `운영자 추천글 선정 (게시글 #${post.id})`);
+    notify(post.user_id, req.session.userId,
+      '⭐ 회원님의 글이 운영자 추천글로 선정됐어요! (+1,500P)', `/board/${post.id}`);
     req.session.flash = '⭐ 운영자 추천글로 선정했어요. 작성자에게 +1,500P 지급!';
   }
   res.redirect(`/board/${post ? post.id : ''}`);
