@@ -1,7 +1,7 @@
 // 출석체크 / 포인트 내역 / 프로필(아바타 해금·장착)
 const express = require('express');
 const db = require('../db');
-const { RULES, checkAttendance, todayStr } = require('../points');
+const { RULES, checkAttendance, unlockMessage } = require('../points');
 const { AVATARS, BORDERS, TIER_INFO, canUseAvatar, canUseBorder, eventOpen } = require('../avatars');
 
 const router = express.Router();
@@ -54,7 +54,7 @@ router.post('/attendance/check', requireLogin, (req, res) => {
   } else {
     const total = result.results.reduce((s, r) => s + r.awarded, 0);
     const bonus = result.results.length > 1 ? ` (${result.streak}일 연속 출석 보너스 포함!)` : '';
-    req.session.flash = `✅ 출석 완료! +${total}P 적립됐어요.${bonus}`;
+    req.session.flash = `✅ 출석 완료! +${total}P 적립됐어요.${bonus}` + unlockMessage(result.results);
   }
   res.redirect('/attendance');
 });
@@ -69,6 +69,16 @@ router.get('/points', requireLogin, (req, res) => {
      WHERE user_id = ? AND date(created_at) = date('now', 'localtime')`
   ).get(req.session.userId).s;
   res.render('points', { logs, todayTotal, RULES });
+});
+
+// ---- 포인트 랭킹 -------------------------------------------------------------
+router.get('/ranking', (req, res) => {
+  const users = db.prepare(`
+    SELECT u.id, u.nickname, u.points, u.avatar_id, u.border_id, u.is_admin,
+      (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id AND p.is_notice = 0) AS post_count,
+      (SELECT COUNT(*) FROM comments c WHERE c.user_id = u.id) AS comment_count
+    FROM users u ORDER BY u.points DESC, u.id LIMIT 20`).all();
+  res.render('ranking', { users });
 });
 
 // ---- 프로필 / 아바타 -----------------------------------------------------------

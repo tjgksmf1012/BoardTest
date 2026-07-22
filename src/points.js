@@ -28,17 +28,33 @@ function countToday(userId, reason) {
   ).get(userId, reason).c;
 }
 
-// 포인트 지급. 하루 한도가 차 있으면 지급하지 않고 { awarded: 0, limited: true } 반환
+// 아바타 해금 기준. 포인트가 이 값을 넘는 순간 축하 메시지를 띄운다
+const UNLOCK_THRESHOLDS = [
+  { points: 5000, label: '스페셜 헤어' },
+  { points: 10000, label: '프리미엄 의상' },
+  { points: 20000, label: '움직이는 테두리' },
+];
+
+function crossedUnlocks(before, after) {
+  return UNLOCK_THRESHOLDS.filter((t) => before < t.points && after >= t.points);
+}
+
+// 포인트 지급. 하루 한도가 차 있으면 지급하지 않고 { awarded: 0, limited: true } 반환.
+// 지급으로 해금 기준을 넘었다면 unlocked 배열에 해당 티어가 담긴다.
 function award(userId, reason, detail) {
   const rule = RULES[reason];
   if (!rule) throw new Error(`unknown point reason: ${reason}`);
   if (rule.dailyLimit && countToday(userId, reason) >= rule.dailyLimit) {
-    return { awarded: 0, limited: true, rule };
+    return { awarded: 0, limited: true, rule, unlocked: [] };
   }
+  const before = db.prepare('SELECT points FROM users WHERE id = ?').get(userId).points;
   db.prepare('INSERT INTO point_logs (user_id, amount, reason, detail) VALUES (?, ?, ?, ?)')
     .run(userId, rule.amount, reason, detail || rule.label);
   db.prepare('UPDATE users SET points = points + ? WHERE id = ?').run(rule.amount, userId);
-  return { awarded: rule.amount, limited: false, rule };
+  return {
+    awarded: rule.amount, limited: false, rule,
+    unlocked: crossedUnlocks(before, before + rule.amount),
+  };
 }
 
 // 출석 처리: 오늘 출석 기록 + 100P, 연속 출석 3/7/30일 보너스
@@ -68,4 +84,15 @@ function checkAttendance(userId) {
   return { already: false, streak, results };
 }
 
-module.exports = { RULES, award, checkAttendance, countToday, todayStr };
+// 플래시 메시지에 붙일 해금 축하 문구
+function unlockMessage(results) {
+  const unlocked = results.flatMap((r) => r.unlocked || []);
+  if (unlocked.length === 0) return '';
+  return ' 🎉 ' + unlocked.map((u) => `${u.points.toLocaleString()}P 달성 — ${u.label} 해금!`).join(' ');
+}
+
+module.exports = {
+  RULES, UNLOCK_THRESHOLDS,
+  award, checkAttendance, countToday, todayStr,
+  crossedUnlocks, unlockMessage,
+};

@@ -6,7 +6,7 @@
 
   <form method="post" enctype="multipart/form-data"
         action="<%= post ? '/board/' + post.id + '/edit' : '/board' %>" class="form">
-    <label>제목 <span class="req">*</span>
+    <label><span>제목 <span class="req">*</span></span>
       <input type="text" name="title" maxlength="50" required
              placeholder="제목을 입력해주세요 (50자 이내)"
              value="<%= post ? post.title : '' %>"
@@ -14,19 +14,31 @@
       <span class="count" id="title-count"><%= post ? post.title.length : 0 %> / 50</span>
     </label>
 
-    <label>내용 <span class="req">*</span>
+    <label><span>내용 <span class="req">*</span></span>
       <textarea name="content" rows="12" maxlength="5000" required
                 placeholder="내용을 입력해주세요 (5,000자 이내)"
                 oninput="counter(this, 'content-count', 5000)"><%= post ? post.content : '' %></textarea>
       <span class="count" id="content-count"><%= post ? post.content.length : 0 %> / 5,000</span>
     </label>
 
-    <% if (!post) { %>
-      <label>사진 첨부 <span class="muted">(선택 · 최대 5장 · JPG, PNG · 장당 10MB 이하)</span>
-        <input type="file" name="images" accept="image/jpeg,image/png" multiple
-               onchange="if (this.files.length > 5) { alert('사진은 최대 5장까지 첨부할 수 있어요.'); this.value = ''; }">
-      </label>
+    <label>사진 첨부 <span class="muted">(선택 · 최대 5장 · JPG, PNG · 장당 10MB 이하)</span>
+      <input type="file" id="image-input" name="images" accept="image/jpeg,image/png" multiple>
+    </label>
+
+    <% if (post && images && images.length > 0) { %>
+      <div class="img-previews" id="existing-previews">
+        <% images.forEach(function (img) { %>
+          <div class="img-preview" data-existing="1">
+            <img src="/uploads/<%= img.filename %>" alt="첨부 이미지">
+            <label class="img-remove-check" title="삭제">
+              <input type="checkbox" name="remove_images" value="<%= img.id %>"
+                     onchange="this.closest('.img-preview').classList.toggle('removing', this.checked)">✕
+            </label>
+          </div>
+        <% }) %>
+      </div>
     <% } %>
+    <div class="img-previews" id="new-previews"></div>
 
     <div class="write-options">
       <% if (!post) { %>
@@ -51,6 +63,51 @@
 <script>
   function counter(el, id, max) {
     document.getElementById(id).textContent = el.value.length + ' / ' + max.toLocaleString();
+  }
+
+  // 이미지 첨부 미리보기 + 개별 삭제 (DataTransfer로 FileList 재구성)
+  var imageInput = document.getElementById('image-input');
+  var selectedFiles = [];
+
+  imageInput.addEventListener('change', function () {
+    var existing = document.querySelectorAll('#existing-previews .img-preview:not(.removing)').length;
+    var incoming = Array.from(imageInput.files);
+    for (var i = 0; i < incoming.length; i++) {
+      if (selectedFiles.length + existing >= 5) { alert('사진은 최대 5장까지 첨부할 수 있어요.'); break; }
+      if (incoming[i].size > 10 * 1024 * 1024) { alert(incoming[i].name + ' 은(는) 10MB를 넘어 첨부할 수 없어요.'); continue; }
+      selectedFiles.push(incoming[i]);
+    }
+    syncFiles();
+  });
+
+  function removeNewImage(idx) {
+    selectedFiles.splice(idx, 1);
+    syncFiles();
+  }
+
+  function syncFiles() {
+    var dt = new DataTransfer();
+    selectedFiles.forEach(function (f) { dt.items.add(f); });
+    imageInput.files = dt.files;
+
+    var box = document.getElementById('new-previews');
+    box.innerHTML = '';
+    selectedFiles.forEach(function (f, idx) {
+      var div = document.createElement('div');
+      div.className = 'img-preview';
+      var img = document.createElement('img');
+      img.src = URL.createObjectURL(f);
+      img.onload = function () { URL.revokeObjectURL(img.src); };
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'img-remove-check';
+      btn.textContent = '✕';
+      btn.title = '삭제';
+      btn.onclick = function () { removeNewImage(idx); };
+      div.appendChild(img);
+      div.appendChild(btn);
+      box.appendChild(div);
+    });
   }
 </script>
 

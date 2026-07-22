@@ -4,7 +4,8 @@
   "description": "포인트로 아바타를 키우는 커뮤니티 게시판",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test"
   },
   "dependencies": {
     "better-sqlite3": "^11.10.0",

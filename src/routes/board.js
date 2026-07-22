@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const express = require('express');
 const multer = require('multer');
 const db = require('../db');
-const { award } = require('../points');
+const { award, unlockMessage } = require('../points');
 
 const router = express.Router();
 
@@ -72,12 +72,12 @@ router.get('/', (req, res) => {
 
 // ---- 글쓰기 ----------------------------------------------------------------
 router.get('/new', requireLogin, (req, res) => {
-  res.render('write', { post: null, error: null });
+  res.render('write', { post: null, images: [], error: null });
 });
 
 router.post('/', requireLogin, (req, res) => {
   upload.array('images', 5)(req, res, (err) => {
-    if (err) return res.render('write', { post: null, error: err.message });
+    if (err) return res.render('write', { post: null, images: [], error: err.message });
 
     const title = (req.body.title || '').trim();
     const content = (req.body.content || '').trim();
@@ -86,10 +86,10 @@ router.post('/', requireLogin, (req, res) => {
     const isNotice = req.body.is_notice && res.locals.me.is_admin ? 1 : 0;
 
     if (!title || title.length > 50) {
-      return res.render('write', { post: null, error: '제목은 1~50자로 입력해주세요.' });
+      return res.render('write', { post: null, images: [], error: '제목은 1~50자로 입력해주세요.' });
     }
     if (!content || content.length > 5000) {
-      return res.render('write', { post: null, error: '내용은 1~5,000자로 입력해주세요.' });
+      return res.render('write', { post: null, images: [], error: '내용은 1~5,000자로 입력해주세요.' });
     }
 
     const info = db.prepare(`
@@ -105,7 +105,7 @@ router.post('/', requireLogin, (req, res) => {
       const r = award(req.session.userId, isAnonymous ? 'anon_post' : 'post');
       req.session.flash = r.limited
         ? '게시글이 등록됐어요. (오늘 게시글 포인트 한도를 모두 받았어요)'
-        : `📝 게시글 등록! +${r.awarded}P 적립됐어요.`;
+        : `📝 게시글 등록! +${r.awarded}P 적립됐어요.` + unlockMessage([r]);
     }
     res.redirect(`/board/${info.lastInsertRowid}`);
   });
@@ -208,7 +208,7 @@ router.post('/:id(\\d+)/comments', requireLogin, (req, res) => {
   const r = award(req.session.userId, 'comment'); // 댓글 100P, 하루 10개까지
   req.session.flash = r.limited
     ? '댓글이 등록됐어요. (오늘 댓글 포인트 한도를 모두 받았어요)'
-    : `💬 댓글 등록! +${r.awarded}P 적립됐어요.`;
+    : `💬 댓글 등록! +${r.awarded}P 적립됐어요.` + unlockMessage([r]);
   res.redirect(`/board/${post.id}`);
 });
 
@@ -225,23 +225,48 @@ router.post('/comments/:cid(\\d+)/delete', requireLogin, (req, res) => {
 router.get('/:id(\\d+)/edit', requireLogin, (req, res) => {
   const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(req.params.id);
   if (!post || post.user_id !== req.session.userId) return res.redirect('/board');
-  res.render('write', { post, error: null });
+  const images = db.prepare('SELECT * FROM post_images WHERE post_id = ?').all(post.id);
+  res.render('write', { post, images, error: null });
 });
 
 router.post('/:id(\\d+)/edit', requireLogin, (req, res) => {
   const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(req.params.id);
   if (!post || post.user_id !== req.session.userId) return res.redirect('/board');
 
-  const title = (req.body.title || '').trim();
-  const content = (req.body.content || '').trim();
-  if (!title || title.length > 50 || !content || content.length > 5000) {
-    return res.render('write', { post, error: '제목(50자)과 내용(5,000자)을 확인해주세요.' });
-  }
-  db.prepare(`UPDATE posts SET title = ?, content = ?, block_comments = ?,
-              updated_at = datetime('now', 'localtime') WHERE id = ?`)
-    .run(title, content, req.body.block_comments ? 1 : 0, post.id);
-  req.session.flash = '게시글을 수정했어요.';
-  res.redirect(`/board/${post.id}`);
+  upload.array('images', 5)(req, res, (err) => {
+    const images = () => db.prepare('SELECT * FROM post_images WHERE post_id = ?').all(post.id);
+    if (err) return res.render('write', { post, images: images(), error: err.message });
+
+    const title = (req.body.title || '').trim();
+    const content = (req.body.content || '').trim();
+    if (!title || title.length > 50 || !content || content.length > 5000) {
+      return res.render('write', { post, images: images(), error: '제목(50자)과 내용(5,000자)을 확인해주세요.' });
+    }
+
+    // 삭제 체크된 기존 이미지 제거
+    const removeIds = [].concat(req.body.remove_images || []).map(Number).filter(Boolean);
+    removeIds.forEach((id) => {
+      const img = db.prepare('SELECT * FROM post_images WHERE id = ? AND post_id = ?').get(id, post.id);
+      if (img) {
+        fs.rm(path.join(UPLOAD_DIR, img.filename), { force: true }, () => {});
+        db.prepare('DELETE FROM post_images WHERE id = ?').run(img.id);
+      }
+    });
+
+    // 새 이미지 추가 (총 5장 초과분은 버림)
+    const remain = 5 - db.prepare('SELECT COUNT(*) AS c FROM post_images WHERE post_id = ?').get(post.id).c;
+    const insertImage = db.prepare('INSERT INTO post_images (post_id, filename) VALUES (?, ?)');
+    (req.files || []).forEach((f, i) => {
+      if (i < remain) insertImage.run(post.id, f.filename);
+      else fs.rm(path.join(UPLOAD_DIR, f.filename), { force: true }, () => {});
+    });
+
+    db.prepare(`UPDATE posts SET title = ?, content = ?, block_comments = ?,
+                updated_at = datetime('now', 'localtime') WHERE id = ?`)
+      .run(title, content, req.body.block_comments ? 1 : 0, post.id);
+    req.session.flash = '게시글을 수정했어요.';
+    res.redirect(`/board/${post.id}`);
+  });
 });
 
 router.post('/:id(\\d+)/delete', requireLogin, (req, res) => {

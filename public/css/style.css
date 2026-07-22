@@ -266,3 +266,52 @@ h2 { font-size: 17px; margin-bottom: 12px; }
 .avatar-pick.locked .avatar { filter: grayscale(.9) opacity(.5); }
 .lock-overlay { position: absolute; top: 30px; left: 50%; transform: translateX(-50%); font-size: 18px; }
 .lock-note { font-size: 11px; color: var(--muted); }
+
+/* ---- 이미지 첨부 미리보기 ---- */
+.img-previews { display: flex; flex-wrap: wrap; gap: 10px; }
+.img-previews:empty { display: none; }
+.img-preview {
+  position: relative; width: 110px; height: 110px; border-radius: 12px;
+  overflow: hidden; border: 1px solid var(--line); background: var(--bg);
+}
+.img-preview img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.img-preview.removing img { opacity: .3; filter: grayscale(1); }
+.img-preview.removing::after {
+  content: '삭제 예정'; position: absolute; bottom: 6px; left: 50%; transform: translateX(-50%);
+  font-size: 11px; font-weight: 800; color: var(--danger);
+}
+.img-remove-check {
+  position: absolute; top: 6px; right: 6px; width: 24px; height: 24px;
+  background: rgba(0, 0, 0, .55); color: #fff; border: none; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer;
+}
+.img-remove-check input { display: none; }
+
+/* ---- 랭킹 ---- */
+.rank-list { padding: 4px 0; }
+.rank-row {
+  display: flex; align-items: center; gap: 14px; padding: 13px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.rank-row:last-child { border-bottom: none; }
+.rank-row.me-row { background: var(--primary-soft); }
+.rank-no {
+  min-width: 34px; text-align: center; font-weight: 800; font-size: 15px; color: var(--muted);
+}
+.rank-no.top1, .rank-no.top2, .rank-no.top3 { font-size: 22px; }
+
+/* ---- 모바일 ---- */
+@media (max-width: 600px) {
+  .topbar-inner { padding: 10px 12px; }
+  .me-name { display: none; }
+  .container { padding: 16px 10px 50px; }
+  .card { padding: 14px; border-radius: 12px; }
+  .board-head { flex-direction: column; }
+  .board-head .btn { align-self: flex-end; }
+  .tabs-inner { overflow-x: auto; white-space: nowrap; }
+  .tab { padding: 10px 12px; font-size: 14px; flex-shrink: 0; }
+  .post-row { padding: 12px 12px; gap: 10px; }
+  .profile-top { flex-direction: column; text-align: center; }
+  .profile-stats { justify-content: center; }
+  .post-images img { width: 100%; }
+}
