@@ -10,11 +10,14 @@
 <body>
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="logo" href="/board">포인트<span>라운지</span></a>
+      <a class="logo" href="/board">
+        <span class="logo-mark" aria-hidden="true">P</span>
+        <span class="logo-text">포인트<span>라운지</span></span>
+      </a>
       <div class="topbar-user">
         <% if (me) { %>
           <a href="/notifications" class="bell" title="알림">
-            🔔<% if (unread > 0) { %><span class="bell-badge"><%= unread > 99 ? '99+' : unread %></span><% } %>
+            <%- icon('bell', 22) %><% if (unread > 0) { %><span class="bell-badge"><%= unread > 99 ? '99+' : unread %></span><% } %>
           </a>
           <a href="/profile" class="me-chip">
             <%- renderAvatar(me.avatar_id, me.border_id, 34) %>

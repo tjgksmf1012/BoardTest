@@ -13,7 +13,7 @@
   <% } else { %>
     <% items.forEach(function (p) { %>
       <div class="post-row report-row">
-        <span class="report-count">🚨 <%= p.report_count %></span>
+        <span class="report-count"><%- icon('report', 16) %> <%= p.report_count %></span>
         <a class="post-mid" href="/board/<%= p.id %>">
           <div class="post-title"><%- catTag(p.category) %> <%= p.title %></div>
           <div class="post-meta">

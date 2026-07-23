@@ -22,8 +22,8 @@
 </div>
 
 <div class="ptab-bar">
-  <button class="ptab on" type="button" data-target="info">📋 내 정보</button>
-  <button class="ptab" type="button" data-target="avatar">🎨 아바타 꾸미기</button>
+  <button class="ptab on" type="button" data-target="info">내 정보</button>
+  <button class="ptab" type="button" data-target="avatar">아바타 꾸미기</button>
 </div>
 
 <div class="ptab-panel on" id="panel-info">
@@ -42,7 +42,7 @@
 </div>
 
 <% if (me.is_admin) { %>
-  <a class="btn btn-ghost admin-link" href="/reports">🚨 신고 관리 페이지로 이동</a>
+  <a class="btn btn-ghost admin-link" href="/reports"><%- icon('report', 16) %> 신고 관리 페이지로 이동</a>
 <% } %>
 
 <div class="my-activity">
@@ -79,7 +79,7 @@
   </div>
 
   <div class="card">
-    <h3 class="mini-title">⭐ 스크랩한 글</h3>
+    <h3 class="mini-title">스크랩한 글</h3>
     <% if (myBookmarks.length === 0) { %>
       <div class="empty small">스크랩한 글이 없어요.</div>
     <% } else { %>

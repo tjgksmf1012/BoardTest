@@ -13,7 +13,7 @@
     });
   </script>
 
-  <button class="to-top" id="toTop" type="button" aria-label="맨 위로" hidden>↑</button>
+  <button class="to-top" id="toTop" type="button" aria-label="맨 위로" hidden><%- icon('arrowUp', 22) %></button>
   <script>
     (function () {
       var btn = document.getElementById('toTop');
@@ -28,19 +28,19 @@
   <!-- 모바일 하단 탭바 -->
   <nav class="bottom-nav">
     <a href="/board" class="bn-item <%= (typeof active !== 'undefined' && active === 'board') ? 'on' : '' %>">
-      <span class="bn-ico">🏠</span><span>홈</span>
+      <span class="bn-ico"><%- icon('home', 22) %></span><span>홈</span>
     </a>
     <a href="/attendance" class="bn-item <%= (typeof active !== 'undefined' && active === 'attendance') ? 'on' : '' %>">
-      <span class="bn-ico">📅</span><span>출석</span>
+      <span class="bn-ico"><%- icon('calendar', 22) %></span><span>출석</span>
     </a>
     <a href="/board/new" class="bn-item bn-write">
-      <span class="bn-ico">✏️</span><span>글쓰기</span>
+      <span class="bn-ico"><%- icon('pencil', 22) %></span><span>글쓰기</span>
     </a>
     <a href="/ranking" class="bn-item <%= (typeof active !== 'undefined' && active === 'ranking') ? 'on' : '' %>">
-      <span class="bn-ico">🏆</span><span>랭킹</span>
+      <span class="bn-ico"><%- icon('trophy', 22) %></span><span>랭킹</span>
     </a>
     <a href="/profile" class="bn-item <%= (typeof active !== 'undefined' && active === 'profile') ? 'on' : '' %>">
-      <span class="bn-ico">👤</span><span>MY</span>
+      <span class="bn-ico"><%- icon('user', 22) %></span><span>MY</span>
     </a>
   </nav>
 </body>

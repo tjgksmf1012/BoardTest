@@ -99,7 +99,7 @@ function checkAttendance(userId) {
 function unlockMessage(results) {
   const unlocked = results.flatMap((r) => r.unlocked || []);
   if (unlocked.length === 0) return '';
-  return ' 🎉 ' + unlocked.map((u) => `${u.points.toLocaleString()}P 달성 — ${u.label} 해금!`).join(' ');
+  return ' · ' + unlocked.map((u) => `${u.points.toLocaleString()}P 달성 — ${u.label} 해금!`).join(' ');
 }
 
 module.exports = {

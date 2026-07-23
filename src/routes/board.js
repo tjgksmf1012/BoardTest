@@ -133,7 +133,7 @@ router.post('/', requireLogin, (req, res) => {
       const r = award(req.session.userId, isAnonymous ? 'anon_post' : 'post');
       req.session.flash = r.limited
         ? '게시글이 등록됐어요. (오늘 게시글 포인트 한도를 모두 받았어요)'
-        : `📝 게시글 등록! +${r.awarded}P 적립됐어요.` + unlockMessage([r]);
+        : `게시글을 등록했어요. +${r.awarded}P 적립됐어요.` + unlockMessage([r]);
     }
     res.redirect(`/board/${info.lastInsertRowid}`);
   });
@@ -220,7 +220,7 @@ router.post('/:id(\\d+)/bookmark', requireLogin, (req, res) => {
     req.session.flash = '스크랩을 해제했어요.';
   } else {
     db.prepare('INSERT INTO bookmarks (post_id, user_id) VALUES (?, ?)').run(post.id, req.session.userId);
-    req.session.flash = '⭐ 스크랩했어요! 마이페이지에서 모아볼 수 있어요.';
+    req.session.flash = '스크랩했어요. 마이페이지에서 모아볼 수 있어요.';
   }
   res.redirect(`/board/${post.id}`);
 });
@@ -240,15 +240,15 @@ router.post('/:id(\\d+)/like', requireLogin, (req, res) => {
       db.prepare('INSERT INTO likes (post_id, user_id) VALUES (?, ?)').run(post.id, req.session.userId);
       award(post.user_id, 'like_received', `추천받기 (게시글 #${post.id})`);
       notify(post.user_id, req.session.userId,
-        `👍 ${res.locals.me.nickname}님이 회원님의 글을 추천했어요. (+10P)`, `/board/${post.id}`);
-      req.session.flash = '👍 추천했어요! 작성자에게 +10P 가 적립됐어요.';
+        `${res.locals.me.nickname}님이 회원님의 글을 추천했어요. (+10P)`, `/board/${post.id}`);
+      req.session.flash = '추천했어요. 작성자에게 +10P가 적립됐어요.';
 
       // 추천 10개 이상이면 인기글 선정 (+1,000P, 최초 1회)
       const likeCount = db.prepare('SELECT COUNT(*) AS c FROM likes WHERE post_id = ?').get(post.id).c;
       if (likeCount >= 10 && !post.is_popular) {
         db.prepare('UPDATE posts SET is_popular = 1 WHERE id = ?').run(post.id);
         award(post.user_id, 'popular', `인기글 선정 (게시글 #${post.id})`);
-        notify(post.user_id, 0, '🔥 회원님의 글이 인기글로 선정됐어요! (+1,000P)', `/board/${post.id}`);
+        notify(post.user_id, 0, '회원님의 글이 인기글로 선정됐어요. (+1,000P)', `/board/${post.id}`);
       }
     } catch {
       req.session.flash = '이미 추천한 글이에요.';
@@ -284,19 +284,19 @@ router.post('/:id(\\d+)/comments', requireLogin, (req, res) => {
   // 글 작성자에게 알림, 답글이면 원 댓글 작성자에게도 알림 (중복 제외)
   const myName = res.locals.me.nickname;
   notify(post.user_id, req.session.userId,
-    `💬 ${myName}님이 회원님의 글에 댓글을 남겼어요.`, `/board/${post.id}`);
+    `${myName}님이 회원님의 글에 댓글을 남겼어요.`, `/board/${post.id}`);
   if (parentId) {
     const parentAuthor = db.prepare('SELECT user_id FROM comments WHERE id = ?').get(parentId).user_id;
     if (parentAuthor !== post.user_id) {
       notify(parentAuthor, req.session.userId,
-        `↩️ ${myName}님이 회원님의 댓글에 답글을 남겼어요.`, `/board/${post.id}`);
+        `${myName}님이 회원님의 댓글에 답글을 남겼어요.`, `/board/${post.id}`);
     }
   }
 
   const r = award(req.session.userId, 'comment'); // 댓글 100P, 하루 10개까지
   req.session.flash = r.limited
     ? '댓글이 등록됐어요. (오늘 댓글 포인트 한도를 모두 받았어요)'
-    : `💬 댓글 등록! +${r.awarded}P 적립됐어요.` + unlockMessage([r]);
+    : `댓글을 등록했어요. +${r.awarded}P 적립됐어요.` + unlockMessage([r]);
   res.redirect(`/board/${post.id}#comments`);
 });
 
@@ -376,7 +376,7 @@ router.post('/:id(\\d+)/report', requireLogin, (req, res) => {
   try {
     db.prepare('INSERT INTO reports (post_id, user_id) VALUES (?, ?)')
       .run(req.params.id, req.session.userId);
-    req.session.flash = '🚨 신고가 접수됐어요. 운영자가 확인할 예정이에요.';
+    req.session.flash = '신고가 접수됐어요. 운영자가 확인할 예정이에요.';
   } catch {
     req.session.flash = '이미 신고한 게시글이에요.';
   }
@@ -390,8 +390,8 @@ router.post('/:id(\\d+)/admin-pick', requireLogin, (req, res) => {
     db.prepare('UPDATE posts SET admin_picked = 1 WHERE id = ?').run(post.id);
     award(post.user_id, 'admin_pick', `운영자 추천글 선정 (게시글 #${post.id})`);
     notify(post.user_id, req.session.userId,
-      '⭐ 회원님의 글이 운영자 추천글로 선정됐어요! (+1,500P)', `/board/${post.id}`);
-    req.session.flash = '⭐ 운영자 추천글로 선정했어요. 작성자에게 +1,500P 지급!';
+      '회원님의 글이 운영자 추천글로 선정됐어요. (+1,500P)', `/board/${post.id}`);
+    req.session.flash = '운영자 추천글로 선정했어요. 작성자에게 +1,500P 지급!';
   }
   res.redirect(`/board/${post ? post.id : ''}`);
 });

@@ -51,7 +51,7 @@ router.post('/signup', (req, res) => {
 
   award(info.lastInsertRowid, 'signup'); // 회원가입 최초 1회 1,000P
   req.session.userId = info.lastInsertRowid;
-  req.session.flash = '🎉 가입을 환영해요! 회원가입 포인트 +1,000P 를 받았어요.';
+  req.session.flash = '가입을 환영해요! 회원가입 포인트 +1,000P를 받았어요.';
   res.redirect('/board');
 });
 

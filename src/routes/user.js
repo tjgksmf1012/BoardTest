@@ -60,7 +60,7 @@ router.post('/attendance/check', requireLogin, (req, res) => {
   } else {
     const total = result.results.reduce((s, r) => s + r.awarded, 0);
     const bonus = result.results.length > 1 ? ` (${result.streak}일 연속 출석 보너스 포함!)` : '';
-    req.session.flash = `✅ 출석 완료! +${total}P 적립됐어요.${bonus}` + unlockMessage(result.results);
+    req.session.flash = `출석 완료! +${total}P 적립됐어요.${bonus}` + unlockMessage(result.results);
   }
   res.redirect('/attendance');
 });

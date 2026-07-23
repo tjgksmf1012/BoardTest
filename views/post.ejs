@@ -17,7 +17,7 @@
         <div><strong><%= post.nickname %></strong> <%- levelBadge(post.author_points) %><br><span class="muted"><%= post.created_at.slice(0, 16) %> · 조회 <%= post.views %></span></div>
       <% } %>
       <div class="spacer"></div>
-      <span class="muted">💬 <%= commentCount %> · 👍 <%= post.like_count %></span>
+      <span class="muted post-head-stats"><%- icon('comment', 15) %> <%= commentCount %> · <%- icon('like', 15) %> <%= post.like_count %></span>
     </div>
   </div>
 
@@ -38,18 +38,18 @@
     <% if (me) { %>
       <form action="/board/<%= post.id %>/bookmark" method="post" class="inline">
         <button class="btn btn-ghost <%= bookmarked ? 'active' : '' %>" type="submit">
-          <%= bookmarked ? '⭐ 스크랩됨' : '☆ 스크랩' %>
+          <%- icon('bookmark', 16) %> <%= bookmarked ? '스크랩됨' : '스크랩' %>
         </button>
       </form>
     <% } %>
     <% if (me && !post.is_notice && me.id !== post.user_id) { %>
       <form action="/board/<%= post.id %>/report" method="post" class="inline">
-        <button class="btn btn-ghost" type="submit">🚨 신고</button>
+        <button class="btn btn-ghost" type="submit"><%- icon('report', 16) %> 신고</button>
       </form>
     <% } %>
     <% if (me && me.is_admin && !post.admin_picked && !post.is_notice) { %>
       <form action="/board/<%= post.id %>/admin-pick" method="post" class="inline">
-        <button class="btn btn-ghost" type="submit">⭐ 운영자 추천</button>
+        <button class="btn btn-ghost" type="submit"><%- icon('trophy', 16) %> 운영자 추천</button>
       </form>
     <% } %>
     <% if (me && (me.id === post.user_id || me.is_admin)) { %>
@@ -63,12 +63,12 @@
     <% } %>
 
     <% if (post.is_anonymous) { %>
-      <button class="btn btn-like" disabled title="익명글은 추천이 비활성화돼요">👍 추천 불가</button>
+      <button class="btn btn-like" disabled title="익명글은 추천이 비활성화돼요"><%- icon('like', 16) %> 추천 불가</button>
     <% } else if (liked) { %>
-      <button class="btn btn-like liked" disabled>👍 추천 완료 <%= post.like_count %></button>
+      <button class="btn btn-like liked" disabled><%- icon('like', 16) %> 추천 완료 <%= post.like_count %></button>
     <% } else { %>
       <form action="/board/<%= post.id %>/like" method="post" class="inline">
-        <button class="btn btn-like" type="submit">👍 추천 <%= post.like_count %></button>
+        <button class="btn btn-like" type="submit"><%- icon('like', 16) %> 추천 <%= post.like_count %></button>
       </form>
     <% } %>
   </div>

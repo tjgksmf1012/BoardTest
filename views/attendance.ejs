@@ -34,7 +34,7 @@
 
   <div class="card att-side">
     <h2>연속 출석 현황</h2>
-    <p class="streak-now">🔥 현재 <strong><%= streak %></strong>일 연속 출석 중</p>
+    <p class="streak-now"><%- icon('flame', 18) %> 현재 <strong><%= streak %></strong>일 연속 출석 중</p>
     <ul class="streak-list">
       <li class="<%= streak >= 3 ? 'done' : '' %>"><span>3일 연속</span><strong>+500P</strong></li>
       <li class="<%= streak >= 7 ? 'done' : '' %>"><span>7일 연속</span><strong>+1,000P</strong></li>

@@ -111,9 +111,9 @@ function seed() {
 
   // 알림 샘플 (street 회원에게)
   const insertNoti = db.prepare('INSERT INTO notifications (user_id, message, link, is_read) VALUES (?, ?, ?, ?)');
-  insertNoti.run(street, '👍 민트소다님이 회원님의 글을 추천했어요. (+10P)', `/board/${p2}`, 0);
-  insertNoti.run(street, '💬 골드웨이브님이 회원님의 글에 댓글을 남겼어요.', `/board/${p2}`, 0);
-  insertNoti.run(gold, '⭐ 회원님의 글이 운영자 추천글로 선정됐어요! (+1,500P)', `/board/${p4}`, 1);
+  insertNoti.run(street, '민트소다님이 회원님의 글을 추천했어요. (+10P)', `/board/${p2}`, 0);
+  insertNoti.run(street, '골드웨이브님이 회원님의 글에 댓글을 남겼어요.', `/board/${p2}`, 0);
+  insertNoti.run(gold, '회원님의 글이 운영자 추천글로 선정됐어요. (+1,500P)', `/board/${p4}`, 1);
 
   // 스크랩 샘플
   const insertBookmark = db.prepare('INSERT INTO bookmarks (user_id, post_id) VALUES (?, ?)');

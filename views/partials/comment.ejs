@@ -17,13 +17,13 @@
     <div class="comment-actions">
       <% if (me) { %>
         <form action="/board/comments/<%= c.id %>/like" method="post" class="inline">
-          <button class="clike <%= c.liked ? 'on' : '' %>" type="submit">👍 <%= c.like_count %></button>
+          <button class="clike <%= c.liked ? 'on' : '' %>" type="submit"><%- icon('like', 14) %> <%= c.like_count %></button>
         </form>
         <% if (!c.parent_id) { %>
           <button class="link-btn" type="button" onclick="toggleReply(<%= c.id %>)">답글</button>
         <% } %>
       <% } else { %>
-        <span class="clike-static">👍 <%= c.like_count %></span>
+        <span class="clike-static"><%- icon('like', 14) %> <%= c.like_count %></span>
       <% } %>
     </div>
     <% if (me && !c.parent_id) { %>

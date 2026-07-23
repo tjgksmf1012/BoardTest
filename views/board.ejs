@@ -5,10 +5,11 @@
     <h1>커뮤니티</h1>
     <p class="muted">일상 이야기부터 고민까지 편하게 나누는 공간이에요. 글을 쓰면 포인트가 쌓여요!</p>
   </div>
-  <a class="btn btn-primary" href="/board/new">✏️ 글쓰기</a>
+  <a class="btn btn-primary" href="/board/new"><%- icon('pencil', 18) %> 글쓰기</a>
 </div>
 
 <form class="search" method="get" action="/board">
+  <span class="search-ico"><%- icon('search', 18) %></span>
   <input type="text" name="q" value="<%= q %>" placeholder="제목이나 내용으로 검색">
   <% if (sort !== 'latest') { %><input type="hidden" name="sort" value="<%= sort %>"><% } %>
   <% if (hot) { %><input type="hidden" name="filter" value="hot"><% } %>
@@ -17,13 +18,13 @@
 
 <% if (trending && trending.length > 0) { %>
   <div class="card trending">
-    <div class="trending-head">🔥 지금 뜨는 글</div>
+    <div class="trending-head"><%- icon('flame', 18) %> 지금 뜨는 글</div>
     <ol class="trending-list">
       <% trending.forEach(function (t, i) { %>
         <li><a href="/board/<%= t.id %>">
           <span class="tr-rank"><%= i + 1 %></span>
           <span class="tr-title"><%= t.title %></span>
-          <span class="tr-like">👍 <%= t.like_count %></span>
+          <span class="tr-like"><%- icon('like', 15) %> <%= t.like_count %></span>
         </a></li>
       <% }) %>
     </ol>
@@ -41,7 +42,7 @@
 <div class="filter-bar">
   <div class="chips">
     <a class="chip <%= !hot ? 'on' : '' %>" href="/board?<%= category ? 'category=' + encodeURIComponent(category) + '&' : '' %>sort=<%= sort %><%= q ? '&q=' + encodeURIComponent(q) : '' %>">전체글</a>
-    <a class="chip <%= hot ? 'on' : '' %>" href="/board?filter=hot&sort=<%= sort %><%= q ? '&q=' + encodeURIComponent(q) : '' %>">🔥 인기글</a>
+    <a class="chip <%= hot ? 'on' : '' %>" href="/board?filter=hot&sort=<%= sort %><%= q ? '&q=' + encodeURIComponent(q) : '' %>">인기글</a>
   </div>
   <div class="chips">
     <% ['latest', 'likes', 'views'].forEach(function (s) { %>
@@ -90,7 +91,7 @@
           <% if (p.is_popular) { %><span class="badge badge-hot">인기</span><% } %>
           <% if (p.admin_picked) { %><span class="badge badge-pick">운영자 추천</span><% } %>
           <%= p.title %>
-          <% if (p.image_count > 0) { %><span class="img-mark">🖼</span><% } %>
+          <% if (p.image_count > 0) { %><span class="img-mark"><%- icon('image', 14) %></span><% } %>
           <% if (p.comment_count > 0) { %><span class="cmt-count">[<%= p.comment_count %>]</span><% } %>
         </div>
         <div class="post-preview"><%= p.content.replace(/\s+/g, ' ').slice(0, 60) %></div>
@@ -99,8 +100,8 @@
         </div>
       </div>
       <div class="post-stats">
-        <span>💬 <%= p.comment_count %></span>
-        <span>👍 <%= p.like_count %></span>
+        <span><%- icon('comment', 15) %> <%= p.comment_count %></span>
+        <span><%- icon('like', 15) %> <%= p.like_count %></span>
       </div>
     </a>
   <% }) %>
