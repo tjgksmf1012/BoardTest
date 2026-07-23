@@ -31,29 +31,37 @@ function seed() {
   // 각 회원의 포인트 총액과 적립 내역이 일치하도록 로그를 채워 넣는다
   const logRow = db.prepare(
     "INSERT INTO point_logs (user_id, amount, reason, detail, created_at) VALUES (?, ?, ?, ?, datetime('now','localtime',?))");
+  // 포인트 총액과 정확히 일치하면서, 최근 내역이 단조롭지 않도록 다양한 활동으로 채운다.
+  // 금액과 사유가 항상 맞도록(예: 3일 연속=500P) 100P 배수 denomination만 사용.
   function fillLogs(userId, target) {
-    let sum = 0;
-    const add = (amount, reason, detail, offset) => {
-      logRow.run(userId, amount, reason, detail, offset); sum += amount;
-    };
-    add(1000, 'signup', '회원가입', '-40 days');
-    let day = 39;
-    // 목표 포인트에 도달할 때까지 출석·글·댓글·추천 내역을 반복 생성
-    const pool = [
-      [300, 'post', '일반 게시글 작성'], [100, 'comment', '댓글·대댓글 작성'],
-      [100, 'attendance', '출석체크'], [10, 'like_received', '추천받기'],
-      [300, 'post', '일반 게시글 작성'], [100, 'comment', '댓글·대댓글 작성'],
-      [500, 'streak3', '3일 연속 출석'], [100, 'attendance', '출석체크'],
+    const seq = [[1000, 'signup', '회원가입']];
+    let sum = 1000;
+    const big = [
+      [500, 'streak3', '3일 연속 출석'], [300, 'post', '일반 게시글 작성'],
+      [1000, 'streak7', '7일 연속 출석'], [300, 'post', '일반 게시글 작성'],
+      [3000, 'streak30', '30일 연속 출석'], [300, 'post', '일반 게시글 작성'],
     ];
-    let i = 0;
-    while (sum < target - 20 && day > 0) {
-      const [amt, reason, detail] = pool[i % pool.length];
-      if (sum + amt <= target) add(amt, reason, detail, `-${day} days`);
-      i++; day--;
-      if (i > 400) break;
+    const small = [
+      [100, 'attendance', '출석체크'], [300, 'post', '일반 게시글 작성'],
+      [100, 'comment', '댓글·대댓글 작성'], [100, 'attendance', '출석체크'],
+    ];
+    // 큰 보너스로 대략 채우기
+    let bi = 0;
+    while (bi < big.length && sum + big[bi][0] <= target - 300) {
+      seq.push(big[bi]); sum += big[bi][0]; bi++;
     }
-    // 남은 차액은 추천받기(10P 단위)로 정확히 맞춤
-    while (sum < target) add(10, 'like_received', '추천받기', '-1 days');
+    // 나머지는 100/300 단위로 정확히 채우기 (사유·금액 일치 유지)
+    let si = 0;
+    while (sum < target) {
+      const [a, r, d] = small[si % small.length];
+      if (sum + a <= target) { seq.push([a, r, d]); sum += a; }
+      else { seq.push([100, 'comment', '댓글·대댓글 작성']); sum += 100; }
+      si++;
+      if (seq.length > 500) break;
+    }
+    // 오래된 항목(큰 day offset)부터 삽입 → 최근 항목이 마지막에 삽입되어 목록 상단에 다양하게 노출
+    const n = seq.length;
+    seq.forEach((e, idx) => logRow.run(userId, e[0], e[1], e[2], `-${Math.max(0, n - 1 - idx)} days`));
   }
   fillLogs(admin, 25000);
   fillLogs(cherry, 1800);

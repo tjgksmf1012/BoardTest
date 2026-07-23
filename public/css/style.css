@@ -275,6 +275,7 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
   align-self: flex-start; padding: 10px 18px; border-radius: 10px;
   border: 1px dashed var(--primary); background: var(--primary-soft);
   color: var(--primary-dark); font-weight: 700; font-size: 14px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
 }
 .file-btn:hover { background: #d4efec; }
 .write-options { display: flex; flex-direction: column; gap: 8px; background: var(--bg); border-radius: 10px; padding: 14px; }
@@ -299,6 +300,8 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 .cal-cell.checked { background: var(--primary-soft); color: var(--primary-dark); font-weight: 800; }
 .cal-stamp { position: absolute; right: 4px; bottom: 2px; font-size: 11px; color: var(--primary-dark); }
 .streak-now { font-size: 15px; margin-bottom: 10px; }
+.streak-now { display: flex; align-items: center; gap: 6px; }
+.streak-now .ico { color: var(--amber); }
 .streak-now strong { color: var(--primary-dark); font-size: 20px; }
 .streak-list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .streak-list li {
@@ -316,6 +319,7 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 @media (max-width: 700px) { .point-grid { grid-template-columns: 1fr; } }
 .rules { width: 100%; border-collapse: collapse; font-size: 14px; }
 .rules td { padding: 9px 4px; border-bottom: 1px solid var(--line); }
+.rules td .muted { white-space: nowrap; }
 .rules td:last-child { text-align: right; font-weight: 800; color: var(--primary-dark); white-space: nowrap; }
 .note { margin-top: 12px; background: var(--bg); border-radius: 10px; padding: 12px 14px; font-size: 13px; color: var(--muted); }
 .log-list { list-style: none; display: flex; flex-direction: column; max-height: 480px; overflow-y: auto; }
