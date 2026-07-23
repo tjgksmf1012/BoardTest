@@ -34,15 +34,35 @@ function timeAgo(dateStr) {
 const app = express();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+app.disable('x-powered-by'); // 서버 스택 노출 방지
 
-app.use(express.urlencoded({ extended: true }));
+const isProd = process.env.NODE_ENV === 'production';
+const SESSION_SECRET = process.env.SESSION_SECRET || 'boardtest-dev-secret';
+if (isProd && SESSION_SECRET === 'boardtest-dev-secret') {
+  console.warn('⚠ SESSION_SECRET 환경변수를 설정하세요 (기본값은 안전하지 않습니다).');
+}
+
+// 기본 보안 헤더
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  next();
+});
+
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'boardtest-dev-secret',
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 },
+  cookie: {
+    maxAge: 1000 * 60 * 60 * 24 * 7,
+    httpOnly: true,           // JS에서 쿠키 접근 차단(XSS 완화)
+    sameSite: 'lax',          // 타 사이트발 요청에 쿠키 미전송(CSRF 완화)
+    secure: isProd,           // 운영(HTTPS)에서만 secure
+  },
 }));
 
 // 모든 뷰에서 쓰는 공통 데이터 (로그인 사용자, 아바타 렌더러, 플래시 메시지)
@@ -75,7 +95,12 @@ app.use((err, req, res, next) => {
   res.status(500).render('error', { message: '문제가 발생했어요. 잠시 후 다시 시도해주세요.' });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`게시판 서버 실행 중: http://localhost:${PORT}`);
-});
+// 직접 실행할 때만 서버를 띄운다 (통합 테스트에서는 app만 가져다 쓴다)
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`게시판 서버 실행 중: http://localhost:${PORT}`);
+  });
+}
+
+module.exports = app;

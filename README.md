@@ -107,9 +107,24 @@ npm test    # 포인트 규칙 자동 테스트 (11개)
 ## 기술 스택
 
 - **백엔드**: Node.js + Express, 세션 로그인(scrypt 해시)
-- **DB**: SQLite (better-sqlite3) — 별도 DB 서버 없이 파일 하나로 동작
+- **DB**: SQLite (better-sqlite3) — 별도 DB 서버 없이 파일 하나로 동작, 주요 컬럼 인덱스
 - **뷰**: EJS 서버 사이드 렌더링 + 순수 CSS
 - **업로드**: multer (파일 형식·용량·개수 검증)
+
+## 보안
+
+- 세션 쿠키 `HttpOnly` + `SameSite=Lax`(CSRF 완화), 운영 시 `Secure`
+- 보안 헤더: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `x-powered-by` 제거
+- 모든 SQL은 파라미터 바인딩(SQL 인젝션 방지), EJS 자동 이스케이프(XSS 방지)
+- 입력 검증(길이·형식·화이트리스트), 오픈 리다이렉트 차단, 권한 검사(작성자/운영자)
+- `SESSION_SECRET`은 환경변수로 설정(미설정 시 운영 환경에서 경고)
+
+## 테스트
+
+`npm test` — 총 31개 (`node --test`)
+- 단위: 포인트 규칙·한도·연속출석, 레벨/업적, 카테고리, 알림
+- 통합(실제 HTTP): 보안 헤더, 회원가입·포인트, 권한(삭제/추천), 추천 멱등성,
+  카테고리 검증, XSS 이스케이프
 
 ## 폴더 구조
 
@@ -124,6 +139,6 @@ src/levels.js        레벨/등급 + 업적(배지) 로직
 src/routes/          auth(회원) / board(게시판·스크랩·댓글좋아요) / user(출석·포인트·알림·랭킹·신고관리·프로필)
 views/               EJS 템플릿 (partials/comment.ejs 재사용)
 public/css/          스타일 (테두리 애니메이션 포함)
-test/                포인트·알림·레벨 자동 테스트 (node --test, 19개)
+test/                단위·통합 자동 테스트 (node --test, 31개)
 data/, uploads/      DB 파일·첨부 이미지 (git 제외)
 ```
