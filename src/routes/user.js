@@ -102,6 +102,32 @@ router.get('/reports', requireLogin, (req, res) => {
   res.render('reports', { items });
 });
 
+// ---- 회원 관리 (운영자) --------------------------------------------------------
+router.get('/admin/members', requireLogin, (req, res) => {
+  if (!res.locals.me.is_admin) return res.redirect('/board');
+  const members = db.prepare(`
+    SELECT u.id, u.username, u.nickname, u.points, u.is_admin, u.is_banned, u.created_at,
+      (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id AND p.is_notice = 0) AS post_count,
+      (SELECT COUNT(*) FROM comments c WHERE c.user_id = u.id) AS comment_count
+    FROM users u ORDER BY u.is_banned DESC, u.points DESC`).all();
+  res.render('members', { members });
+});
+
+router.post('/admin/members/:id(\\d+)/ban', requireLogin, (req, res) => {
+  if (!res.locals.me.is_admin) return res.redirect('/board');
+  const target = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
+  if (!target || target.is_admin || target.id === res.locals.me.id) {
+    req.session.flash = '운영자 또는 본인 계정은 제재할 수 없어요.';
+  } else {
+    const next = target.is_banned ? 0 : 1;
+    db.prepare('UPDATE users SET is_banned = ? WHERE id = ?').run(next, target.id);
+    req.session.flash = next
+      ? `${target.nickname}님을 제재했어요. (로그인·활동 차단)`
+      : `${target.nickname}님의 제재를 해제했어요.`;
+  }
+  res.redirect('/admin/members');
+});
+
 // ---- 포인트 랭킹 -------------------------------------------------------------
 router.get('/ranking', (req, res) => {
   const users = db.prepare(`

@@ -88,6 +88,7 @@
       <div class="post-mid">
         <div class="post-title">
           <%- catTag(p.category) %>
+          <% if (p.is_hidden) { %><span class="badge badge-lock">숨김</span><% } %>
           <% if (p.is_popular) { %><span class="badge badge-hot">인기</span><% } %>
           <% if (p.admin_picked) { %><span class="badge badge-pick">운영자 추천</span><% } %>
           <%= p.title %>

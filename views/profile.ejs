@@ -42,7 +42,10 @@
 </div>
 
 <% if (me.is_admin) { %>
-  <a class="btn btn-ghost admin-link" href="/reports"><%- icon('report', 16) %> 신고 관리 페이지로 이동</a>
+  <div class="admin-links">
+    <a class="btn btn-ghost" href="/reports"><%- icon('report', 16) %> 신고 관리</a>
+    <a class="btn btn-ghost" href="/admin/members"><%- icon('user', 16) %> 회원 관리</a>
+  </div>
 <% } %>
 
 <div class="my-activity">

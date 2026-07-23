@@ -125,13 +125,74 @@ test('검색 결과가 없으면 전용 안내 문구가 나온다', async () =>
 
 test('로그인 실패가 반복되면 일시적으로 차단된다(무차별 대입 방어)', async () => {
   await signup(makeJar(), 'brute', '표적'); // 대상 계정 존재
+  // 다른 테스트의 로그인에 영향을 주지 않도록 가짜 IP로 격리해서 실패 반복
   let blocked = false;
   for (let i = 0; i < 12; i++) {
-    const res = await post('/login', { username: 'brute', password: 'wrong' + i });
-    const body = await res.text();
-    if (/시도가 너무 많아요/.test(body)) { blocked = true; break; }
+    const res = await fetch(base + '/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Forwarded-For': '203.0.113.7' },
+      body: form({ username: 'brute', password: 'wrong' + i }),
+      redirect: 'manual',
+    });
+    if (/시도가 너무 많아요/.test(await res.text())) { blocked = true; break; }
   }
   assert.ok(blocked, '반복 실패 후 차단 메시지가 나와야 한다');
+});
+
+test('운영자는 글을 숨김 처리/해제할 수 있고, 숨김 글은 비운영자에게 404다', async () => {
+  const author = makeJar(); await signup(author, 'hideauth', '숨김대상');
+  const p = await newPost(author, '숨겨질 글');
+  const admin = makeJar(); await login(admin, 'admin', 'admin1234');
+  // 숨김
+  await post(`/board/${p.id}/hide`, {}, admin);
+  assert.equal(db.prepare('SELECT is_hidden FROM posts WHERE id=?').get(p.id).is_hidden, 1);
+  // 비로그인 사용자는 404
+  const guest = makeJar();
+  assert.equal((await get(`/board/${p.id}`, guest)).status, 404);
+  // 운영자는 열람 가능(200)
+  assert.equal((await get(`/board/${p.id}`, admin)).status, 200);
+  // 숨김 해제
+  await post(`/board/${p.id}/hide`, {}, admin);
+  assert.equal(db.prepare('SELECT is_hidden FROM posts WHERE id=?').get(p.id).is_hidden, 0);
+  assert.equal((await get(`/board/${p.id}`, guest)).status, 200);
+});
+
+test('일반 사용자는 숨김 처리를 할 수 없다', async () => {
+  const author = makeJar(); await signup(author, 'hideowner', '숨김주인');
+  const p = await newPost(author, '보호될 글');
+  const attacker = makeJar(); await signup(attacker, 'hideatk', '숨김침입');
+  await post(`/board/${p.id}/hide`, {}, attacker);
+  assert.equal(db.prepare('SELECT is_hidden FROM posts WHERE id=?').get(p.id).is_hidden, 0);
+});
+
+test('운영자는 회원을 제재/해제할 수 있고, 제재된 회원은 로그인할 수 없다', async () => {
+  const victim = makeJar(); await signup(victim, 'banme', '피제재');
+  const admin = makeJar(); await login(admin, 'admin', 'admin1234');
+  await post(`/admin/members/${uid('banme')}/ban`, {}, admin);
+  assert.equal(db.prepare("SELECT is_banned FROM users WHERE username='banme'").get().is_banned, 1);
+
+  // 제재된 계정은 로그인 실패(에러 문구)
+  const res = await post('/login', { username: 'banme', password: 'password123' });
+  const body = await res.text();
+  assert.match(body, /이용이 제한된 계정/);
+
+  // 해제하면 다시 로그인 가능
+  await post(`/admin/members/${uid('banme')}/ban`, {}, admin);
+  const ok = await post('/login', { username: 'banme', password: 'password123' }, makeJar());
+  assert.equal(ok.status, 302);
+});
+
+test('운영자 계정과 본인은 제재할 수 없다', async () => {
+  const admin = makeJar(); await login(admin, 'admin', 'admin1234');
+  await post(`/admin/members/${uid('admin')}/ban`, {}, admin); // 본인(운영자) 제재 시도
+  assert.equal(db.prepare("SELECT is_banned FROM users WHERE username='admin'").get().is_banned, 0);
+});
+
+test('일반 사용자는 회원 관리 페이지에 접근할 수 없다', async () => {
+  const jar = makeJar(); await signup(jar, 'nomember', '일반');
+  const res = await get('/admin/members', jar);
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('location'), '/board');
 });
 
 test('알림 목록을 열면 안 읽은 알림이 읽음 처리된다', async () => {

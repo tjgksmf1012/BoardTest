@@ -62,13 +62,16 @@ router.get('/', (req, res) => {
     FROM posts p JOIN users u ON u.id = p.user_id
     WHERE p.is_notice = 1 ORDER BY p.id DESC`).all();
 
+  // 숨김 처리된 글은 일반 사용자에겐 안 보이고, 운영자에겐 목록에 표시(배지로 구분)
+  const isAdmin = res.locals.me && res.locals.me.is_admin ? 1 : 0;
   const where = (q ? `AND (p.title LIKE @like OR p.content LIKE @like)` : '')
     + (hot ? ' AND p.is_popular = 1' : '')
-    + (category ? ' AND p.category = @category' : '');
+    + (category ? ' AND p.category = @category' : '')
+    + ' AND (p.is_hidden = 0 OR @admin = 1)';
   const orderBy = sort === 'likes' ? 'like_count DESC, p.id DESC'
     : sort === 'views' ? 'p.views DESC, p.id DESC'
     : 'p.id DESC';
-  const params = { like: `%${q}%`, category, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
+  const params = { like: `%${q}%`, category, admin: isAdmin, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
   const total = db.prepare(
     `SELECT COUNT(*) AS c FROM posts p WHERE p.is_notice = 0 ${where}`
   ).get(params).c;
@@ -88,7 +91,7 @@ router.get('/', (req, res) => {
       SELECT p.id, p.title,
         (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS like_count
       FROM posts p
-      WHERE p.is_notice = 0 AND p.is_anonymous = 0
+      WHERE p.is_notice = 0 AND p.is_anonymous = 0 AND p.is_hidden = 0
         AND p.created_at >= datetime('now', 'localtime', '-7 days')
       ORDER BY like_count DESC, p.id DESC LIMIT 5`).all()
       .filter((t) => t.like_count > 0);
@@ -147,6 +150,11 @@ router.get('/:id(\\d+)', (req, res) => {
       (SELECT COUNT(*) FROM reports r WHERE r.post_id = p.id) AS report_count
     FROM posts p JOIN users u ON u.id = p.user_id WHERE p.id = ?`).get(req.params.id);
   if (!post) return res.status(404).render('error', { message: '존재하지 않는 게시글이에요.' });
+
+  // 숨김 처리된 글은 운영자만 열람 가능
+  if (post.is_hidden && !(res.locals.me && res.locals.me.is_admin)) {
+    return res.status(404).render('error', { message: '운영자에 의해 숨김 처리된 게시글이에요.' });
+  }
 
   // 조회수: 같은 세션에서는 1회만 증가
   req.session.viewed = req.session.viewed || {};
@@ -394,6 +402,29 @@ router.post('/:id(\\d+)/admin-pick', requireLogin, (req, res) => {
     req.session.flash = '운영자 추천글로 선정했어요. 작성자에게 +1,500P 지급!';
   }
   res.redirect(`/board/${post ? post.id : ''}`);
+});
+
+// ---- 신고 반려 (운영자): 글은 두고 신고 기록만 정리 -----------------------------
+router.post('/:id(\\d+)/dismiss-reports', requireLogin, (req, res) => {
+  if (!res.locals.me.is_admin) return res.redirect('/board');
+  db.prepare('DELETE FROM reports WHERE post_id = ?').run(req.params.id);
+  req.session.flash = '신고를 반려하고 처리를 종료했어요.';
+  res.redirect(req.body.back === 'reports' ? '/reports' : `/board/${req.params.id}`);
+});
+
+// ---- 숨김 처리 / 복구 (운영자) ------------------------------------------------
+router.post('/:id(\\d+)/hide', requireLogin, (req, res) => {
+  if (!res.locals.me.is_admin) return res.redirect('/board');
+  const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(req.params.id);
+  if (post) {
+    const next = post.is_hidden ? 0 : 1;
+    db.prepare('UPDATE posts SET is_hidden = ? WHERE id = ?').run(next, post.id);
+    req.session.flash = next ? '게시글을 숨김 처리했어요.' : '게시글 숨김을 해제했어요.';
+    if (next) { // 숨기면 신고도 처리 완료로 간주해 정리
+      db.prepare('DELETE FROM reports WHERE post_id = ?').run(post.id);
+    }
+  }
+  res.redirect(req.body.back === 'reports' ? '/reports' : `/board/${req.params.id}`);
 });
 
 module.exports = router;

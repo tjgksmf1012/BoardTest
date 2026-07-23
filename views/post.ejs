@@ -6,8 +6,12 @@
       <% if (post.is_notice) { %><span class="badge badge-notice">공지</span><% } else { %><%- catTag(post.category) %><% } %>
       <% if (post.is_popular) { %><span class="badge badge-hot">인기</span><% } %>
       <% if (post.admin_picked) { %><span class="badge badge-pick">운영자 추천</span><% } %>
+      <% if (post.is_hidden) { %><span class="badge badge-lock">숨김</span><% } %>
       <%= post.title %>
     </h1>
+    <% if (post.is_hidden && me && me.is_admin) { %>
+      <div class="hidden-note">이 글은 숨김 처리되어 일반 회원에게 보이지 않아요.</div>
+    <% } %>
     <div class="post-author">
       <% if (post.is_anonymous) { %>
         <%- renderAvatar('basic-12', null, 44) %>
@@ -50,6 +54,11 @@
     <% if (me && me.is_admin && !post.admin_picked && !post.is_notice) { %>
       <form action="/board/<%= post.id %>/admin-pick" method="post" class="inline">
         <button class="btn btn-ghost" type="submit"><%- icon('trophy', 16) %> 운영자 추천</button>
+      </form>
+    <% } %>
+    <% if (me && me.is_admin && !post.is_notice) { %>
+      <form action="/board/<%= post.id %>/hide" method="post" class="inline">
+        <button class="btn btn-ghost" type="submit"><%= post.is_hidden ? '숨김 해제' : '숨김 처리' %></button>
       </form>
     <% } %>
     <% if (me && (me.id === post.user_id || me.is_admin)) { %>

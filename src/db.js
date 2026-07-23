@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS users (
   avatar_id     TEXT NOT NULL DEFAULT 'basic-01',
   border_id     TEXT,
   is_admin      INTEGER NOT NULL DEFAULT 0,
+  is_banned     INTEGER NOT NULL DEFAULT 0,
   created_at    TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 
@@ -34,6 +35,7 @@ CREATE TABLE IF NOT EXISTS posts (
   is_anonymous   INTEGER NOT NULL DEFAULT 0,
   block_comments INTEGER NOT NULL DEFAULT 0,
   is_notice      INTEGER NOT NULL DEFAULT 0,
+  is_hidden      INTEGER NOT NULL DEFAULT 0,
   is_popular     INTEGER NOT NULL DEFAULT 0,
   admin_picked   INTEGER NOT NULL DEFAULT 0,
   views          INTEGER NOT NULL DEFAULT 0,

@@ -80,6 +80,16 @@ app.use((req, res, next) => {
   res.locals.unread = res.locals.me ? unreadCount(res.locals.me.id) : 0;
   res.locals.flash = req.session.flash || null;
   delete req.session.flash;
+
+  // 제재된 회원은 즉시 로그아웃 처리
+  if (res.locals.me && res.locals.me.is_banned) {
+    return req.session.destroy(() => {
+      res.locals.me = null;
+      res.locals.unread = 0;
+      res.locals.flash = null;
+      res.status(403).render('error', { message: '이용이 제한된 계정이에요. 운영자에게 문의해주세요.' });
+    });
+  }
   next();
 });
 

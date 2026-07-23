@@ -101,6 +101,9 @@ router.post('/login', (req, res) => {
     recordFail(key);
     return res.render('login', { error: '아이디 또는 비밀번호가 올바르지 않아요.', form: { username }, next });
   }
+  if (user.is_banned) {
+    return res.render('login', { error: '이용이 제한된 계정이에요. 운영자에게 문의해주세요.', form: { username }, next });
+  }
   attempts.delete(key); // 성공 시 초기화
   req.session.userId = user.id;
   res.redirect(next);

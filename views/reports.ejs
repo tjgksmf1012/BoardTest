@@ -3,13 +3,14 @@
 <div class="board-head">
   <div>
     <h1>신고 관리 <span class="badge badge-notice">운영자</span></h1>
-    <p class="muted">신고가 접수된 게시글이에요. 확인 후 필요하면 숨김(삭제) 처리하세요.</p>
+    <p class="muted">신고가 접수된 게시글이에요. 숨김 처리·삭제하거나, 문제없으면 반려하세요.</p>
   </div>
+  <a class="btn btn-ghost" href="/admin/members"><%- icon('user', 16) %> 회원 관리</a>
 </div>
 
 <div class="card post-list">
   <% if (items.length === 0) { %>
-    <div class="empty">신고된 게시글이 없어요. 👍</div>
+    <div class="empty">처리할 신고가 없어요.</div>
   <% } else { %>
     <% items.forEach(function (p) { %>
       <div class="post-row report-row">
@@ -21,9 +22,17 @@
           </div>
         </a>
         <div class="report-acts">
-          <a class="btn btn-ghost btn-sm" href="/board/<%= p.id %>">보기</a>
+          <form action="/board/<%= p.id %>/dismiss-reports" method="post" class="inline"
+                onsubmit="return confirm('신고를 반려하고 처리를 종료할까요?')">
+            <input type="hidden" name="back" value="reports">
+            <button class="btn btn-ghost btn-sm" type="submit">반려</button>
+          </form>
+          <form action="/board/<%= p.id %>/hide" method="post" class="inline">
+            <input type="hidden" name="back" value="reports">
+            <button class="btn btn-ghost btn-sm" type="submit">숨김</button>
+          </form>
           <form action="/board/<%= p.id %>/delete" method="post" class="inline"
-                onsubmit="return confirm('이 게시글을 삭제(숨김 처리)할까요?')">
+                onsubmit="return confirm('이 게시글을 영구 삭제할까요?')">
             <input type="hidden" name="back" value="reports">
             <button class="btn btn-ghost btn-sm danger" type="submit">삭제</button>
           </form>
