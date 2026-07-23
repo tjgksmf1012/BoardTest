@@ -60,6 +60,26 @@ function safeNext(next) {
   return typeof next === 'string' && /^\/[^/]/.test(next) && !next.startsWith('//') ? next : '/board';
 }
 
+// 무차별 대입 완화: IP당 10분간 실패 10회를 넘으면 잠시 차단 (성공 시 초기화)
+const WINDOW_MS = 10 * 60 * 1000;
+const MAX_FAILS = 10;
+const attempts = new Map(); // ip -> { count, first }
+
+function throttleKey(req) {
+  return (req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
+}
+function isBlocked(key) {
+  const a = attempts.get(key);
+  if (!a) return false;
+  if (Date.now() - a.first > WINDOW_MS) { attempts.delete(key); return false; }
+  return a.count >= MAX_FAILS;
+}
+function recordFail(key) {
+  const a = attempts.get(key);
+  if (!a || Date.now() - a.first > WINDOW_MS) attempts.set(key, { count: 1, first: Date.now() });
+  else a.count += 1;
+}
+
 router.get('/login', (req, res) => {
   if (req.session.userId) return res.redirect('/board');
   res.render('login', { error: null, form: {}, next: safeNext(req.query.next) });
@@ -68,10 +88,20 @@ router.get('/login', (req, res) => {
 router.post('/login', (req, res) => {
   const username = (req.body.username || '').trim();
   const next = safeNext(req.body.next);
+  const key = throttleKey(req);
+
+  if (isBlocked(key)) {
+    return res.render('login', {
+      error: '로그인 시도가 너무 많아요. 잠시 후 다시 시도해주세요.', form: { username }, next,
+    });
+  }
+
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
   if (!user || !verifyPassword(req.body.password || '', user.password_hash)) {
+    recordFail(key);
     return res.render('login', { error: '아이디 또는 비밀번호가 올바르지 않아요.', form: { username }, next });
   }
+  attempts.delete(key); // 성공 시 초기화
   req.session.userId = user.id;
   res.redirect(next);
 });

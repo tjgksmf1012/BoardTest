@@ -123,6 +123,17 @@ test('검색 결과가 없으면 전용 안내 문구가 나온다', async () =>
   assert.match(body, /검색 결과가 없어요/);
 });
 
+test('로그인 실패가 반복되면 일시적으로 차단된다(무차별 대입 방어)', async () => {
+  await signup(makeJar(), 'brute', '표적'); // 대상 계정 존재
+  let blocked = false;
+  for (let i = 0; i < 12; i++) {
+    const res = await post('/login', { username: 'brute', password: 'wrong' + i });
+    const body = await res.text();
+    if (/시도가 너무 많아요/.test(body)) { blocked = true; break; }
+  }
+  assert.ok(blocked, '반복 실패 후 차단 메시지가 나와야 한다');
+});
+
 test('알림 목록을 열면 안 읽은 알림이 읽음 처리된다', async () => {
   const author = makeJar(); await signup(author, 'ntauth', '알림주인');
   const p = await newPost(author, '알림 테스트 글');

@@ -34,6 +34,14 @@ button { font-family: inherit; cursor: pointer; }
 a:focus-visible, .chip:focus-visible, .tab:focus-visible, .ptab:focus-visible,
 .btn:focus-visible, .bn-item:focus-visible { outline-offset: 3px; }
 
+/* 본문 바로가기 (키보드/스크린리더용, 평소엔 화면 밖) */
+.skip-link {
+  position: absolute; left: 8px; top: -48px; z-index: 200;
+  background: var(--primary); color: #fff; padding: 8px 16px; border-radius: 10px;
+  font-weight: 700; font-size: 14px; transition: top .15s;
+}
+.skip-link:focus { top: 8px; }
+
 /* 모션 최소화 설정 존중 */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
