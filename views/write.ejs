@@ -21,9 +21,11 @@
       <span class="count" id="content-count"><%= post ? post.content.length : 0 %> / 5,000</span>
     </label>
 
-    <label>사진 첨부 <span class="muted">(선택 · 최대 5장 · JPG, PNG · 장당 10MB 이하)</span>
-      <input type="file" id="image-input" name="images" accept="image/jpeg,image/png" multiple>
-    </label>
+    <div class="file-field">
+      <span class="file-label">사진 첨부 <span class="muted">(선택 · 최대 5장 · JPG, PNG · 장당 10MB 이하)</span></span>
+      <label class="file-btn" for="image-input">📷 사진 선택하기</label>
+      <input type="file" id="image-input" name="images" accept="image/jpeg,image/png" multiple hidden>
+    </div>
 
     <% if (post && images && images.length > 0) { %>
       <div class="img-previews" id="existing-previews">

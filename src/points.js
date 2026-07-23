@@ -39,6 +39,17 @@ function crossedUnlocks(before, after) {
   return UNLOCK_THRESHOLDS.filter((t) => before < t.points && after >= t.points);
 }
 
+// 다음 해금까지의 진행 상황 (모두 해금했으면 null)
+function nextUnlock(points) {
+  const next = UNLOCK_THRESHOLDS.find((t) => points < t.points);
+  if (!next) return null;
+  const reached = [...UNLOCK_THRESHOLDS].reverse().find((t) => points >= t.points);
+  const base = reached ? reached.points : 0;
+  const remaining = next.points - points;
+  const percent = Math.max(0, Math.min(100, Math.round(((points - base) / (next.points - base)) * 100)));
+  return { label: next.label, need: next.points, base, remaining, percent };
+}
+
 // 포인트 지급. 하루 한도가 차 있으면 지급하지 않고 { awarded: 0, limited: true } 반환.
 // 지급으로 해금 기준을 넘었다면 unlocked 배열에 해당 티어가 담긴다.
 function award(userId, reason, detail) {
@@ -94,5 +105,5 @@ function unlockMessage(results) {
 module.exports = {
   RULES, UNLOCK_THRESHOLDS,
   award, checkAttendance, countToday, todayStr,
-  crossedUnlocks, unlockMessage,
+  crossedUnlocks, nextUnlock, unlockMessage,
 };

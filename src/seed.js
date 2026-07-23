@@ -27,7 +27,39 @@ function seed() {
   const mint = insertUser.run('mint', pw, '민트소다', 6200, 'hair-02', null, 0).lastInsertRowid;
   const street = insertUser.run('street', pw, '스트릿캡', 3400, 'basic-05', null, 0).lastInsertRowid;
   const gold = insertUser.run('gold', pw, '골드웨이브', 12500, 'outfit-03', null, 0).lastInsertRowid;
-  [admin, cherry, mint, street, gold].forEach((id) => insertLog.run(id, 1000));
+
+  // 각 회원의 포인트 총액과 적립 내역이 일치하도록 로그를 채워 넣는다
+  const logRow = db.prepare(
+    "INSERT INTO point_logs (user_id, amount, reason, detail, created_at) VALUES (?, ?, ?, ?, datetime('now','localtime',?))");
+  function fillLogs(userId, target) {
+    let sum = 0;
+    const add = (amount, reason, detail, offset) => {
+      logRow.run(userId, amount, reason, detail, offset); sum += amount;
+    };
+    add(1000, 'signup', '회원가입', '-40 days');
+    let day = 39;
+    // 목표 포인트에 도달할 때까지 출석·글·댓글·추천 내역을 반복 생성
+    const pool = [
+      [300, 'post', '일반 게시글 작성'], [100, 'comment', '댓글·대댓글 작성'],
+      [100, 'attendance', '출석체크'], [10, 'like_received', '추천받기'],
+      [300, 'post', '일반 게시글 작성'], [100, 'comment', '댓글·대댓글 작성'],
+      [500, 'streak3', '3일 연속 출석'], [100, 'attendance', '출석체크'],
+    ];
+    let i = 0;
+    while (sum < target - 20 && day > 0) {
+      const [amt, reason, detail] = pool[i % pool.length];
+      if (sum + amt <= target) add(amt, reason, detail, `-${day} days`);
+      i++; day--;
+      if (i > 400) break;
+    }
+    // 남은 차액은 추천받기(10P 단위)로 정확히 맞춤
+    while (sum < target) add(10, 'like_received', '추천받기', '-1 days');
+  }
+  fillLogs(admin, 25000);
+  fillLogs(cherry, 1800);
+  fillLogs(mint, 6200);
+  fillLogs(street, 3400);
+  fillLogs(gold, 12500);
 
   // 공지 2건
   insertPost.run(admin, '커뮤니티 이용 규칙 안내 (필독)',

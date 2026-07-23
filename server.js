@@ -15,6 +15,19 @@ const userRouter = require('./src/routes/user');
 
 seed(); // 최초 실행 시 데모 데이터 생성
 
+// 목록에 쓰는 상대 시간 ("3시간 전"). 일주일이 지나면 날짜로 표시
+function timeAgo(dateStr) {
+  if (!dateStr) return '';
+  const then = new Date(dateStr.replace(' ', 'T')).getTime();
+  const diff = (Date.now() - then) / 1000;
+  if (diff < 0) return dateStr.slice(0, 10);
+  if (diff < 60) return '방금 전';
+  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
+  if (diff < 86400 * 7) return `${Math.floor(diff / 86400)}일 전`;
+  return dateStr.slice(0, 10);
+}
+
 const app = express();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -36,6 +49,7 @@ app.use((req, res, next) => {
     : null;
   if (req.session.userId && !res.locals.me) req.session.destroy(() => {});
   res.locals.renderAvatar = renderAvatar;
+  res.locals.timeAgo = timeAgo;
   res.locals.unread = res.locals.me ? unreadCount(res.locals.me.id) : 0;
   res.locals.flash = req.session.flash || null;
   delete req.session.flash;

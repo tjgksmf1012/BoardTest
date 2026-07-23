@@ -21,7 +21,7 @@
             <span class="me-name"><%= me.nickname %></span>
             <span class="me-points"><%= me.points.toLocaleString() %>P</span>
           </a>
-          <form action="/logout" method="post" class="inline">
+          <form action="/logout" method="post" class="inline logout-form">
             <button class="btn btn-ghost btn-sm" type="submit">로그아웃</button>
           </form>
         <% } else { %>

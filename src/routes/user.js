@@ -1,7 +1,7 @@
 // 출석체크 / 포인트 내역 / 프로필(아바타 해금·장착)
 const express = require('express');
 const db = require('../db');
-const { RULES, checkAttendance, unlockMessage } = require('../points');
+const { RULES, checkAttendance, unlockMessage, nextUnlock } = require('../points');
 const { AVATARS, BORDERS, TIER_INFO, canUseAvatar, canUseBorder, eventOpen } = require('../avatars');
 
 const router = express.Router();
@@ -68,7 +68,7 @@ router.get('/points', requireLogin, (req, res) => {
     `SELECT COALESCE(SUM(amount), 0) AS s FROM point_logs
      WHERE user_id = ? AND date(created_at) = date('now', 'localtime')`
   ).get(req.session.userId).s;
-  res.render('points', { logs, todayTotal, RULES });
+  res.render('points', { logs, todayTotal, RULES, next: nextUnlock(res.locals.me.points) });
 });
 
 // ---- 알림 ------------------------------------------------------------------
@@ -143,7 +143,7 @@ router.get('/profile', requireLogin, (req, res) => {
     FROM bookmarks b JOIN posts p ON p.id = b.post_id JOIN users u ON u.id = p.user_id
     WHERE b.user_id = ? ORDER BY b.id DESC LIMIT 5`).all(me.id);
 
-  res.render('profile', { groups, borders, stats, myPosts, myComments, myBookmarks });
+  res.render('profile', { groups, borders, stats, myPosts, myComments, myBookmarks, next: nextUnlock(me.points) });
 });
 
 router.post('/profile/avatar', requireLogin, (req, res) => {

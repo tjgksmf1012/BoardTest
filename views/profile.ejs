@@ -4,7 +4,7 @@
   <div class="profile-avatar"><%- renderAvatar(me.avatar_id, me.border_id, 96) %></div>
   <div class="profile-info">
     <h1><%= me.nickname %> <% if (me.is_admin) { %><span class="badge badge-notice">운영자</span><% } %></h1>
-    <p class="accent big"><%= me.points.toLocaleString() %>P</p>
+    <a href="/points" class="accent big points-link"><%= me.points.toLocaleString() %>P <span class="points-arrow">내역 →</span></a>
     <div class="profile-stats">
       <span>게시글 <strong><%= stats.posts %></strong></span>
       <span>댓글 <strong><%= stats.comments %></strong></span>
@@ -12,6 +12,22 @@
       <span>출석 <strong><%= stats.attendance %></strong>일</span>
     </div>
   </div>
+  <form action="/logout" method="post" class="inline profile-logout">
+    <button class="btn btn-ghost btn-sm" type="submit">로그아웃</button>
+  </form>
+</div>
+
+<div class="card next-unlock">
+  <% if (next) { %>
+    <div class="nu-head">
+      <span>다음 해금까지 <strong class="accent"><%= next.remaining.toLocaleString() %>P</strong> 남았어요</span>
+      <span class="muted"><%= next.label %> · <%= me.points.toLocaleString() %> / <%= next.need.toLocaleString() %>P</span>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width: <%= next.percent %>%"></div></div>
+  <% } else { %>
+    <div class="nu-head"><span>🏆 모든 아바타를 해금했어요! 최고 등급이에요.</span></div>
+    <div class="progress"><div class="progress-fill" style="width: 100%"></div></div>
+  <% } %>
 </div>
 
 <% if (me.is_admin) { %>
@@ -86,6 +102,12 @@
       <% } %>
       <span class="muted"><%= g.info.desc %></span>
     </div>
+    <% if (g.info.need > 0 && me.points < g.info.need) { %>
+      <div class="progress tier-progress">
+        <div class="progress-fill" style="width: <%= Math.round(me.points / g.info.need * 100) %>%"></div>
+      </div>
+      <p class="tier-progress-label muted"><%= (g.info.need - me.points).toLocaleString() %>P 더 모으면 해금돼요!</p>
+    <% } %>
     <div class="avatar-grid">
       <% g.avatars.forEach(function (a) { %>
         <% if (a.unlocked) { %>
@@ -118,6 +140,12 @@
     <span class="badge <%= me.points >= 20000 ? 'badge-hot' : 'badge-lock' %>">20,000P 해금</span>
     <span class="muted">반짝이는 효과와 애니메이션 느낌의 테두리</span>
   </div>
+  <% if (me.points < 20000) { %>
+    <div class="progress tier-progress">
+      <div class="progress-fill" style="width: <%= Math.round(me.points / 20000 * 100) %>%"></div>
+    </div>
+    <p class="tier-progress-label muted"><%= (20000 - me.points).toLocaleString() %>P 더 모으면 해금돼요!</p>
+  <% } %>
   <div class="avatar-grid">
     <% borders.forEach(function (b) { %>
       <% if (b.unlocked) { %>

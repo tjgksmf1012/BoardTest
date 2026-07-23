@@ -2,5 +2,24 @@
   <footer class="footer">
     <p>포인트라운지 · 활동할수록 포인트가 쌓이고 아바타가 성장하는 커뮤니티</p>
   </footer>
+
+  <!-- 모바일 하단 탭바 -->
+  <nav class="bottom-nav">
+    <a href="/board" class="bn-item <%= (typeof active !== 'undefined' && active === 'board') ? 'on' : '' %>">
+      <span class="bn-ico">🏠</span><span>홈</span>
+    </a>
+    <a href="/attendance" class="bn-item <%= (typeof active !== 'undefined' && active === 'attendance') ? 'on' : '' %>">
+      <span class="bn-ico">📅</span><span>출석</span>
+    </a>
+    <a href="/board/new" class="bn-item bn-write">
+      <span class="bn-ico">✏️</span><span>글쓰기</span>
+    </a>
+    <a href="/ranking" class="bn-item <%= (typeof active !== 'undefined' && active === 'ranking') ? 'on' : '' %>">
+      <span class="bn-ico">🏆</span><span>랭킹</span>
+    </a>
+    <a href="/profile" class="bn-item <%= (typeof active !== 'undefined' && active === 'profile') ? 'on' : '' %>">
+      <span class="bn-ico">👤</span><span>MY</span>
+    </a>
+  </nav>
 </body>
 </html>

@@ -18,6 +18,19 @@
   </div>
 </div>
 
+<div class="card next-unlock">
+  <% if (next) { %>
+    <div class="nu-head">
+      <span>다음 해금: <strong><%= next.label %></strong> 까지 <strong class="accent"><%= next.remaining.toLocaleString() %>P</strong></span>
+      <a href="/profile" class="muted">아바타 보러가기 →</a>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width: <%= next.percent %>%"></div></div>
+  <% } else { %>
+    <div class="nu-head"><span>🏆 모든 아바타를 해금했어요!</span></div>
+    <div class="progress"><div class="progress-fill" style="width: 100%"></div></div>
+  <% } %>
+</div>
+
 <div class="point-grid">
   <div class="card">
     <h2>적립 기준</h2>
