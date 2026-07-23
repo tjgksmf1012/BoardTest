@@ -21,6 +21,13 @@
   </form>
 </div>
 
+<div class="ptab-bar">
+  <button class="ptab on" type="button" data-target="info">📋 내 정보</button>
+  <button class="ptab" type="button" data-target="avatar">🎨 아바타 꾸미기</button>
+</div>
+
+<div class="ptab-panel on" id="panel-info">
+
 <div class="card next-unlock">
   <% if (next) { %>
     <div class="nu-head">
@@ -101,6 +108,10 @@
     <% }) %>
   </div>
 </div>
+
+</div><%# /panel-info %>
+
+<div class="ptab-panel" id="panel-avatar">
 
 <h2 class="section-title">아바타 해금 가이드</h2>
 <p class="muted">게시판 활동 포인트로 다양한 아바타를 열어보세요. 포인트가 기준에 도달하면 자동으로 해금돼요!</p>
@@ -194,5 +205,26 @@
     <% } %>
   </div>
 </div>
+
+</div><%# /panel-avatar %>
+
+<script>
+  (function () {
+    document.documentElement.classList.add('js-tabs');
+    var tabs = document.querySelectorAll('.ptab');
+    var panels = document.querySelectorAll('.ptab-panel');
+    function show(target) {
+      tabs.forEach(function (t) { t.classList.toggle('on', t.dataset.target === target); });
+      panels.forEach(function (p) { p.classList.toggle('on', p.id === 'panel-' + target); });
+    }
+    tabs.forEach(function (t) {
+      t.addEventListener('click', function () {
+        show(t.dataset.target);
+        history.replaceState(null, '', t.dataset.target === 'avatar' ? '#avatar' : '#info');
+      });
+    });
+    if (location.hash === '#avatar') show('avatar');
+  })();
+</script>
 
 <%- include('partials/footer') %>

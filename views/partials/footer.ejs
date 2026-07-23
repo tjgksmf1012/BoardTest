@@ -3,6 +3,18 @@
     <p>포인트라운지 · 활동할수록 포인트가 쌓이고 아바타가 성장하는 커뮤니티</p>
   </footer>
 
+  <button class="to-top" id="toTop" type="button" aria-label="맨 위로" hidden>↑</button>
+  <script>
+    (function () {
+      var btn = document.getElementById('toTop');
+      if (!btn) return;
+      function toggle() { btn.hidden = window.scrollY < 500; }
+      window.addEventListener('scroll', toggle, { passive: true });
+      btn.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+      toggle();
+    })();
+  </script>
+
   <!-- 모바일 하단 탭바 -->
   <nav class="bottom-nav">
     <a href="/board" class="bn-item <%= (typeof active !== 'undefined' && active === 'board') ? 'on' : '' %>">

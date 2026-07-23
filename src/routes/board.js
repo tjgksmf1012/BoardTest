@@ -289,7 +289,7 @@ router.post('/:id(\\d+)/comments', requireLogin, (req, res) => {
   req.session.flash = r.limited
     ? '댓글이 등록됐어요. (오늘 댓글 포인트 한도를 모두 받았어요)'
     : `💬 댓글 등록! +${r.awarded}P 적립됐어요.` + unlockMessage([r]);
-  res.redirect(`/board/${post.id}`);
+  res.redirect(`/board/${post.id}#comments`);
 });
 
 router.post('/comments/:cid(\\d+)/delete', requireLogin, (req, res) => {

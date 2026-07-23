@@ -162,7 +162,7 @@ router.post('/profile/avatar', requireLogin, (req, res) => {
   } else {
     req.session.flash = '아직 해금되지 않은 아바타예요.';
   }
-  res.redirect('/profile');
+  res.redirect('/profile#avatar');
 });
 
 router.post('/profile/border', requireLogin, (req, res) => {
@@ -176,7 +176,7 @@ router.post('/profile/border', requireLogin, (req, res) => {
   } else {
     req.session.flash = '테두리는 20,000P 부터 해금돼요.';
   }
-  res.redirect('/profile');
+  res.redirect('/profile#avatar');
 });
 
 module.exports = router;
