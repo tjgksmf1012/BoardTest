@@ -9,6 +9,7 @@ const db = require('./src/db');
 const seed = require('./src/seed');
 const { renderAvatar } = require('./src/avatars');
 const { unreadCount } = require('./src/notify');
+const { levelBadge, getLevel } = require('./src/levels');
 const { router: authRouter } = require('./src/routes/auth');
 const boardRouter = require('./src/routes/board');
 const userRouter = require('./src/routes/user');
@@ -49,6 +50,8 @@ app.use((req, res, next) => {
     : null;
   if (req.session.userId && !res.locals.me) req.session.destroy(() => {});
   res.locals.renderAvatar = renderAvatar;
+  res.locals.levelBadge = levelBadge;
+  res.locals.getLevel = getLevel;
   res.locals.timeAgo = timeAgo;
   res.locals.unread = res.locals.me ? unreadCount(res.locals.me.id) : 0;
   res.locals.flash = req.session.flash || null;

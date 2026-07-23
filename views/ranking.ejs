@@ -17,6 +17,7 @@
       <div class="post-mid">
         <div class="post-title">
           <%= u.nickname %>
+          <%- levelBadge(u.points) %>
           <% if (u.is_admin) { %><span class="badge badge-notice">운영자</span><% } %>
           <% if (me && me.id === u.id) { %><span class="badge badge-free">나</span><% } %>
         </div>

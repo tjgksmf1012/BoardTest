@@ -14,7 +14,7 @@
         <div><strong>익명</strong><br><span class="muted"><%= post.created_at.slice(0, 16) %> · 조회 <%= post.views %></span></div>
       <% } else { %>
         <%- renderAvatar(post.avatar_id, post.border_id, 44) %>
-        <div><strong><%= post.nickname %></strong><br><span class="muted"><%= post.created_at.slice(0, 16) %> · 조회 <%= post.views %></span></div>
+        <div><strong><%= post.nickname %></strong> <%- levelBadge(post.author_points) %><br><span class="muted"><%= post.created_at.slice(0, 16) %> · 조회 <%= post.views %></span></div>
       <% } %>
       <div class="spacer"></div>
       <span class="muted">💬 <%= commentCount %> · 👍 <%= post.like_count %></span>
@@ -80,48 +80,19 @@
   <% if (post.block_comments) { %>
     <div class="empty">작성자가 댓글을 차단한 게시글이에요.</div>
   <% } else { %>
-    <% comments.forEach(function (c) { %>
-      <div class="comment">
-        <%- renderAvatar(c.avatar_id, c.border_id, 38) %>
-        <div class="comment-body">
-          <div class="comment-head">
-            <strong><%= c.nickname %></strong>
-            <span class="muted"><%= c.created_at.slice(0, 16) %></span>
-            <% if (me && (me.id === c.user_id || me.is_admin)) { %>
-              <form action="/board/comments/<%= c.id %>/delete" method="post" class="inline">
-                <button class="link-btn" type="submit">삭제</button>
-              </form>
-            <% } %>
-          </div>
-          <p><%= c.content %></p>
-          <% if (me) { %>
-            <button class="link-btn" onclick="toggleReply(<%= c.id %>)">답글</button>
-            <form action="/board/<%= post.id %>/comments" method="post" class="reply-form" id="reply-<%= c.id %>" hidden>
-              <input type="hidden" name="parent_id" value="<%= c.id %>">
-              <input type="text" name="content" placeholder="답글을 입력해주세요" required maxlength="1000">
-              <button class="btn btn-primary btn-sm" type="submit">등록</button>
-            </form>
-          <% } %>
-
-          <% c.replies.forEach(function (r) { %>
-            <div class="comment reply">
-              <%- renderAvatar(r.avatar_id, r.border_id, 32) %>
-              <div class="comment-body">
-                <div class="comment-head">
-                  <strong><%= r.nickname %></strong>
-                  <span class="muted"><%= r.created_at.slice(0, 16) %></span>
-                  <% if (me && (me.id === r.user_id || me.is_admin)) { %>
-                    <form action="/board/comments/<%= r.id %>/delete" method="post" class="inline">
-                      <button class="link-btn" type="submit">삭제</button>
-                    </form>
-                  <% } %>
-                </div>
-                <p><%= r.content %></p>
-              </div>
-            </div>
-          <% }) %>
-        </div>
+    <% if (best && best.length > 0) { %>
+      <div class="best-block">
+        <% best.forEach(function (c) { %>
+          <%- include('partials/comment', { c: c, post: post, me: me, isBest: true }) %>
+        <% }) %>
       </div>
+    <% } %>
+
+    <% comments.forEach(function (c) { %>
+      <%- include('partials/comment', { c: c, post: post, me: me, isBest: false }) %>
+      <% c.replies.forEach(function (r) { %>
+        <%- include('partials/comment', { c: r, post: post, me: me, isBest: false }) %>
+      <% }) %>
     <% }) %>
 
     <% if (me) { %>

@@ -3,6 +3,7 @@ const express = require('express');
 const db = require('../db');
 const { RULES, checkAttendance, unlockMessage, nextUnlock } = require('../points');
 const { AVATARS, BORDERS, TIER_INFO, canUseAvatar, canUseBorder, eventOpen } = require('../avatars');
+const { getLevel, achievements } = require('../levels');
 
 const router = express.Router();
 
@@ -121,13 +122,17 @@ router.get('/profile', requireLogin, (req, res) => {
   const borders = BORDERS.map((b) => ({ ...b, unlocked: canUseBorder(me, b.id) }));
 
   const stats = {
-    posts: db.prepare('SELECT COUNT(*) AS c FROM posts WHERE user_id = ?').get(me.id).c,
+    points: me.points,
+    posts: db.prepare('SELECT COUNT(*) AS c FROM posts WHERE user_id = ? AND is_notice = 0').get(me.id).c,
     comments: db.prepare('SELECT COUNT(*) AS c FROM comments WHERE user_id = ?').get(me.id).c,
     likesReceived: db.prepare(
       `SELECT COUNT(*) AS c FROM likes l JOIN posts p ON p.id = l.post_id WHERE p.user_id = ?`
     ).get(me.id).c,
     attendance: db.prepare('SELECT COUNT(*) AS c FROM attendance WHERE user_id = ?').get(me.id).c,
+    popularPosts: db.prepare('SELECT COUNT(*) AS c FROM posts WHERE user_id = ? AND is_popular = 1').get(me.id).c,
+    adminPicks: db.prepare('SELECT COUNT(*) AS c FROM posts WHERE user_id = ? AND admin_picked = 1').get(me.id).c,
   };
+  const badges = achievements(stats);
 
   // 내 활동 모아보기 (최근 5개씩)
   const myPosts = db.prepare(`
@@ -143,7 +148,10 @@ router.get('/profile', requireLogin, (req, res) => {
     FROM bookmarks b JOIN posts p ON p.id = b.post_id JOIN users u ON u.id = p.user_id
     WHERE b.user_id = ? ORDER BY b.id DESC LIMIT 5`).all(me.id);
 
-  res.render('profile', { groups, borders, stats, myPosts, myComments, myBookmarks, next: nextUnlock(me.points) });
+  res.render('profile', {
+    groups, borders, stats, badges, myPosts, myComments, myBookmarks,
+    next: nextUnlock(me.points), level: getLevel(me.points),
+  });
 });
 
 router.post('/profile/avatar', requireLogin, (req, res) => {

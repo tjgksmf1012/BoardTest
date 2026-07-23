@@ -71,8 +71,21 @@ router.get('/', (req, res) => {
     WHERE p.is_notice = 0 ${where}
     ORDER BY ${orderBy} LIMIT @limit OFFSET @offset`).all(params);
 
+  // 🔥 지금 뜨는 글: 최근 7일 내 추천 많은 글 상위 5개 (첫 페이지·검색/필터 없을 때만)
+  let trending = [];
+  if (page === 1 && !q && !hot) {
+    trending = db.prepare(`
+      SELECT p.id, p.title,
+        (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS like_count
+      FROM posts p
+      WHERE p.is_notice = 0 AND p.is_anonymous = 0
+        AND p.created_at >= datetime('now', 'localtime', '-7 days')
+      ORDER BY like_count DESC, p.id DESC LIMIT 5`).all()
+      .filter((t) => t.like_count > 0);
+  }
+
   res.render('board', {
-    notices, posts, page, q, sort, hot,
+    notices, posts, page, q, sort, hot, trending,
     totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
   });
 });
@@ -121,7 +134,7 @@ router.post('/', requireLogin, (req, res) => {
 // ---- 상세 ----------------------------------------------------------------
 router.get('/:id(\\d+)', (req, res) => {
   const post = db.prepare(`
-    SELECT p.*, u.nickname, u.avatar_id, u.border_id,
+    SELECT p.*, u.nickname, u.avatar_id, u.border_id, u.points AS author_points,
       (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS like_count,
       (SELECT COUNT(*) FROM reports r WHERE r.post_id = p.id) AS report_count
     FROM posts p JOIN users u ON u.id = p.user_id WHERE p.id = ?`).get(req.params.id);
@@ -136,12 +149,20 @@ router.get('/:id(\\d+)', (req, res) => {
   }
 
   const images = db.prepare('SELECT * FROM post_images WHERE post_id = ?').all(post.id);
+  const uid = req.session.userId || 0;
   const rows = db.prepare(`
-    SELECT c.*, u.nickname, u.avatar_id, u.border_id
+    SELECT c.*, u.nickname, u.avatar_id, u.border_id, u.points AS author_points,
+      (SELECT COUNT(*) FROM comment_likes cl WHERE cl.comment_id = c.id) AS like_count,
+      EXISTS(SELECT 1 FROM comment_likes cl WHERE cl.comment_id = c.id AND cl.user_id = ?) AS liked
     FROM comments c JOIN users u ON u.id = c.user_id
-    WHERE c.post_id = ? ORDER BY c.id`).all(post.id);
+    WHERE c.post_id = ? ORDER BY c.id`).all(uid, post.id);
   const comments = rows.filter((c) => !c.parent_id)
     .map((c) => ({ ...c, replies: rows.filter((r) => r.parent_id === c.id) }));
+
+  // 베스트댓글: 좋아요 3개 이상인 최상위 댓글 중 상위 2개 (에브리타임식)
+  const best = rows.filter((c) => !c.parent_id && c.like_count >= 3)
+    .sort((a, b) => b.like_count - a.like_count || a.id - b.id)
+    .slice(0, 2);
 
   const myLike = req.session.userId
     ? db.prepare('SELECT 1 FROM likes WHERE post_id = ? AND user_id = ?').get(post.id, req.session.userId)
@@ -156,10 +177,28 @@ router.get('/:id(\\d+)', (req, res) => {
     'SELECT id, title FROM posts WHERE is_notice = 0 AND id > ? ORDER BY id LIMIT 1').get(post.id);
 
   res.render('post', {
-    post, images, comments,
+    post, images, comments, best,
     commentCount: rows.length,
     liked: !!myLike, bookmarked: !!myBookmark, prev, next,
   });
+});
+
+// ---- 댓글 좋아요 (포인트 미지급, 순수 소셜 신호) --------------------------------
+router.post('/comments/:cid(\\d+)/like', requireLogin, (req, res) => {
+  const c = db.prepare('SELECT * FROM comments WHERE id = ?').get(req.params.cid);
+  if (!c) return res.redirect('/board');
+  if (c.user_id === req.session.userId) {
+    req.session.flash = '내 댓글은 좋아요할 수 없어요.';
+  } else {
+    const exists = db.prepare('SELECT id FROM comment_likes WHERE comment_id = ? AND user_id = ?')
+      .get(c.id, req.session.userId);
+    if (exists) {
+      db.prepare('DELETE FROM comment_likes WHERE id = ?').run(exists.id);
+    } else {
+      db.prepare('INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)').run(c.id, req.session.userId);
+    }
+  }
+  res.redirect(`/board/${c.post_id}#comment-${c.id}`);
 });
 
 // ---- 스크랩 ----------------------------------------------------------------

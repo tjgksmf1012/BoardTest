@@ -102,6 +102,13 @@ CREATE TABLE IF NOT EXISTS bookmarks (
   created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
   UNIQUE(user_id, post_id)
 );
+
+CREATE TABLE IF NOT EXISTS comment_likes (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  comment_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  UNIQUE(comment_id, user_id)
+);
 `);
 
 module.exports = db;

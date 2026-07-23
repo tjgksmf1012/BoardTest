@@ -82,12 +82,18 @@ function seed() {
     '평일에는 수업이 있어서 주말 알바를 찾고 있어요.\n카페, 편의점, 영화관 중에 고민 중인데 해보신 분들 조언 부탁드립니다!', 0, 0, 132, '-1 days').lastInsertRowid;
 
   // 댓글
-  insertComment.run(p2, mint, null, '강남역 근처 카페 친구가 일하는데 분위기 괜찮다고 하더라구요!');
+  const cm1 = insertComment.run(p2, mint, null, '강남역 근처 카페 친구가 일하는데 분위기 괜찮다고 하더라구요!').lastInsertRowid;
   const c2 = insertComment.run(p2, gold, null, '저도 카페 알바 해봤는데 체력적으로 괜찮고 사장님이 좋으면 오래 다닐 수 있어요!').lastInsertRowid;
   insertComment.run(p2, cherry, c2, '오 저도 그 말 듣고 지원해보려구요 ㅎㅎ 같이 화이팅해요!');
-  insertComment.run(p4, cherry, null, '주휴수당 얘기 진짜 공감해요. 모르고 넘어가는 경우 많더라구요.');
+  const cm4 = insertComment.run(p4, cherry, null, '주휴수당 얘기 진짜 공감해요. 모르고 넘어가는 경우 많더라구요.').lastInsertRowid;
   insertComment.run(p4, street, null, '수습 시급 부분 저장해갑니다!');
   insertComment.run(p5, gold, null, '영화관 알바 재밌긴 한데 주말이 제일 바빠요 ㅋㅋ 참고하세요!');
+
+  // 댓글 좋아요 (베스트댓글 데모용)
+  const insertClike = db.prepare('INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)');
+  [[c2, cherry], [c2, mint], [c2, street], [c2, admin]].forEach(([c, u]) => insertClike.run(c, u));
+  [[cm1, gold], [cm1, cherry], [cm1, admin]].forEach(([c, u]) => insertClike.run(c, u));
+  [[cm4, mint], [cm4, gold], [cm4, street]].forEach(([c, u]) => insertClike.run(c, u));
 
   // 추천 (익명글 p3 제외)
   [[p1, mint], [p1, street], [p1, gold],

@@ -3,7 +3,11 @@
 <div class="profile-top card">
   <div class="profile-avatar"><%- renderAvatar(me.avatar_id, me.border_id, 96) %></div>
   <div class="profile-info">
-    <h1><%= me.nickname %> <% if (me.is_admin) { %><span class="badge badge-notice">운영자</span><% } %></h1>
+    <h1>
+      <span class="lv-chip" style="background:<%= level.color %>1a;color:<%= level.color %>">Lv.<%= level.level %> <%= level.title %></span>
+      <%= me.nickname %>
+      <% if (me.is_admin) { %><span class="badge badge-notice">운영자</span><% } %>
+    </h1>
     <a href="/points" class="accent big points-link"><%= me.points.toLocaleString() %>P <span class="points-arrow">내역 →</span></a>
     <div class="profile-stats">
       <span>게시글 <strong><%= stats.posts %></strong></span>
@@ -81,6 +85,20 @@
         <% }) %>
       </ul>
     <% } %>
+  </div>
+</div>
+
+<h2 class="section-title">획득한 배지</h2>
+<p class="muted">활동으로 얻는 업적이에요. <%= badges.filter(b => b.earned).length %> / <%= badges.length %>개 달성!</p>
+<div class="card badge-card">
+  <div class="badge-grid">
+    <% badges.forEach(function (b) { %>
+      <div class="ach <%= b.earned ? 'earned' : 'locked' %>" title="<%= b.desc %>">
+        <span class="ach-icon"><%= b.icon %></span>
+        <span class="ach-name"><%= b.name %></span>
+        <span class="ach-desc muted"><%= b.earned ? b.desc : '🔒 ' + b.desc %></span>
+      </div>
+    <% }) %>
   </div>
 </div>
 

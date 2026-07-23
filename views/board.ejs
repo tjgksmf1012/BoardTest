@@ -15,6 +15,21 @@
   <button class="btn btn-ghost" type="submit">검색</button>
 </form>
 
+<% if (trending && trending.length > 0) { %>
+  <div class="card trending">
+    <div class="trending-head">🔥 지금 뜨는 글</div>
+    <ol class="trending-list">
+      <% trending.forEach(function (t, i) { %>
+        <li><a href="/board/<%= t.id %>">
+          <span class="tr-rank"><%= i + 1 %></span>
+          <span class="tr-title"><%= t.title %></span>
+          <span class="tr-like">👍 <%= t.like_count %></span>
+        </a></li>
+      <% }) %>
+    </ol>
+  </div>
+<% } %>
+
 <div class="filter-bar">
   <div class="chips">
     <a class="chip <%= !hot ? 'on' : '' %>" href="/board?sort=<%= sort %><%= q ? '&q=' + encodeURIComponent(q) : '' %>">전체</a>

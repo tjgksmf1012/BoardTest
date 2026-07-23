@@ -1,0 +1,37 @@
+<%# 댓글 한 개 렌더링. locals: c(댓글), post, me, isBest(옵션) %>
+<div class="comment <%= c.parent_id ? 'reply' : '' %> <%= isBest ? 'best' : '' %>" id="comment-<%= c.id %>">
+  <%- renderAvatar(c.avatar_id, c.border_id, c.parent_id ? 32 : 38) %>
+  <div class="comment-body">
+    <div class="comment-head">
+      <% if (isBest) { %><span class="badge badge-hot">BEST</span><% } %>
+      <strong><%= c.nickname %></strong>
+      <%- levelBadge(c.author_points) %>
+      <span class="muted"><%= timeAgo(c.created_at) %></span>
+      <% if (me && (me.id === c.user_id || me.is_admin)) { %>
+        <form action="/board/comments/<%= c.id %>/delete" method="post" class="inline">
+          <button class="link-btn" type="submit">삭제</button>
+        </form>
+      <% } %>
+    </div>
+    <p><%= c.content %></p>
+    <div class="comment-actions">
+      <% if (me) { %>
+        <form action="/board/comments/<%= c.id %>/like" method="post" class="inline">
+          <button class="clike <%= c.liked ? 'on' : '' %>" type="submit">👍 <%= c.like_count %></button>
+        </form>
+        <% if (!c.parent_id) { %>
+          <button class="link-btn" type="button" onclick="toggleReply(<%= c.id %>)">답글</button>
+        <% } %>
+      <% } else { %>
+        <span class="clike-static">👍 <%= c.like_count %></span>
+      <% } %>
+    </div>
+    <% if (me && !c.parent_id) { %>
+      <form action="/board/<%= post.id %>/comments" method="post" class="reply-form" id="reply-<%= c.id %>" hidden>
+        <input type="hidden" name="parent_id" value="<%= c.id %>">
+        <input type="text" name="content" placeholder="답글을 입력해주세요" required maxlength="1000">
+        <button class="btn btn-primary btn-sm" type="submit">등록</button>
+      </form>
+    <% } %>
+  </div>
+</div>
