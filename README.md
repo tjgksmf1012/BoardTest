@@ -10,9 +10,12 @@
 
 ```bash
 npm install
-npm start   # 서버 실행
-npm test    # 포인트 규칙 자동 테스트 (11개)
+npm start   # 서버 실행 (http://localhost:3000)
+npm test    # 단위 + HTTP 통합 테스트 (39개)
 ```
+
+> Node.js 20 이상 필요. 환경변수는 `.env.example` 참고.
+> 푸시·PR 시 GitHub Actions(CI)가 Node 20/22에서 자동으로 테스트를 돌립니다.
 
 브라우저에서 http://localhost:3000 접속.
 최초 실행 시 데모 데이터(공지·샘플 게시글)가 자동으로 생성됩니다.
