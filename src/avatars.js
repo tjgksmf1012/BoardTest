@@ -146,7 +146,7 @@ function buildSvg(cfg) {
   parts.push(face(cfg.hair));
   parts.push(hairFront(cfg.hair, cfg.hairColor));
   (cfg.accessories || []).forEach((a) => parts.push(accessory(a)));
-  return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img">
+  return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
     <clipPath id="c"><circle cx="50" cy="50" r="50"/></clipPath>
     <g clip-path="url(#c)">${parts.join('\n')}</g>
   </svg>`;

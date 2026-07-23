@@ -2,14 +2,15 @@
 // 아바타가 "꾸미기 해금"이라면, 레벨은 누적 포인트로 결정되는 "신분/등급"이다.
 // 커뮤니티 게이미피케이션에서 반응이 좋은 '명확한 성장 경로'를 제공한다.
 
+// 색상은 흰 배경 대비 4.5:1 이상(WCAG AA)을 만족하도록 조정
 const LEVELS = [
-  { level: 1, title: '새싹',   min: 0,     color: '#8ecfc4' },
-  { level: 2, title: '초보',   min: 500,   color: '#6bc5b8' },
-  { level: 3, title: '일반',   min: 2000,  color: '#5aa9e6' },
-  { level: 4, title: '열심',   min: 5000,  color: '#7c6bff' },
-  { level: 5, title: '인기',   min: 10000, color: '#e6a23c' },
-  { level: 6, title: '우수',   min: 20000, color: '#e0592e' },
-  { level: 7, title: '전설',   min: 40000, color: '#d64550' },
+  { level: 1, title: '새싹',   min: 0,     color: '#327b70' },
+  { level: 2, title: '초보',   min: 500,   color: '#2a72b0' },
+  { level: 3, title: '일반',   min: 2000,  color: '#6a4ff0' },
+  { level: 4, title: '열심',   min: 5000,  color: '#9c6a0f' },
+  { level: 5, title: '인기',   min: 10000, color: '#c9451c' },
+  { level: 6, title: '우수',   min: 20000, color: '#c9433d' },
+  { level: 7, title: '전설',   min: 40000, color: '#a32d52' },
 ];
 
 function getLevel(points) {

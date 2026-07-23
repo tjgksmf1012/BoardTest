@@ -20,7 +20,8 @@
       if (!btn) return;
       function toggle() { btn.hidden = window.scrollY < 500; }
       window.addEventListener('scroll', toggle, { passive: true });
-      btn.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      btn.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); });
       toggle();
     })();
   </script>

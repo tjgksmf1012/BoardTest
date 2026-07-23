@@ -5,12 +5,12 @@
   --primary-soft: #e2f2ef;
   --ink: #16231f;
   --text: #263531;
-  --muted: #7d8a85;
+  --muted: #63706b;
   --line: #e9e6df;
   --bg: #f6f4ee;
   --card: #ffffff;
-  --danger: #d1544e;
-  --amber: #c98a1e;
+  --danger: #c9433d;
+  --amber: #b87d12;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -25,6 +25,24 @@ body {
 }
 a { color: inherit; text-decoration: none; }
 button { font-family: inherit; cursor: pointer; }
+
+/* 키보드 포커스 표시 (마우스 클릭 시엔 숨김) */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+a:focus-visible, .chip:focus-visible, .tab:focus-visible, .ptab:focus-visible,
+.btn:focus-visible, .bn-item:focus-visible { outline-offset: 3px; }
+
+/* 모션 최소화 설정 존중 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
 
 /* 아이콘 공통: 텍스트와 함께 쓸 때 세로 중앙 정렬 */
 .ico { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
@@ -115,8 +133,8 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
   padding: 2px 8px; vertical-align: 2px; margin-right: 4px;
 }
 .badge-notice { background: var(--primary-soft); color: var(--primary-dark); }
-.badge-hot { background: #ffe9e3; color: #e0592e; }
-.badge-pick { background: #fff3d6; color: #c08a1d; }
+.badge-hot { background: #ffe9e3; color: #b23c15; }
+.badge-pick { background: #fff3d6; color: #8a5e0f; }
 .badge-lock { background: #eef1f0; color: var(--muted); }
 .badge-free { background: var(--primary-soft); color: var(--primary-dark); }
 
