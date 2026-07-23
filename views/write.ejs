@@ -6,6 +6,13 @@
 
   <form method="post" enctype="multipart/form-data"
         action="<%= post ? '/board/' + post.id + '/edit' : '/board' %>" class="form">
+    <label><span>말머리 <span class="req">*</span></span>
+      <select name="category" class="cat-select">
+        <% categories.forEach(function (c) { %>
+          <option value="<%= c.id %>" <%= (post ? post.category === c.id : c.id === '자유') ? 'selected' : '' %>><%= c.id %></option>
+        <% }) %>
+      </select>
+    </label>
     <label><span>제목 <span class="req">*</span></span>
       <input type="text" name="title" maxlength="50" required
              placeholder="제목을 입력해주세요 (50자 이내)"

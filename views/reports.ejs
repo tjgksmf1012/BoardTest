@@ -12,15 +12,23 @@
     <div class="empty">신고된 게시글이 없어요. 👍</div>
   <% } else { %>
     <% items.forEach(function (p) { %>
-      <a class="post-row" href="/board/<%= p.id %>">
+      <div class="post-row report-row">
         <span class="report-count">🚨 <%= p.report_count %></span>
-        <div class="post-mid">
-          <div class="post-title"><%= p.title %></div>
+        <a class="post-mid" href="/board/<%= p.id %>">
+          <div class="post-title"><%- catTag(p.category) %> <%= p.title %></div>
           <div class="post-meta">
             작성자 <%= p.is_anonymous ? '익명' : p.nickname %> · 최근 신고 <%= p.last_reported.slice(0, 16) %>
           </div>
+        </a>
+        <div class="report-acts">
+          <a class="btn btn-ghost btn-sm" href="/board/<%= p.id %>">보기</a>
+          <form action="/board/<%= p.id %>/delete" method="post" class="inline"
+                onsubmit="return confirm('이 게시글을 삭제(숨김 처리)할까요?')">
+            <input type="hidden" name="back" value="reports">
+            <button class="btn btn-ghost btn-sm danger" type="submit">삭제</button>
+          </form>
         </div>
-      </a>
+      </div>
     <% }) %>
   <% } %>
 </div>

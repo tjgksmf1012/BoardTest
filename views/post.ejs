@@ -3,7 +3,7 @@
 <article class="card post-detail">
   <div class="post-detail-head">
     <h1>
-      <% if (post.is_notice) { %><span class="badge badge-notice">공지</span><% } %>
+      <% if (post.is_notice) { %><span class="badge badge-notice">공지</span><% } else { %><%- catTag(post.category) %><% } %>
       <% if (post.is_popular) { %><span class="badge badge-hot">인기</span><% } %>
       <% if (post.admin_picked) { %><span class="badge badge-pick">운영자 추천</span><% } %>
       <%= post.title %>

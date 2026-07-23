@@ -81,6 +81,14 @@ function seed() {
   const p5 = insertPost.run(mint, '주말에 할만한 알바 추천 부탁드려요',
     '평일에는 수업이 있어서 주말 알바를 찾고 있어요.\n카페, 편의점, 영화관 중에 고민 중인데 해보신 분들 조언 부탁드립니다!', 0, 0, 132, '-1 days').lastInsertRowid;
 
+  // 말머리(카테고리) 지정
+  const setCat = db.prepare('UPDATE posts SET category = ? WHERE id = ?');
+  setCat.run('자유', p1);
+  setCat.run('구인구직', p2);
+  setCat.run('알바후기', p3);
+  setCat.run('정보', p4);
+  setCat.run('질문', p5);
+
   // 댓글
   const cm1 = insertComment.run(p2, mint, null, '강남역 근처 카페 친구가 일하는데 분위기 괜찮다고 하더라구요!').lastInsertRowid;
   const c2 = insertComment.run(p2, gold, null, '저도 카페 알바 해봤는데 체력적으로 괜찮고 사장님이 좋으면 오래 다닐 수 있어요!').lastInsertRowid;

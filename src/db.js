@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS posts (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id        INTEGER NOT NULL REFERENCES users(id),
+  category       TEXT NOT NULL DEFAULT '자유',
   title          TEXT NOT NULL,
   content        TEXT NOT NULL,
   is_anonymous   INTEGER NOT NULL DEFAULT 0,

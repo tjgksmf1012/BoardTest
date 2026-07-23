@@ -30,15 +30,23 @@
   </div>
 <% } %>
 
+<div class="cat-chips">
+  <a class="chip <%= !category && !hot ? 'on' : '' %>" href="/board?sort=<%= sort %><%= q ? '&q=' + encodeURIComponent(q) : '' %>">전체</a>
+  <% categories.forEach(function (c) { %>
+    <a class="chip <%= category === c.id ? 'on' : '' %>"
+       href="/board?category=<%= encodeURIComponent(c.id) %>&sort=<%= sort %><%= q ? '&q=' + encodeURIComponent(q) : '' %>"><%= c.id %></a>
+  <% }) %>
+</div>
+
 <div class="filter-bar">
   <div class="chips">
-    <a class="chip <%= !hot ? 'on' : '' %>" href="/board?sort=<%= sort %><%= q ? '&q=' + encodeURIComponent(q) : '' %>">전체</a>
+    <a class="chip <%= !hot ? 'on' : '' %>" href="/board?<%= category ? 'category=' + encodeURIComponent(category) + '&' : '' %>sort=<%= sort %><%= q ? '&q=' + encodeURIComponent(q) : '' %>">전체글</a>
     <a class="chip <%= hot ? 'on' : '' %>" href="/board?filter=hot&sort=<%= sort %><%= q ? '&q=' + encodeURIComponent(q) : '' %>">🔥 인기글</a>
   </div>
   <div class="chips">
     <% ['latest', 'likes', 'views'].forEach(function (s) { %>
       <a class="chip <%= sort === s ? 'on' : '' %>"
-         href="/board?sort=<%= s %><%= hot ? '&filter=hot' : '' %><%= q ? '&q=' + encodeURIComponent(q) : '' %>">
+         href="/board?sort=<%= s %><%= category ? '&category=' + encodeURIComponent(category) : '' %><%= hot ? '&filter=hot' : '' %><%= q ? '&q=' + encodeURIComponent(q) : '' %>">
         <%= s === 'latest' ? '최신순' : s === 'likes' ? '추천순' : '조회순' %>
       </a>
     <% }) %>
@@ -58,7 +66,15 @@
   <% }) %>
 
   <% if (posts.length === 0) { %>
-    <div class="empty">아직 게시글이 없어요. 첫 글을 써보세요!</div>
+    <div class="empty">
+      <% if (q) { %>
+        '<%= q %>' 검색 결과가 없어요.
+      <% } else if (category) { %>
+        아직 '<%= category %>' 글이 없어요. 첫 글을 써보세요!
+      <% } else { %>
+        아직 게시글이 없어요. 첫 글을 써보세요!
+      <% } %>
+    </div>
   <% } %>
 
   <% posts.forEach(function (p) { %>
@@ -70,11 +86,14 @@
       <% } %>
       <div class="post-mid">
         <div class="post-title">
+          <%- catTag(p.category) %>
           <% if (p.is_popular) { %><span class="badge badge-hot">인기</span><% } %>
           <% if (p.admin_picked) { %><span class="badge badge-pick">운영자 추천</span><% } %>
           <%= p.title %>
           <% if (p.image_count > 0) { %><span class="img-mark">🖼</span><% } %>
+          <% if (p.comment_count > 0) { %><span class="cmt-count">[<%= p.comment_count %>]</span><% } %>
         </div>
+        <div class="post-preview"><%= p.content.replace(/\s+/g, ' ').slice(0, 60) %></div>
         <div class="post-meta">
           <%= p.is_anonymous ? '익명' : p.nickname %> · <%= timeAgo(p.created_at) %>
         </div>

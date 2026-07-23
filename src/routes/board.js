@@ -7,6 +7,7 @@ const multer = require('multer');
 const db = require('../db');
 const { award, unlockMessage } = require('../points');
 const { notify } = require('../notify');
+const { CATEGORIES, isValid: isValidCategory } = require('../categories');
 
 const router = express.Router();
 
@@ -32,7 +33,13 @@ const upload = multer({
 function requireLogin(req, res, next) {
   if (!req.session.userId) {
     req.session.flash = '로그인이 필요한 기능이에요.';
-    return res.redirect('/login');
+    // GET은 현재 주소로, POST(추천/댓글 등)는 방금 보던 글로 돌아오게 한다
+    let back = req.method === 'GET' ? req.originalUrl : '';
+    if (!back) {
+      try { back = new URL(req.get('Referer')).pathname; } catch { back = ''; }
+    }
+    const q = /^\/[^/]/.test(back) && !back.startsWith('//') ? `?next=${encodeURIComponent(back)}` : '';
+    return res.redirect(`/login${q}`);
   }
   next();
 }
@@ -45,8 +52,10 @@ router.get('/', (req, res) => {
   const q = (req.query.q || '').trim();
   const sort = ['latest', 'likes', 'views'].includes(req.query.sort) ? req.query.sort : 'latest';
   const hot = req.query.filter === 'hot';
+  const category = isValidCategory(req.query.category) ? req.query.category : null;
 
-  const notices = db.prepare(`
+  // 공지는 기본 목록에서만 상단 고정 (검색·인기글 필터 중엔 결과에 집중하도록 숨김)
+  const notices = (q || hot) ? [] : db.prepare(`
     SELECT p.*, u.nickname, u.avatar_id, u.border_id,
       (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count,
       (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS like_count
@@ -54,11 +63,12 @@ router.get('/', (req, res) => {
     WHERE p.is_notice = 1 ORDER BY p.id DESC`).all();
 
   const where = (q ? `AND (p.title LIKE @like OR p.content LIKE @like)` : '')
-    + (hot ? ' AND p.is_popular = 1' : '');
+    + (hot ? ' AND p.is_popular = 1' : '')
+    + (category ? ' AND p.category = @category' : '');
   const orderBy = sort === 'likes' ? 'like_count DESC, p.id DESC'
     : sort === 'views' ? 'p.views DESC, p.id DESC'
     : 'p.id DESC';
-  const params = { like: `%${q}%`, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
+  const params = { like: `%${q}%`, category, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
   const total = db.prepare(
     `SELECT COUNT(*) AS c FROM posts p WHERE p.is_notice = 0 ${where}`
   ).get(params).c;
@@ -73,7 +83,7 @@ router.get('/', (req, res) => {
 
   // 🔥 지금 뜨는 글: 최근 7일 내 추천 많은 글 상위 5개 (첫 페이지·검색/필터 없을 때만)
   let trending = [];
-  if (page === 1 && !q && !hot) {
+  if (page === 1 && !q && !hot && !category) {
     trending = db.prepare(`
       SELECT p.id, p.title,
         (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS like_count
@@ -85,37 +95,35 @@ router.get('/', (req, res) => {
   }
 
   res.render('board', {
-    notices, posts, page, q, sort, hot, trending,
+    notices, posts, page, q, sort, hot, trending, category, categories: CATEGORIES,
     totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
   });
 });
 
 // ---- 글쓰기 ----------------------------------------------------------------
 router.get('/new', requireLogin, (req, res) => {
-  res.render('write', { post: null, images: [], error: null });
+  res.render('write', { post: null, images: [], error: null, categories: CATEGORIES });
 });
 
 router.post('/', requireLogin, (req, res) => {
   upload.array('images', 5)(req, res, (err) => {
-    if (err) return res.render('write', { post: null, images: [], error: err.message });
+    const fail = (msg) => res.render('write', { post: null, images: [], error: msg, categories: CATEGORIES });
+    if (err) return fail(err.message);
 
     const title = (req.body.title || '').trim();
     const content = (req.body.content || '').trim();
+    const category = isValidCategory(req.body.category) ? req.body.category : '자유';
     const isAnonymous = req.body.is_anonymous ? 1 : 0;
     const blockComments = req.body.block_comments ? 1 : 0;
     const isNotice = req.body.is_notice && res.locals.me.is_admin ? 1 : 0;
 
-    if (!title || title.length > 50) {
-      return res.render('write', { post: null, images: [], error: '제목은 1~50자로 입력해주세요.' });
-    }
-    if (!content || content.length > 5000) {
-      return res.render('write', { post: null, images: [], error: '내용은 1~5,000자로 입력해주세요.' });
-    }
+    if (!title || title.length > 50) return fail('제목은 1~50자로 입력해주세요.');
+    if (!content || content.length > 5000) return fail('내용은 1~5,000자로 입력해주세요.');
 
     const info = db.prepare(`
-      INSERT INTO posts (user_id, title, content, is_anonymous, block_comments, is_notice)
-      VALUES (?, ?, ?, ?, ?, ?)`
-    ).run(req.session.userId, title, content, isAnonymous, blockComments, isNotice);
+      INSERT INTO posts (user_id, category, title, content, is_anonymous, block_comments, is_notice)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`
+    ).run(req.session.userId, category, title, content, isAnonymous, blockComments, isNotice);
 
     const insertImage = db.prepare('INSERT INTO post_images (post_id, filename) VALUES (?, ?)');
     (req.files || []).forEach((f) => insertImage.run(info.lastInsertRowid, f.filename));
@@ -306,7 +314,7 @@ router.get('/:id(\\d+)/edit', requireLogin, (req, res) => {
   const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(req.params.id);
   if (!post || post.user_id !== req.session.userId) return res.redirect('/board');
   const images = db.prepare('SELECT * FROM post_images WHERE post_id = ?').all(post.id);
-  res.render('write', { post, images, error: null });
+  res.render('write', { post, images, error: null, categories: CATEGORIES });
 });
 
 router.post('/:id(\\d+)/edit', requireLogin, (req, res) => {
@@ -315,12 +323,14 @@ router.post('/:id(\\d+)/edit', requireLogin, (req, res) => {
 
   upload.array('images', 5)(req, res, (err) => {
     const images = () => db.prepare('SELECT * FROM post_images WHERE post_id = ?').all(post.id);
-    if (err) return res.render('write', { post, images: images(), error: err.message });
+    const fail = (msg) => res.render('write', { post, images: images(), error: msg, categories: CATEGORIES });
+    if (err) return fail(err.message);
 
     const title = (req.body.title || '').trim();
     const content = (req.body.content || '').trim();
+    const category = isValidCategory(req.body.category) ? req.body.category : post.category;
     if (!title || title.length > 50 || !content || content.length > 5000) {
-      return res.render('write', { post, images: images(), error: '제목(50자)과 내용(5,000자)을 확인해주세요.' });
+      return fail('제목(50자)과 내용(5,000자)을 확인해주세요.');
     }
 
     // 삭제 체크된 기존 이미지 제거
@@ -341,9 +351,9 @@ router.post('/:id(\\d+)/edit', requireLogin, (req, res) => {
       else fs.rm(path.join(UPLOAD_DIR, f.filename), { force: true }, () => {});
     });
 
-    db.prepare(`UPDATE posts SET title = ?, content = ?, block_comments = ?,
+    db.prepare(`UPDATE posts SET category = ?, title = ?, content = ?, block_comments = ?,
                 updated_at = datetime('now', 'localtime') WHERE id = ?`)
-      .run(title, content, req.body.block_comments ? 1 : 0, post.id);
+      .run(category, title, content, req.body.block_comments ? 1 : 0, post.id);
     req.session.flash = '게시글을 수정했어요.';
     res.redirect(`/board/${post.id}`);
   });
@@ -357,7 +367,8 @@ router.post('/:id(\\d+)/delete', requireLogin, (req, res) => {
     db.prepare('DELETE FROM posts WHERE id = ?').run(post.id);
     req.session.flash = '게시글을 삭제했어요.';
   }
-  res.redirect('/board');
+  // 신고 관리 페이지에서 삭제한 경우 그 목록으로 복귀
+  res.redirect(req.body.back === 'reports' ? '/reports' : '/board');
 });
 
 // ---- 신고 / 운영자 추천 ------------------------------------------------------

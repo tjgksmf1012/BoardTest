@@ -10,7 +10,12 @@ const router = express.Router();
 function requireLogin(req, res, next) {
   if (!req.session.userId) {
     req.session.flash = '로그인이 필요한 기능이에요.';
-    return res.redirect('/login');
+    let back = req.method === 'GET' ? req.originalUrl : '';
+    if (!back) {
+      try { back = new URL(req.get('Referer')).pathname; } catch { back = ''; }
+    }
+    const q = /^\/[^/]/.test(back) && !back.startsWith('//') ? `?next=${encodeURIComponent(back)}` : '';
+    return res.redirect(`/login${q}`);
   }
   next();
 }
@@ -87,7 +92,7 @@ router.get('/notifications', requireLogin, (req, res) => {
 router.get('/reports', requireLogin, (req, res) => {
   if (!res.locals.me.is_admin) return res.redirect('/board');
   const items = db.prepare(`
-    SELECT p.id, p.title, p.is_anonymous, u.nickname,
+    SELECT p.id, p.category, p.title, p.is_anonymous, u.nickname,
       COUNT(r.id) AS report_count, MAX(r.created_at) AS last_reported
     FROM reports r
     JOIN posts p ON p.id = r.post_id
