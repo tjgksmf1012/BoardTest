@@ -3,8 +3,18 @@
 // 포인트 누적에 따라 해금: 기본 12종(무료) → 스페셜 헤어(5,000P) → 프리미엄 의상(10,000P)
 // → 움직이는 테두리(20,000P) → 이벤트 한정(시즌별)
 
-const SKIN = '#ffdfc9';
-const SKIN_SHADOW = '#f5c9ab';
+const SKIN = '#ffe0cb';
+const SKIN_SHADOW = '#f2c3a4';
+
+// 색을 밝게/어둡게 (헤어 하이라이트·음영용)
+function shade(hex, amt) {
+  const n = parseInt(hex.replace('#', ''), 16);
+  const clamp = (v) => Math.max(0, Math.min(255, v));
+  const r = clamp((n >> 16) + amt), g = clamp(((n >> 8) & 255) + amt), b = clamp((n & 255) + amt);
+  return '#' + ((r << 16) | (g << 8) | b).toString(16).padStart(6, '0');
+}
+
+let _uid = 0; // SVG 내부 id 충돌 방지용 (그라데이션·클립)
 
 // ---- SVG 파츠 생성 -------------------------------------------------------
 
@@ -39,22 +49,40 @@ function hairFront(style, color) {
   return `<path d="M29 40 Q28 18 50 17 Q72 18 71 40 Q68 30 61 28 Q57 34 50 33 Q43 34 39 28 Q32 30 29 40 Z" fill="${color}"/>`;
 }
 
-function face(style) {
+function face(style, cfg, id) {
+  const eye = (cfg && cfg.eyeColor) || '#5b3a2c';
+  // 얼굴 + 부드러운 볼 음영
+  const head = `
+    <ellipse cx="50" cy="43.5" rx="18.5" ry="19.5" fill="url(#skin-${id})"/>
+    <path d="M63 40 Q68 50 60 60 Q66 50 62 41 Z" fill="${SKIN_SHADOW}" opacity="0.35"/>`;
+
   if (style === 'hood') {
-    return `
-      <circle cx="50" cy="43" r="19" fill="${SKIN}"/>
-      <path d="M35 39 L65 39 L63 48 L37 48 Z" fill="#2b2b33"/>
-      <circle cx="43" cy="43.5" r="2" fill="#fff"/>
-      <circle cx="57" cy="43.5" r="2" fill="#fff"/>
-      <path d="M46 55 Q50 58 54 55" stroke="#d98d78" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
+    return head + `
+      <path d="M34 39 L66 39 L63 47 L37 47 Z" fill="#23232b"/>
+      <ellipse cx="43" cy="43.2" rx="2.3" ry="2" fill="#cfe8ff"/>
+      <ellipse cx="57" cy="43.2" rx="2.3" ry="2" fill="#cfe8ff"/>
+      <circle cx="43.6" cy="42.6" r="0.7" fill="#fff"/>
+      <circle cx="57.6" cy="42.6" r="0.7" fill="#fff"/>
+      <path d="M46 55 Q50 57.5 54 55" stroke="#d98d78" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
   }
-  return `
-    <circle cx="50" cy="43" r="19" fill="${SKIN}"/>
-    <circle cx="43" cy="44" r="2" fill="#453232"/>
-    <circle cx="57" cy="44" r="2" fill="#453232"/>
-    <circle cx="38.5" cy="49" r="2.6" fill="#ffb3a7" opacity="0.55"/>
-    <circle cx="61.5" cy="49" r="2.6" fill="#ffb3a7" opacity="0.55"/>
-    <path d="M46.5 51.5 Q50 54.5 53.5 51.5" stroke="#d98d78" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
+
+  return head + `
+    <path d="M37.5 38.5 Q42 36.4 46.5 38.4" stroke="#8a6552" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+    <path d="M53.5 38.4 Q58 36.4 62.5 38.5" stroke="#8a6552" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+    <ellipse cx="42.4" cy="45.4" rx="3.5" ry="4.4" fill="#fff"/>
+    <ellipse cx="57.6" cy="45.4" rx="3.5" ry="4.4" fill="#fff"/>
+    <circle cx="42.6" cy="45.8" r="2.9" fill="${eye}"/>
+    <circle cx="57.4" cy="45.8" r="2.9" fill="${eye}"/>
+    <circle cx="42.6" cy="46" r="1.4" fill="#241713"/>
+    <circle cx="57.4" cy="46" r="1.4" fill="#241713"/>
+    <circle cx="43.7" cy="44" r="1" fill="#fff"/>
+    <circle cx="58.5" cy="44" r="1" fill="#fff"/>
+    <path d="M38.4 42.3 Q42.4 40.2 46.4 42.4" stroke="#3b2822" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+    <path d="M53.6 42.4 Q57.6 40.2 61.6 42.3" stroke="#3b2822" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+    <circle cx="37.6" cy="51.5" r="2.9" fill="#ff9d90" opacity="0.45"/>
+    <circle cx="62.4" cy="51.5" r="2.9" fill="#ff9d90" opacity="0.45"/>
+    <path d="M49.4 50.2 Q50 51 50.6 50.2" stroke="#e0a58c" stroke-width="1" fill="none" stroke-linecap="round"/>
+    <path d="M47.2 54.4 Q50 56.8 52.8 54.4" stroke="#d0685a" stroke-width="1.5" fill="none" stroke-linecap="round"/>`;
 }
 
 function outfit(kind, color) {
@@ -139,16 +167,36 @@ function accessory(kind) {
 
 // 아바타 한 개를 SVG 문자열로 렌더링
 function buildSvg(cfg) {
+  const id = 'a' + (_uid++);
+  const hairHi = shade(cfg.hairColor, 45);   // 헤어 하이라이트
+  const hairLo = shade(cfg.hairColor, -35);  // 헤어 음영
+  const bgHi = shade(cfg.bg, 22);
+
+  const defs = `<defs>
+    <radialGradient id="bg-${id}" cx="35%" cy="28%" r="85%">
+      <stop offset="0%" stop-color="${bgHi}"/><stop offset="100%" stop-color="${cfg.bg}"/>
+    </radialGradient>
+    <radialGradient id="skin-${id}" cx="42%" cy="38%" r="70%">
+      <stop offset="0%" stop-color="#fff0e6"/><stop offset="100%" stop-color="${SKIN}"/>
+    </radialGradient>
+    <clipPath id="clip-${id}"><circle cx="50" cy="50" r="50"/></clipPath>
+  </defs>`;
+
   const parts = [];
-  parts.push(`<circle cx="50" cy="50" r="50" fill="${cfg.bg}"/>`);
+  parts.push(`<circle cx="50" cy="50" r="50" fill="url(#bg-${id})"/>`);
   parts.push(hairBack(cfg.hair, cfg.hairColor));
+  // 뒷머리 음영
+  if (cfg.hair !== 'hood') parts.push(`<path d="M27 60 Q25 80 40 90 L60 90 Q75 80 73 60 Q73 78 60 84 L40 84 Q27 78 27 60 Z" fill="${hairLo}" opacity="0.45"/>`);
   parts.push(outfit(cfg.outfit || 'plain', cfg.outfitColor || '#8ecfc4'));
-  parts.push(face(cfg.hair));
+  parts.push(face(cfg.hair, cfg, id));
   parts.push(hairFront(cfg.hair, cfg.hairColor));
+  // 앞머리 하이라이트
+  if (cfg.hair !== 'hood') parts.push(`<path d="M35 24 Q50 17 65 24 Q56 21 50 21 Q44 21 35 24 Z" fill="${hairHi}" opacity="0.6"/>`);
   (cfg.accessories || []).forEach((a) => parts.push(accessory(a)));
+
   return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
-    <clipPath id="c"><circle cx="50" cy="50" r="50"/></clipPath>
-    <g clip-path="url(#c)">${parts.join('\n')}</g>
+    ${defs}
+    <g clip-path="url(#clip-${id})">${parts.join('\n')}</g>
   </svg>`;
 }
 
