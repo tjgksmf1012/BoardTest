@@ -1,7 +1,11 @@
 // 아바타 시스템
-// 예시 이미지(실사풍 AI 그림)와는 완전히 다른, 코드로 직접 그린 플랫 벡터 캐릭터.
+// 기본은 코드로 그린 벡터 캐릭터(폴백)지만,
+// public/avatars/<아바타id>.{png,jpg,jpeg,webp} 파일을 넣으면 그 이미지로 자동 대체된다.
+// → AI로 생성한 고퀄 반실사 일러스트를 넣으면 예시 수준으로 바로 업그레이드됨.
 // 포인트 누적에 따라 해금: 기본 12종(무료) → 스페셜 헤어(5,000P) → 프리미엄 의상(10,000P)
 // → 움직이는 테두리(20,000P) → 이벤트 한정(시즌별)
+const fs = require('fs');
+const path = require('path');
 
 const SKIN = '#ffe0cb';
 const SKIN_SHADOW = '#f2c3a4';
@@ -267,15 +271,34 @@ function canUseBorder(user, borderId) {
   return !!b && user.points >= b.need;
 }
 
+// public/avatars 폴더를 스캔해 아바타 id별 이미지 파일을 찾아둔다 (서버 시작 시 1회)
+const AVATAR_IMG_DIR = path.join(__dirname, '..', 'public', 'avatars');
+const imageMap = new Map(); // avatarId -> 파일명
+function scanAvatarImages() {
+  imageMap.clear();
+  let files = [];
+  try { files = fs.readdirSync(AVATAR_IMG_DIR); } catch { return; }
+  for (const f of files) {
+    const m = f.match(/^(.+)\.(png|jpe?g|webp)$/i);
+    if (m && avatarMap.has(m[1])) imageMap.set(m[1], f);
+  }
+}
+scanAvatarImages();
+
 // 게시글/댓글 옆에 표시할 아바타 HTML (익명 글은 미스터리 후드로 고정)
 function renderAvatar(avatarId, borderId, size = 44) {
   const a = avatarMap.get(avatarId) || avatarMap.get('basic-12');
   const b = borderId ? borderMap.get(borderId) : null;
   const cls = b ? ` ${b.cls}` : '';
-  return `<span class="avatar${cls}" style="width:${size}px;height:${size}px">${buildSvg(a.cfg)}</span>`;
+  // 이미지 파일이 있으면 그걸 사용, 없으면 벡터로 폴백
+  const img = imageMap.get(a.id);
+  const inner = img
+    ? `<img src="/avatars/${encodeURIComponent(img)}" alt="" loading="lazy">`
+    : buildSvg(a.cfg);
+  return `<span class="avatar${cls}" style="width:${size}px;height:${size}px">${inner}</span>`;
 }
 
 module.exports = {
   AVATARS, BORDERS, TIER_INFO,
-  renderAvatar, canUseAvatar, canUseBorder, eventOpen,
+  renderAvatar, canUseAvatar, canUseBorder, eventOpen, scanAvatarImages,
 };
