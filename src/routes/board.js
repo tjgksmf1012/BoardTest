@@ -217,6 +217,31 @@ router.post('/comments/:cid(\\d+)/like', requireLogin, (req, res) => {
   res.redirect(`/board/${c.post_id}#comment-${c.id}`);
 });
 
+// ---- 댓글 신고 ------------------------------------------------------------
+router.post('/comments/:cid(\\d+)/report', requireLogin, (req, res) => {
+  const c = db.prepare('SELECT * FROM comments WHERE id = ?').get(req.params.cid);
+  if (!c) return res.redirect('/board');
+  if (c.user_id === req.session.userId) {
+    req.session.flash = '내 댓글은 신고할 수 없어요.';
+  } else {
+    try {
+      db.prepare('INSERT INTO comment_reports (comment_id, user_id) VALUES (?, ?)').run(c.id, req.session.userId);
+      req.session.flash = '댓글을 신고했어요. 운영자가 확인할 예정이에요.';
+    } catch {
+      req.session.flash = '이미 신고한 댓글이에요.';
+    }
+  }
+  res.redirect(`/board/${c.post_id}#comment-${c.id}`);
+});
+
+// ---- 댓글 신고 반려 (운영자) -----------------------------------------------
+router.post('/comments/:cid(\\d+)/dismiss-reports', requireLogin, (req, res) => {
+  if (!res.locals.me.is_admin) return res.redirect('/board');
+  db.prepare('DELETE FROM comment_reports WHERE comment_id = ?').run(req.params.cid);
+  req.session.flash = '댓글 신고를 반려했어요.';
+  res.redirect('/reports');
+});
+
 // ---- 스크랩 ----------------------------------------------------------------
 router.post('/:id(\\d+)/bookmark', requireLogin, (req, res) => {
   const post = db.prepare('SELECT id FROM posts WHERE id = ?').get(req.params.id);
@@ -314,6 +339,7 @@ router.post('/comments/:cid(\\d+)/delete', requireLogin, (req, res) => {
     db.prepare('DELETE FROM comments WHERE id = ?').run(c.id);
     req.session.flash = '댓글을 삭제했어요.';
   }
+  if (req.body.back === 'reports') return res.redirect('/reports');
   res.redirect(c ? `/board/${c.post_id}` : '/board');
 });
 

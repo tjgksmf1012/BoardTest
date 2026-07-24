@@ -113,6 +113,14 @@ CREATE TABLE IF NOT EXISTS comment_likes (
   UNIQUE(comment_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS comment_reports (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  comment_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+  UNIQUE(comment_id, user_id)
+);
+
 -- 목록/상세에서 자주 조회하는 컬럼 인덱스 (규모 커질 때 성능)
 CREATE INDEX IF NOT EXISTS idx_posts_list      ON posts(is_notice, id DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_category  ON posts(category);
@@ -125,6 +133,7 @@ CREATE INDEX IF NOT EXISTS idx_bookmarks_user  ON bookmarks(user_id);
 CREATE INDEX IF NOT EXISTS idx_pointlogs_user  ON point_logs(user_id, id DESC);
 CREATE INDEX IF NOT EXISTS idx_noti_user       ON notifications(user_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_reports_post    ON reports(post_id);
+CREATE INDEX IF NOT EXISTS idx_creports_comment ON comment_reports(comment_id);
 `);
 
 module.exports = db;

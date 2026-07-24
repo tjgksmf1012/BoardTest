@@ -99,7 +99,17 @@ router.get('/reports', requireLogin, (req, res) => {
     JOIN users u ON u.id = p.user_id
     GROUP BY r.post_id
     ORDER BY report_count DESC, last_reported DESC`).all();
-  res.render('reports', { items });
+
+  const commentItems = db.prepare(`
+    SELECT c.id, c.content, c.post_id, u.nickname,
+      COUNT(cr.id) AS report_count, MAX(cr.created_at) AS last_reported
+    FROM comment_reports cr
+    JOIN comments c ON c.id = cr.comment_id
+    JOIN users u ON u.id = c.user_id
+    GROUP BY cr.comment_id
+    ORDER BY report_count DESC, last_reported DESC`).all();
+
+  res.render('reports', { items, commentItems });
 });
 
 // ---- 회원 관리 (운영자) --------------------------------------------------------

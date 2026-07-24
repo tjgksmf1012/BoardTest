@@ -22,6 +22,11 @@
         <% if (!c.parent_id) { %>
           <button class="link-btn" type="button" onclick="toggleReply(<%= c.id %>)">답글</button>
         <% } %>
+        <% if (me.id !== c.user_id) { %>
+          <form action="/board/comments/<%= c.id %>/report" method="post" class="inline">
+            <button class="link-btn" type="submit">신고</button>
+          </form>
+        <% } %>
       <% } else { %>
         <span class="clike-static"><%- icon('like', 14) %> <%= c.like_count %></span>
       <% } %>

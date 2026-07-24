@@ -195,6 +195,41 @@ test('일반 사용자는 회원 관리 페이지에 접근할 수 없다', asyn
   assert.equal(res.headers.get('location'), '/board');
 });
 
+test('댓글을 신고할 수 있고 중복 신고는 무시되며 내 댓글은 신고할 수 없다', async () => {
+  const author = makeJar(); await signup(author, 'crauth', '댓글주인2');
+  const p = await newPost(author, '댓글 신고 대상 글');
+  await post(`/board/${p.id}/comments`, { content: '신고될 댓글' }, author);
+  const cid = db.prepare('SELECT id FROM comments WHERE post_id=? ORDER BY id DESC LIMIT 1').get(p.id).id;
+
+  // 작성자 본인은 신고 불가
+  await post(`/board/comments/${cid}/report`, {}, author);
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM comment_reports WHERE comment_id=?').get(cid).c, 0);
+
+  // 다른 사용자 신고 → 1, 중복 신고 → 여전히 1
+  const reporter = makeJar(); await signup(reporter, 'crrep', '신고자');
+  await post(`/board/comments/${cid}/report`, {}, reporter);
+  await post(`/board/comments/${cid}/report`, {}, reporter);
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM comment_reports WHERE comment_id=?').get(cid).c, 1);
+});
+
+test('운영자는 신고된 댓글을 반려할 수 있고, 일반 사용자는 반려할 수 없다', async () => {
+  const author = makeJar(); await signup(author, 'crd1', '댓글주인3');
+  const p = await newPost(author, '댓글 반려 글');
+  await post(`/board/${p.id}/comments`, { content: '반려 대상 댓글' }, author);
+  const cid = db.prepare('SELECT id FROM comments WHERE post_id=? ORDER BY id DESC LIMIT 1').get(p.id).id;
+  const reporter = makeJar(); await signup(reporter, 'crd2', '신고자2');
+  await post(`/board/comments/${cid}/report`, {}, reporter);
+
+  // 일반 사용자는 반려 불가
+  await post(`/board/comments/${cid}/dismiss-reports`, {}, reporter);
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM comment_reports WHERE comment_id=?').get(cid).c, 1);
+
+  // 운영자는 반려 가능
+  const admin = makeJar(); await login(admin, 'admin', 'admin1234');
+  await post(`/board/comments/${cid}/dismiss-reports`, {}, admin);
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM comment_reports WHERE comment_id=?').get(cid).c, 0);
+});
+
 test('알림 목록을 열면 안 읽은 알림이 읽음 처리된다', async () => {
   const author = makeJar(); await signup(author, 'ntauth', '알림주인');
   const p = await newPost(author, '알림 테스트 글');

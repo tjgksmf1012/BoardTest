@@ -133,6 +133,10 @@ function seed() {
   insertReport.run(p3, cherry);
   insertReport.run(p3, gold);
 
+  // 댓글 신고 샘플 (p2의 첫 댓글에 1건)
+  const insertCReport = db.prepare('INSERT INTO comment_reports (comment_id, user_id) VALUES (?, ?)');
+  insertCReport.run(cm1, gold);
+
   console.log('데모 데이터를 생성했어요. (운영자: admin / admin1234, 샘플 회원: cherry·mint·street·gold / test1234)');
 }
 
