@@ -11,10 +11,17 @@
 ```bash
 npm install
 npm start   # 서버 실행 (http://localhost:3000)
-npm test    # 단위 + HTTP 통합 테스트 (39개)
+npm test    # 단위 + HTTP 통합 테스트 (49개)
 ```
 
-> Node.js 20 이상 필요. 환경변수는 `.env.example` 참고.
+### Docker
+```bash
+docker build -t pointlounge .
+docker run -e SESSION_SECRET=$(openssl rand -hex 32) \
+  -p 3000:3000 -v $PWD/data:/app/data -v $PWD/uploads:/app/uploads pointlounge
+```
+
+> Node.js 20 이상 필요. 환경변수는 `.env.example` 참고. 설계 문서는 `docs/DESIGN.md`.
 > 푸시·PR 시 GitHub Actions(CI)가 Node 20/22에서 자동으로 테스트를 돌립니다.
 
 브라우저에서 http://localhost:3000 접속.

@@ -35,6 +35,7 @@ const app = express();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.disable('x-powered-by'); // 서버 스택 노출 방지
+app.set('trust proxy', 1);   // 배포 시 프록시(HTTPS 종단) 뒤에서 secure 쿠키 인식
 
 const isProd = process.env.NODE_ENV === 'production';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'boardtest-dev-secret';
@@ -61,7 +62,7 @@ app.use(session({
     maxAge: 1000 * 60 * 60 * 24 * 7,
     httpOnly: true,           // JS에서 쿠키 접근 차단(XSS 완화)
     sameSite: 'lax',          // 타 사이트발 요청에 쿠키 미전송(CSRF 완화)
-    secure: isProd,           // 운영(HTTPS)에서만 secure
+    secure: isProd ? 'auto' : false, // HTTPS 요청일 때만 secure (프록시 뒤 HTTP도 안전하게 동작)
   },
 }));
 
