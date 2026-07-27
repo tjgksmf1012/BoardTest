@@ -4,25 +4,51 @@
   </footer>
 
   <% if (me && attendanceDue) { %>
-    <%# 그날 첫 접속 때 한 번만 뜨는 출석 팝업. 출석하거나 닫으면 그날은 다시 뜨지 않는다 %>
+    <%# 그날 첫 접속 때 뜨는 출석부. 물어보지 않고 바로 출석 처리하고 도장 찍는 연출을 보여준다 %>
     <div class="att-pop" id="attPop" hidden>
       <div class="att-pop-card" role="dialog" aria-modal="true" aria-labelledby="attPopTitle">
         <button class="att-pop-x" id="attPopClose" type="button" aria-label="닫기">&times;</button>
+
         <p class="att-pop-eyebrow"><%- icon('calendar', 15) %> 오늘의 출석</p>
-        <h2 id="attPopTitle">출석하고 <strong>100P</strong> 받아가세요</h2>
-        <% if (attendanceStreak > 0) { %>
-          <p class="att-pop-sub">
-            <%- icon('flame', 15) %> <strong><%= attendanceStreak %>일</strong> 연속 출석 중이에요.
-            오늘 출석하면 <strong><%= attendanceStreak + 1 %>일째</strong>!
-          </p>
-        <% } else { %>
-          <p class="att-pop-sub">매일 출석하면 3·7·30일마다 보너스 포인트를 더 받아요.</p>
-        <% } %>
-        <form action="/attendance/check" method="post">
-          <input type="hidden" name="next" value="<%= currentPath %>">
-          <button class="btn btn-primary btn-block" type="submit">출석체크 하고 100P 받기</button>
-        </form>
-        <button class="att-pop-later" id="attPopLater" type="button">오늘은 그냥 둘러볼게요</button>
+        <h2 id="attPopTitle" class="att-title">출석 완료!</h2>
+
+        <%# 연속 일수 — 도장이 찍힌 뒤 숫자가 올라간다 %>
+        <div class="att-streak">
+          <span class="att-flame"><%- icon('flame', 26) %></span>
+          <span class="att-streak-num" id="attStreakNum"><%= attendanceStreak %></span>
+          <span class="att-streak-unit">일 연속</span>
+        </div>
+
+        <%# 최근 7일 출석부 — 오른쪽 끝이 오늘 %>
+        <div class="att-sheet" id="attSheet">
+          <% attendanceWeek.forEach(function (d) { %>
+            <div class="att-day <%= d.checked ? 'on' : '' %> <%= d.today ? 'today' : '' %>"
+                 data-today="<%= d.today ? 1 : 0 %>">
+              <span class="att-day-label"><%= d.label %></span>
+              <span class="att-stamp"><span class="att-stamp-mark">✓</span></span>
+            </div>
+          <% }) %>
+        </div>
+
+        <div class="att-reward" id="attReward" aria-live="polite">
+          <span class="att-plus">+<span id="attPoints">0</span>P</span>
+          <span class="att-bonus" id="attBonus" hidden></span>
+        </div>
+
+        <div class="att-next" id="attNext" hidden>
+          <div class="att-next-text"><span id="attNextLabel"></span></div>
+          <div class="progress att-next-bar"><div class="progress-fill" id="attNextFill" style="width:0%"></div></div>
+        </div>
+
+        <button class="btn btn-primary btn-block att-done" id="attPopDone" type="button">확인</button>
+
+        <%# 자바스크립트가 막혔거나 통신에 실패했을 때를 위한 평범한 출석 버튼 %>
+        <noscript>
+          <form action="/attendance/check" method="post">
+            <input type="hidden" name="next" value="<%= currentPath %>">
+            <button class="btn btn-primary btn-block" type="submit">출석체크 하고 100P 받기</button>
+          </form>
+        </noscript>
       </div>
     </div>
     <script>
@@ -31,15 +57,99 @@
         if (!pop) return;
         var key = 'pl-att-<%= todayKey %>'; // 날짜가 바뀌면 키도 바뀌어 다음 날 다시 뜬다
         try { if (localStorage.getItem(key)) return; } catch (e) {}
+
+        var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var startStreak = <%= attendanceStreak %>;
+
         function close() {
           pop.hidden = true;
           try { localStorage.setItem(key, '1'); } catch (e) {}
         }
-        pop.hidden = false;
         document.getElementById('attPopClose').addEventListener('click', close);
-        document.getElementById('attPopLater').addEventListener('click', close);
+        document.getElementById('attPopDone').addEventListener('click', close);
         pop.addEventListener('click', function (e) { if (e.target === pop) close(); });
         document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !pop.hidden) close(); });
+
+        // 숫자가 스르륵 올라가는 연출
+        function countUp(el, to, ms) {
+          if (reduce || to === 0) { el.textContent = to.toLocaleString(); return; }
+          var start = performance.now();
+          (function step(now) {
+            var t = Math.min(1, (now - start) / ms);
+            var eased = 1 - Math.pow(1 - t, 3);
+            el.textContent = Math.round(to * eased).toLocaleString();
+            if (t < 1) requestAnimationFrame(step);
+          })(start);
+        }
+
+        function celebrate(data) {
+          // 1) 오늘 칸에 도장이 떨어진다
+          var todayCell = pop.querySelector('.att-day[data-today="1"]');
+          setTimeout(function () {
+            if (todayCell) todayCell.classList.add('on', 'stamping');
+          }, reduce ? 0 : 260);
+
+          // 2) 연속 일수가 올라간다
+          setTimeout(function () {
+            var num = document.getElementById('attStreakNum');
+            countUp(num, data.streak, 500);
+            num.classList.add('pop');
+          }, reduce ? 0 : 560);
+
+          // 3) 포인트가 올라간다
+          setTimeout(function () {
+            countUp(document.getElementById('attPoints'), data.awarded, 700);
+            document.getElementById('attReward').classList.add('show');
+            if (data.bonus > 0) {
+              var b = document.getElementById('attBonus');
+              b.textContent = data.streak + '일 연속 보너스 +' + data.bonus.toLocaleString() + 'P';
+              b.hidden = false;
+              pop.classList.add('milestone'); // 반짝이 연출
+            }
+          }, reduce ? 0 : 760);
+
+          // 4) 다음 보너스까지 남은 정도
+          if (data.next) {
+            var wrap = document.getElementById('attNext');
+            document.getElementById('attNextLabel').innerHTML =
+              '<strong>' + data.next.days + '일 연속</strong>까지 ' +
+              '<strong>' + data.next.remain + '일</strong> 남았어요 · 보너스 ' + data.next.points.toLocaleString() + 'P';
+            wrap.hidden = false;
+            setTimeout(function () {
+              document.getElementById('attNextFill').style.width =
+                Math.round(data.streak / data.next.days * 100) + '%';
+            }, reduce ? 0 : 900);
+          }
+
+          // 헤더의 내 포인트도 새로고침 없이 갱신
+          var chip = document.querySelector('.me-points');
+          if (chip && typeof data.points === 'number') {
+            setTimeout(function () { chip.textContent = data.points.toLocaleString() + 'P'; }, reduce ? 0 : 900);
+          }
+        }
+
+        function fail() {
+          // 통신이 안 되면 출석부 대신 평범한 안내로 되돌린다
+          document.querySelector('.att-title').textContent = '출석을 처리하지 못했어요';
+          document.getElementById('attReward').innerHTML =
+            '<span class="att-fail">잠시 후 마이페이지 &gt; 출석 탭에서 다시 시도해주세요.</span>';
+        }
+
+        pop.hidden = false;
+        document.getElementById('attStreakNum').textContent = startStreak;
+
+        // 묻지 않고 바로 출석 처리 (어차피 접속하면 하는 일이라 한 단계를 없앴다)
+        fetch('/attendance/check', {
+          method: 'POST',
+          headers: { 'Accept': 'application/json' },
+          credentials: 'same-origin',
+        })
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(r); })
+          .then(function (data) {
+            if (data.already) document.querySelector('.att-title').textContent = '오늘 출석했어요';
+            celebrate(data);
+          })
+          .catch(fail);
       })();
     </script>
   <% } %>

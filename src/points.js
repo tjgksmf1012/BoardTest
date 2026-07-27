@@ -95,6 +95,38 @@ function streakBeforeToday(userId) {
   return currentStreak(userId, yesterday);
 }
 
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+const MILESTONES = [
+  { days: 3, points: 500 },
+  { days: 7, points: 1000 },
+  { days: 30, points: 3000 },
+];
+
+// 다음 연속 출석 보너스까지 얼마나 남았는지 (다 채웠으면 null)
+function nextMilestone(streak) {
+  const m = MILESTONES.find((x) => x.days > streak);
+  return m ? { ...m, remain: m.days - streak } : null;
+}
+
+// 출석부용 최근 7일 도장판. 항상 오른쪽 끝이 오늘이라 연속 기록이 한눈에 보인다.
+function recentWeek(userId) {
+  const p = (n) => String(n).padStart(2, '0');
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const key = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+    days.push({
+      key,
+      label: WEEKDAYS[d.getDay()],
+      date: d.getDate(),
+      checked: !!db.prepare('SELECT 1 FROM attendance WHERE user_id = ? AND day = ?').get(userId, key),
+      today: i === 0,
+    });
+  }
+  return days;
+}
+
 // 마이페이지 출석 탭에 필요한 이번 달 달력 + 연속 출석 현황
 function attendanceView(userId) {
   const now = new Date();
@@ -148,5 +180,6 @@ module.exports = {
   RULES, UNLOCK_THRESHOLDS,
   award, checkAttendance, countToday, todayStr,
   checkedToday, currentStreak, streakBeforeToday, attendanceView,
+  recentWeek, nextMilestone, MILESTONES,
   crossedUnlocks, nextUnlock, unlockMessage,
 };

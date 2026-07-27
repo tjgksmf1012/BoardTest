@@ -9,7 +9,7 @@ const db = require('./src/db');
 const seed = require('./src/seed');
 const { renderAvatar } = require('./src/avatars');
 const { unreadCount } = require('./src/notify');
-const { checkedToday, streakBeforeToday, todayStr } = require('./src/points');
+const { checkedToday, streakBeforeToday, todayStr, recentWeek } = require('./src/points');
 const { levelBadge, getLevel } = require('./src/levels');
 const { catTag } = require('./src/categories');
 const { icon } = require('./src/icons');
@@ -113,9 +113,10 @@ app.use((req, res, next) => {
   res.locals.flash = req.session.flash || null;
   delete req.session.flash;
 
-  // 오늘 아직 출석 전이면 그날 첫 화면에 출석 팝업을 띄운다 (하루 한 번)
+  // 오늘 아직 출석 전이면 그날 첫 화면에 출석부를 띄운다 (하루 한 번, 묻지 않고 바로 도장)
   res.locals.attendanceDue = res.locals.me ? !checkedToday(res.locals.me.id) : false;
   res.locals.attendanceStreak = res.locals.attendanceDue ? streakBeforeToday(res.locals.me.id) : 0;
+  res.locals.attendanceWeek = res.locals.attendanceDue ? recentWeek(res.locals.me.id) : [];
   res.locals.todayKey = todayStr();
   res.locals.currentPath = req.path; // 출석 후 보던 화면으로 돌아가기 위한 경로
 

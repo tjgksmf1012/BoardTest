@@ -1,7 +1,8 @@
 // 출석체크 / 포인트 내역 / 프로필(아바타 해금·장착)
 const express = require('express');
 const db = require('../db');
-const { RULES, checkAttendance, unlockMessage, nextUnlock, attendanceView } = require('../points');
+const { RULES, checkAttendance, unlockMessage, nextUnlock, attendanceView,
+  currentStreak, recentWeek, nextMilestone } = require('../points');
 const { AVATARS, BORDERS, TIER_INFO, canUseAvatar, canUseBorder, eventOpen } = require('../avatars');
 const { getLevel, achievements } = require('../levels');
 
@@ -31,15 +32,34 @@ function safeNext(value, fallback) {
 }
 
 router.post('/attendance/check', requireLogin, (req, res) => {
-  const result = checkAttendance(req.session.userId);
+  const userId = req.session.userId;
+  const result = checkAttendance(userId);
+  const total = result.already ? 0 : result.results.reduce((s, r) => s + r.awarded, 0);
+  const streak = result.already ? currentStreak(userId) : result.streak;
+
+  // 출석부 팝업은 화면 전환 없이 도장 찍는 연출을 해야 하므로 JSON으로 결과를 받는다
+  if (req.get('Accept') === 'application/json') {
+    const points = db.prepare('SELECT points FROM users WHERE id = ?').get(userId).points;
+    return res.json({
+      already: result.already,
+      awarded: total,
+      base: result.already ? 0 : RULES.attendance.amount,
+      bonus: Math.max(0, total - (result.already ? 0 : RULES.attendance.amount)),
+      streak,
+      week: recentWeek(userId),
+      next: nextMilestone(streak),
+      points,
+      unlocked: result.already ? [] : result.results.flatMap((r) => r.unlocked || []),
+    });
+  }
+
   if (result.already) {
     req.session.flash = '오늘은 이미 출석했어요. 내일 또 만나요!';
   } else {
-    const total = result.results.reduce((s, r) => s + r.awarded, 0);
     const bonus = result.results.length > 1 ? ` (${result.streak}일 연속 출석 보너스 포함!)` : '';
     req.session.flash = `출석 완료! +${total}P 적립됐어요.${bonus}` + unlockMessage(result.results);
   }
-  // 팝업에서 출석했으면 보던 화면 그대로, 마이페이지에서 했으면 출석 탭으로 돌아간다
+  // 마이페이지 출석 탭 등 일반 폼 전송은 기존처럼 화면을 되돌린다
   res.redirect(safeNext(req.body.next, '/profile#attendance'));
 });
 
