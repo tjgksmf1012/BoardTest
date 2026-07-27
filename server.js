@@ -9,6 +9,7 @@ const db = require('./src/db');
 const seed = require('./src/seed');
 const { renderAvatar } = require('./src/avatars');
 const { unreadCount } = require('./src/notify');
+const { checkedToday, streakBeforeToday, todayStr } = require('./src/points');
 const { levelBadge, getLevel } = require('./src/levels');
 const { catTag } = require('./src/categories');
 const { icon } = require('./src/icons');
@@ -111,6 +112,12 @@ app.use((req, res, next) => {
   res.locals.unread = res.locals.me ? unreadCount(res.locals.me.id) : 0;
   res.locals.flash = req.session.flash || null;
   delete req.session.flash;
+
+  // 오늘 아직 출석 전이면 그날 첫 화면에 출석 팝업을 띄운다 (하루 한 번)
+  res.locals.attendanceDue = res.locals.me ? !checkedToday(res.locals.me.id) : false;
+  res.locals.attendanceStreak = res.locals.attendanceDue ? streakBeforeToday(res.locals.me.id) : 0;
+  res.locals.todayKey = todayStr();
+  res.locals.currentPath = req.path; // 출석 후 보던 화면으로 돌아가기 위한 경로
 
   // 제재된 회원은 즉시 로그아웃 처리
   if (res.locals.me && res.locals.me.is_banned) {

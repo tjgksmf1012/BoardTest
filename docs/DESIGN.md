@@ -31,7 +31,8 @@
 - **레벨/배지**: 누적 포인트 레벨(새싹→전설), 업적 배지 8종
 - **알림**: 추천·댓글·답글·인기글·운영자추천 시 발송, 벨 뱃지·자동 읽음
 - **랭킹**: 포인트 TOP 20
-- **출석**: 캘린더, 연속 출석 보너스
+- **출석**: 그날 첫 접속 시 1회 안내 팝업(출석/닫으면 그날은 재노출 없음),
+  기록(캘린더·연속 출석 보너스)은 마이페이지 '출석' 탭
 - **운영자**: 공지, 운영자 추천글, 게시글 숨김/복구, 삭제, 신고 관리(글·댓글 반려/숨김/삭제),
   회원 관리(제재/해제)
 - **접근성/보안**: WCAG AA 색 대비, 키보드 포커스, 모션 최소화 존중,
@@ -70,7 +71,8 @@ comment_reports(id, comment_id→comments, user_id→users)  -- UNIQUE(comment_i
 | `POST /board/comments/:cid/like` · `/report` · `/delete` | 댓글 좋아요·신고·삭제 |
 | `POST /board/:id/admin-pick` · `/hide` · `/dismiss-reports` | 운영자 |
 | `POST /board/comments/:cid/dismiss-reports` | 운영자(댓글 신고 반려) |
-| `GET/POST /attendance(/check)` | 출석 |
+| `POST /attendance/check` | 출석 (완료 후 보던 화면으로 복귀) |
+| `GET /attendance` | 옛 주소 → `/profile#attendance` 리다이렉트 |
 | `GET /points` · `/ranking` · `/notifications` · `/profile` | 포인트·랭킹·알림·마이 |
 | `POST /profile/avatar` · `/border` | 아바타·테두리 장착 |
 | `GET /reports`, `GET /admin/members`, `POST /admin/members/:id/ban` | 운영 |

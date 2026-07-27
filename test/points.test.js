@@ -9,7 +9,8 @@ const path = require('path');
 process.env.DB_PATH = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'boardtest-')), 'test.db');
 
 const db = require('../src/db');
-const { award, checkAttendance, crossedUnlocks, todayStr } = require('../src/points');
+const { award, checkAttendance, crossedUnlocks, todayStr,
+  checkedToday, currentStreak, streakBeforeToday, attendanceView } = require('../src/points');
 
 let seq = 0;
 function makeUser() {
@@ -126,4 +127,30 @@ test('포인트 지급 시 해금 정보가 함께 반환됨', () => {
 
 test('오늘 날짜 형식이 YYYY-MM-DD', () => {
   assert.match(todayStr(), /^\d{4}-\d{2}-\d{2}$/);
+});
+
+test('출석 전에는 어제까지의 연속 기록을 보여준다', () => {
+  const u = makeUser();
+  const mark = (offset) => db.prepare('INSERT INTO attendance (user_id, day) VALUES (?, ?)').run(u, dayOffset(offset));
+  mark(-1); mark(-2); mark(-3); // 어제·그제·그그제 출석, 오늘은 아직
+
+  assert.equal(checkedToday(u), false);
+  // 오늘 기준으로 세면 0일이지만, 안내에는 어제까지 이어온 3일이 나와야 한다
+  assert.equal(currentStreak(u), 0);
+  assert.equal(streakBeforeToday(u), 3);
+
+  const view = attendanceView(u);
+  assert.equal(view.checkedToday, false);
+  assert.equal(view.streak, 3, '출석 전에는 어제까지의 연속일');
+
+  // 오늘 출석하면 4일째로 이어진다
+  checkAttendance(u);
+  assert.equal(checkedToday(u), true);
+  assert.equal(attendanceView(u).streak, 4);
+});
+
+test('연속이 끊겼으면 출석 전 연속 기록은 0', () => {
+  const u = makeUser();
+  db.prepare('INSERT INTO attendance (user_id, day) VALUES (?, ?)').run(u, dayOffset(-3));
+  assert.equal(streakBeforeToday(u), 0); // 어제 출석이 없으므로 끊김
 });

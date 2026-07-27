@@ -16,6 +16,7 @@ const PATHS = {
   report: '<path d="M12 3 2.5 20h19z"/><path d="M12 10v4"/><path d="M12 17h.01"/>',
   logout: '<path d="M14 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4"/><path d="M9 12h11"/><path d="M16 8l4 4-4 4"/>',
   image: '<rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M20 16l-4.5-4.5L6 20"/>',
+  coin: '<circle cx="12" cy="12" r="8.5"/><path d="M14.5 9.5a3 3 0 0 0-2.5-1.2c-1.5 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1 2-2.5 2a3 3 0 0 1-2.5-1.2"/><path d="M12 6.5v11"/>',
 };
 
 function icon(name, size = 20) {

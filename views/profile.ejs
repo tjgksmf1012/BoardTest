@@ -23,6 +23,7 @@
 
 <div class="ptab-bar">
   <button class="ptab on" type="button" data-target="info">내 정보</button>
+  <button class="ptab" type="button" data-target="attendance">출석</button>
   <button class="ptab" type="button" data-target="avatar">아바타 꾸미기</button>
 </div>
 
@@ -113,6 +114,63 @@
 </div>
 
 </div><%# /panel-info %>
+
+<div class="ptab-panel" id="panel-attendance">
+
+<div class="att-grid">
+  <div class="card att-card">
+    <div class="att-card-head">
+      <h2><%= att.year %>년 <%= att.month %>월</h2>
+      <% if (att.checkedToday) { %>
+        <span class="badge badge-hot">오늘 출석 완료</span>
+      <% } else { %>
+        <span class="badge badge-lock">오늘 출석 전</span>
+      <% } %>
+    </div>
+    <div class="calendar">
+      <% ['일','월','화','수','목','금','토'].forEach(function (d) { %>
+        <div class="cal-head"><%= d %></div>
+      <% }) %>
+      <% for (let i = 0; i < att.firstWeekday; i++) { %><div class="cal-cell empty-cell"></div><% } %>
+      <% for (let d = 1; d <= att.daysInMonth; d++) { %>
+        <div class="cal-cell <%= att.checkedDays.has(d) ? 'checked' : '' %> <%= d === att.today ? 'today' : '' %>">
+          <span class="cal-day"><%= d %></span>
+          <% if (att.checkedDays.has(d)) { %><span class="cal-stamp">✓</span><% } %>
+        </div>
+      <% } %>
+    </div>
+
+    <% if (att.checkedToday) { %>
+      <button class="btn btn-primary btn-block" disabled>오늘 출석 완료! 내일 또 만나요 ✓</button>
+    <% } else { %>
+      <form action="/attendance/check" method="post">
+        <input type="hidden" name="next" value="/profile">
+        <button class="btn btn-primary btn-block" type="submit">출석체크 하고 100P 받기</button>
+      </form>
+    <% } %>
+  </div>
+
+  <div class="card att-side">
+    <h2>연속 출석 현황</h2>
+    <% if (att.checkedToday) { %>
+      <p class="streak-now"><%- icon('flame', 18) %> 현재 <strong><%= att.streak %></strong>일 연속 출석 중</p>
+    <% } else if (att.streak > 0) { %>
+      <p class="streak-now"><%- icon('flame', 18) %> 어제까지 <strong><%= att.streak %></strong>일 연속</p>
+      <p class="muted att-keep">오늘 출석하면 <strong><%= att.streak + 1 %>일째</strong>로 이어져요!</p>
+    <% } else { %>
+      <p class="streak-now"><%- icon('flame', 18) %> 연속 출석 <strong>0</strong>일</p>
+      <p class="muted att-keep">오늘 출석하면 연속 기록이 시작돼요.</p>
+    <% } %>
+    <ul class="streak-list">
+      <li class="<%= att.streak >= 3 ? 'done' : '' %>"><span>3일 연속</span><strong>+500P</strong></li>
+      <li class="<%= att.streak >= 7 ? 'done' : '' %>"><span>7일 연속</span><strong>+1,000P</strong></li>
+      <li class="<%= att.streak >= 30 ? 'done' : '' %>"><span>30일 연속</span><strong>+3,000P</strong></li>
+    </ul>
+    <p class="muted">하루 출석하면 100P. 연속 출석이 끊기면 처음부터 다시 시작돼요.</p>
+  </div>
+</div>
+
+</div><%# /panel-attendance %>
 
 <div class="ptab-panel" id="panel-avatar">
 
@@ -223,10 +281,11 @@
     tabs.forEach(function (t) {
       t.addEventListener('click', function () {
         show(t.dataset.target);
-        history.replaceState(null, '', t.dataset.target === 'avatar' ? '#avatar' : '#info');
+        history.replaceState(null, '', '#' + t.dataset.target);
       });
     });
-    if (location.hash === '#avatar') show('avatar');
+    var open = location.hash.replace('#', '');
+    if (open && document.getElementById('panel-' + open)) show(open);
   })();
 </script>
 

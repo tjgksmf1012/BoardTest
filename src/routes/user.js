@@ -1,7 +1,7 @@
 // 출석체크 / 포인트 내역 / 프로필(아바타 해금·장착)
 const express = require('express');
 const db = require('../db');
-const { RULES, checkAttendance, unlockMessage, nextUnlock } = require('../points');
+const { RULES, checkAttendance, unlockMessage, nextUnlock, attendanceView } = require('../points');
 const { AVATARS, BORDERS, TIER_INFO, canUseAvatar, canUseBorder, eventOpen } = require('../avatars');
 const { getLevel, achievements } = require('../levels');
 
@@ -21,37 +21,14 @@ function requireLogin(req, res, next) {
 }
 
 // ---- 출석체크 --------------------------------------------------------------
-router.get('/attendance', requireLogin, (req, res) => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth(); // 0-based
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const firstWeekday = new Date(year, month, 1).getDay();
+// 출석은 하루 한 번뿐이라 별도 메뉴 대신 그날 첫 접속 시 안내 팝업으로 처리하고,
+// 달력·연속출석 기록은 마이페이지 '출석' 탭에서 본다. (옛 주소는 그쪽으로 넘긴다)
+router.get('/attendance', requireLogin, (req, res) => res.redirect('/profile#attendance'));
 
-  const prefix = `${year}-${String(month + 1).padStart(2, '0')}-%`;
-  const checkedDays = new Set(
-    db.prepare('SELECT day FROM attendance WHERE user_id = ? AND day LIKE ?')
-      .all(req.session.userId, prefix).map((r) => Number(r.day.slice(-2)))
-  );
-
-  // 오늘까지의 연속 출석일
-  let streak = 0;
-  const cursor = new Date();
-  const p = (n) => String(n).padStart(2, '0');
-  for (;;) {
-    const d = `${cursor.getFullYear()}-${p(cursor.getMonth() + 1)}-${p(cursor.getDate())}`;
-    if (!db.prepare('SELECT 1 FROM attendance WHERE user_id = ? AND day = ?').get(req.session.userId, d)) break;
-    streak++;
-    cursor.setDate(cursor.getDate() - 1);
-  }
-
-  res.render('attendance', {
-    year, month: month + 1, daysInMonth, firstWeekday,
-    checkedDays, today: now.getDate(),
-    checkedToday: checkedDays.has(now.getDate()),
-    streak,
-  });
-});
+// 폼에서 넘어온 복귀 주소가 우리 사이트 내부 경로일 때만 사용한다 (오픈 리다이렉트 방지)
+function safeNext(value, fallback) {
+  return typeof value === 'string' && /^\/[^/]/.test(value) ? value : fallback;
+}
 
 router.post('/attendance/check', requireLogin, (req, res) => {
   const result = checkAttendance(req.session.userId);
@@ -62,7 +39,8 @@ router.post('/attendance/check', requireLogin, (req, res) => {
     const bonus = result.results.length > 1 ? ` (${result.streak}일 연속 출석 보너스 포함!)` : '';
     req.session.flash = `출석 완료! +${total}P 적립됐어요.${bonus}` + unlockMessage(result.results);
   }
-  res.redirect('/attendance');
+  // 팝업에서 출석했으면 보던 화면 그대로, 마이페이지에서 했으면 출석 탭으로 돌아간다
+  res.redirect(safeNext(req.body.next, '/profile#attendance'));
 });
 
 // ---- 포인트 내역 -------------------------------------------------------------
@@ -192,6 +170,7 @@ router.get('/profile', requireLogin, (req, res) => {
   res.render('profile', {
     groups, borders, stats, badges, myPosts, myComments, myBookmarks,
     next: nextUnlock(me.points), level: getLevel(me.points),
+    att: attendanceView(me.id),
   });
 });
 

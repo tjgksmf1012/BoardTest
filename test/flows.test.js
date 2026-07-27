@@ -53,6 +53,57 @@ test('출석체크는 첫 회 +100P, 같은 날 재출석은 차단된다', asyn
   assert.equal(after, mid); // 변화 없음
 });
 
+test('출석 팝업은 출석 전에만 뜨고, 출석하면 그날은 뜨지 않는다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'attpop', '팝업이');
+  // 출석 전: 어느 화면에서든 팝업이 나온다
+  const before = await (await get('/board', jar)).text();
+  assert.ok(before.includes('id="attPop"'), '출석 전에는 팝업이 있어야 한다');
+  await post('/attendance/check', {}, jar);
+  // 출석 후: 서버가 판단하므로 브라우저 저장소와 무관하게 사라진다
+  const after = await (await get('/board', jar)).text();
+  assert.ok(!after.includes('id="attPop"'), '출석 후에는 팝업이 없어야 한다');
+});
+
+test('비로그인 상태에는 출석 팝업이 뜨지 않는다', async () => {
+  const html = await (await get('/board')).text();
+  assert.ok(!html.includes('id="attPop"'));
+});
+
+test('출석 후에는 폼에 담긴 원래 화면으로 돌아간다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'attback', '복귀자');
+  const res = await post('/attendance/check', { next: '/ranking' }, jar);
+  assert.equal(res.headers.get('location'), '/ranking');
+});
+
+test('출석 복귀 주소로 외부 주소를 넣어도 따라가지 않는다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'attevil', '침입자');
+  for (const bad of ['https://evil.example.com', '//evil.example.com', 'javascript:alert(1)']) {
+    const res = await post('/attendance/check', { next: bad }, jar);
+    assert.equal(res.headers.get('location'), '/profile#attendance', `막아야 함: ${bad}`);
+  }
+});
+
+test('옛 출석 주소는 마이페이지 출석 탭으로 넘어간다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'attold', '옛주소');
+  const res = await get('/attendance', jar);
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('location'), '/profile#attendance');
+});
+
+test('출석 기록은 마이페이지 출석 탭에서 확인된다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'attcal', '달력이');
+  await post('/attendance/check', {}, jar);
+  const html = await (await get('/profile', jar)).text();
+  assert.ok(html.includes('panel-attendance'), '출석 탭 패널이 있어야 한다');
+  assert.ok(html.includes('연속 출석 현황'));
+  assert.ok(html.includes('오늘 출석 완료'), '출석했으면 완료 상태로 보여야 한다');
+});
+
 test('댓글을 달면 +100P가 지급되고 글 작성자에게 알림이 생성된다', async () => {
   const author = makeJar(); await signup(author, 'cauth', '글쓴이');
   const p = await newPost(author, '댓글 받을 글');

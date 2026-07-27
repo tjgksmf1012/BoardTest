@@ -68,6 +68,57 @@ function award(userId, reason, detail) {
   };
 }
 
+// 오늘 이미 출석했는지 (매 요청마다 확인하므로 가벼운 단일 조회)
+function checkedToday(userId) {
+  return !!db.prepare('SELECT 1 FROM attendance WHERE user_id = ? AND day = ?')
+    .get(userId, todayStr());
+}
+
+// 기준일부터 거꾸로 세어 연속 출석일 수를 구한다 (기준일 미출석이면 0)
+function currentStreak(userId, from = new Date()) {
+  let streak = 0;
+  const cursor = new Date(from);
+  const p = (n) => String(n).padStart(2, '0');
+  for (;;) {
+    const d = `${cursor.getFullYear()}-${p(cursor.getMonth() + 1)}-${p(cursor.getDate())}`;
+    if (!db.prepare('SELECT 1 FROM attendance WHERE user_id = ? AND day = ?').get(userId, d)) break;
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+// 아직 출석 전이면 "어제까지" 이어온 연속 일수를 본다 (오늘 출석하면 +1일째가 되는 값)
+function streakBeforeToday(userId) {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return currentStreak(userId, yesterday);
+}
+
+// 마이페이지 출석 탭에 필요한 이번 달 달력 + 연속 출석 현황
+function attendanceView(userId) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-based
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstWeekday = new Date(year, month, 1).getDay();
+
+  const prefix = `${year}-${String(month + 1).padStart(2, '0')}-%`;
+  const checkedDays = new Set(
+    db.prepare('SELECT day FROM attendance WHERE user_id = ? AND day LIKE ?')
+      .all(userId, prefix).map((r) => Number(r.day.slice(-2)))
+  );
+  const done = checkedDays.has(now.getDate());
+
+  return {
+    year, month: month + 1, daysInMonth, firstWeekday,
+    checkedDays, today: now.getDate(),
+    checkedToday: done,
+    // 출석 전에는 어제까지의 기록을 보여줘야 "0일 연속"으로 보이지 않는다
+    streak: done ? currentStreak(userId) : streakBeforeToday(userId),
+  };
+}
+
 // 출석 처리: 오늘 출석 기록 + 100P, 연속 출석 3/7/30일 보너스
 function checkAttendance(userId) {
   const day = todayStr();
@@ -78,16 +129,7 @@ function checkAttendance(userId) {
   const results = [award(userId, 'attendance')];
 
   // 오늘을 포함해 연속으로 며칠 출석했는지 계산
-  let streak = 0;
-  const cursor = new Date();
-  const p = (n) => String(n).padStart(2, '0');
-  for (;;) {
-    const d = `${cursor.getFullYear()}-${p(cursor.getMonth() + 1)}-${p(cursor.getDate())}`;
-    const row = db.prepare('SELECT 1 FROM attendance WHERE user_id = ? AND day = ?').get(userId, d);
-    if (!row) break;
-    streak++;
-    cursor.setDate(cursor.getDate() - 1);
-  }
+  const streak = currentStreak(userId);
   if (streak === 3) results.push(award(userId, 'streak3'));
   if (streak === 7) results.push(award(userId, 'streak7'));
   if (streak === 30) results.push(award(userId, 'streak30'));
@@ -105,5 +147,6 @@ function unlockMessage(results) {
 module.exports = {
   RULES, UNLOCK_THRESHOLDS,
   award, checkAttendance, countToday, todayStr,
+  checkedToday, currentStreak, streakBeforeToday, attendanceView,
   crossedUnlocks, nextUnlock, unlockMessage,
 };
