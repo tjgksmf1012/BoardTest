@@ -50,10 +50,22 @@ router.post('/signup', (req, res) => {
   ).run(username, hashPassword(password), nickname);
 
   award(info.lastInsertRowid, 'signup'); // 회원가입 최초 1회 1,000P
-  req.session.userId = info.lastInsertRowid;
-  req.session.flash = '가입을 환영해요! 회원가입 포인트 +1,000P를 받았어요.';
-  res.redirect('/board');
+  startSession(req, info.lastInsertRowid, (err) => {
+    if (err) return res.render('signup', { error: '가입 처리 중 문제가 생겼어요. 다시 시도해주세요.', form });
+    req.session.flash = '가입을 환영해요! 회원가입 포인트 +1,000P를 받았어요.';
+    res.redirect('/board');
+  });
 });
+
+// 로그인·가입 시 세션 ID를 새로 발급한다.
+// 그대로 두면 공격자가 미리 심어둔 세션 ID로 로그인 상태를 가로챌 수 있다(세션 고정).
+function startSession(req, userId, done) {
+  req.session.regenerate((err) => {
+    if (err) return done(err);
+    req.session.userId = userId;
+    done();
+  });
+}
 
 // 열린 리다이렉트 방지: 같은 사이트 내부 경로만 허용
 function safeNext(next) {
@@ -105,8 +117,12 @@ router.post('/login', (req, res) => {
     return res.render('login', { error: '이용이 제한된 계정이에요. 운영자에게 문의해주세요.', form: { username }, next });
   }
   attempts.delete(key); // 성공 시 초기화
-  req.session.userId = user.id;
-  res.redirect(next);
+  startSession(req, user.id, (err) => {
+    if (err) {
+      return res.render('login', { error: '로그인 처리 중 문제가 생겼어요. 다시 시도해주세요.', form: { username }, next });
+    }
+    res.redirect(next);
+  });
 });
 
 router.post('/logout', (req, res) => {

@@ -9,6 +9,7 @@ const db = require('./src/db');
 const seed = require('./src/seed');
 const { renderAvatar } = require('./src/avatars');
 const { unreadCount } = require('./src/notify');
+const { startUploadsGc } = require('./src/uploads-gc');
 const { checkedToday, streakBeforeToday, todayStr, recentWeek } = require('./src/points');
 const { levelBadge, getLevel } = require('./src/levels');
 const { catTag } = require('./src/categories');
@@ -18,6 +19,7 @@ const boardRouter = require('./src/routes/board');
 const userRouter = require('./src/routes/user');
 
 seed(); // 최초 실행 시 데모 데이터 생성
+startUploadsGc(); // 어느 글에도 속하지 않는 오래된 업로드 파일을 주기적으로 정리
 
 // 목록에 쓰는 상대 시간 ("3시간 전"). 일주일이 지나면 날짜로 표시
 function timeAgo(dateStr) {

@@ -220,6 +220,45 @@ test('본문에서 지운 사진은 첨부 기록에서도 정리된다', async 
   assert.deepEqual(rows.map((r) => r.filename), ['a.png']);
 });
 
+test('사진은 5장까지만 넣을 수 있다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'imgmax', '장수제한');
+  const six = Array.from({ length: 6 }, (_, i) => `<p><img src="/uploads/x${i}.png"></p>`).join('');
+  await post('/board', {
+    category: '자유', title: '사진 6장 글', content_format: 'html', content: six,
+  }, jar);
+  assert.ok(!db.prepare("SELECT 1 FROM posts WHERE title = '사진 6장 글'").get(), '6장은 등록되면 안 된다');
+
+  const five = Array.from({ length: 5 }, (_, i) => `<p><img src="/uploads/y${i}.png"></p>`).join('');
+  await post('/board', {
+    category: '자유', title: '사진 5장 글', content_format: 'html', content: five,
+  }, jar);
+  assert.ok(db.prepare("SELECT 1 FROM posts WHERE title = '사진 5장 글'").get(), '5장은 등록돼야 한다');
+});
+
+test('검색어의 % _ 는 와일드카드가 아니라 글자로 취급된다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'srch2', '와일드');
+  await newPost(jar, '할인 50% 행사');
+  await newPost(jar, '와일드카드 없는 글');
+
+  // '%' 하나로 전체 글이 쏟아지면 안 된다
+  const all = await (await get('/board?q=' + encodeURIComponent('%'), jar)).text();
+  assert.ok(!all.includes('와일드카드 없는 글'), "'%'가 전체 검색이 되면 안 된다");
+  // 진짜 % 가 들어간 제목은 찾아진다
+  assert.ok(all.includes('할인 50% 행사'), '글자로서의 %는 검색돼야 한다');
+});
+
+test('로그인하면 세션 ID가 새로 발급된다 (세션 고정 방어)', async () => {
+  const jar = makeJar();
+  await get('/board', jar);          // 익명 세션 하나 받아두고
+  const before = jar.header().Cookie;
+  await signup(jar, 'sessfix', '세션이');
+  const after = jar.header().Cookie;
+  if (before) assert.notEqual(before, after, '로그인 후 세션 쿠키가 바뀌어야 한다');
+  assert.ok(after, '로그인 세션 쿠키가 있어야 한다');
+});
+
 test('사진이 있으면 글자가 없어도 등록된다', async () => {
   const jar = makeJar();
   await signup(jar, 'imgonly', '사진만');

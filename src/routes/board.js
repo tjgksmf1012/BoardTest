@@ -11,6 +11,7 @@ const { CATEGORIES, isValid: isValidCategory } = require('../categories');
 const { sanitizePostHtml, htmlToText, textToHtml, usedUploadFiles } = require('../richtext');
 
 const MAX_CONTENT = 5000; // 평문 기준 글자 수 제한
+const MAX_IMAGES = 5;     // 글 한 편에 넣을 수 있는 사진 수
 
 // 에디터가 보낸 본문을 저장 가능한 형태로 정리한다.
 // 서식 있는 글이면 정화한 HTML과 평문 사본을 함께 돌려준다.
@@ -18,12 +19,20 @@ function prepareContent(body) {
   if (body.content_format === 'html') {
     const html = sanitizePostHtml(body.content);
     const text = htmlToText(html);
+    const images = usedUploadFiles(html);
     // 이미지만 있고 글자가 없는 글도 허용해야 하므로 이미지 유무를 함께 본다
-    const empty = !text && usedUploadFiles(html).length === 0;
-    return { format: 'html', content: html, text, empty, tooLong: text.length > MAX_CONTENT };
+    return {
+      format: 'html', content: html, text,
+      empty: !text && images.length === 0,
+      tooLong: text.length > MAX_CONTENT,
+      tooManyImages: images.length > MAX_IMAGES,
+    };
   }
   const text = (body.content || '').trim();
-  return { format: 'text', content: text, text, empty: !text, tooLong: text.length > MAX_CONTENT };
+  return {
+    format: 'text', content: text, text,
+    empty: !text, tooLong: text.length > MAX_CONTENT, tooManyImages: false,
+  };
 }
 
 // 수정 화면의 에디터에 넣을 HTML.
@@ -110,15 +119,17 @@ router.get('/', (req, res) => {
 
   // 숨김 처리된 글은 일반 사용자에겐 안 보이고, 운영자에겐 목록에 표시(배지로 구분)
   const isAdmin = res.locals.me && res.locals.me.is_admin ? 1 : 0;
-  // 검색은 평문 사본을 본다 (HTML 태그 이름이 검색어에 걸리지 않도록)
-  const where = (q ? `AND (p.title LIKE @like OR COALESCE(p.content_text, p.content) LIKE @like)` : '')
+  // 검색은 평문 사본을 본다 (HTML 태그 이름이 검색어에 걸리지 않도록).
+  // LIKE의 와일드카드(% _)를 그대로 두면 '%' 한 글자로 전체 글이 검색되므로 이스케이프한다.
+  const where = (q ? `AND (p.title LIKE @like ESCAPE '\\' OR COALESCE(p.content_text, p.content) LIKE @like ESCAPE '\\')` : '')
     + (hot ? ' AND p.is_popular = 1' : '')
     + (category ? ' AND p.category = @category' : '')
     + ' AND (p.is_hidden = 0 OR @admin = 1)';
   const orderBy = sort === 'likes' ? 'like_count DESC, p.id DESC'
     : sort === 'views' ? 'p.views DESC, p.id DESC'
     : 'p.id DESC';
-  const params = { like: `%${q}%`, category, admin: isAdmin, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
+  const escapeLike = (v) => v.replace(/[\\%_]/g, (m) => '\\' + m);
+  const params = { like: `%${escapeLike(q)}%`, category, admin: isAdmin, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
   const total = db.prepare(
     `SELECT COUNT(*) AS c FROM posts p WHERE p.is_notice = 0 ${where}`
   ).get(params).c;
@@ -155,8 +166,26 @@ router.get('/new', requireLogin, (req, res) => {
   res.render('write', { post: null, images: [], error: null, categories: CATEGORIES, initialHtml: '' });
 });
 
+// 업로드 남용 방지: 한 사람이 10분에 30장까지 (글 한 편 5장 기준 넉넉한 한도)
+const uploadHits = new Map(); // userId -> { count, first }
+const UPLOAD_WINDOW_MS = 10 * 60 * 1000;
+const UPLOAD_MAX = 30;
+function uploadAllowed(userId) {
+  const now = Date.now();
+  const a = uploadHits.get(userId);
+  if (!a || now - a.first > UPLOAD_WINDOW_MS) {
+    uploadHits.set(userId, { count: 1, first: now });
+    return true;
+  }
+  a.count += 1;
+  return a.count <= UPLOAD_MAX;
+}
+
 // 에디터에서 사진을 고르면 즉시 올려 주소를 돌려준다 → 커서 위치에 바로 삽입
 router.post('/upload-image', requireLogin, (req, res) => {
+  if (!uploadAllowed(req.session.userId)) {
+    return res.status(429).json({ error: '사진을 너무 많이 올렸어요. 잠시 후 다시 시도해주세요.' });
+  }
   upload.single('image')(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: '이미지를 선택해주세요.' });
@@ -179,6 +208,7 @@ router.post('/', requireLogin, (req, res) => {
   if (!title || title.length > 50) return fail('제목은 1~50자로 입력해주세요.');
   if (body.empty) return fail('내용을 입력해주세요.');
   if (body.tooLong) return fail('내용은 5,000자 이내로 입력해주세요.');
+  if (body.tooManyImages) return fail(`사진은 최대 ${MAX_IMAGES}장까지 넣을 수 있어요.`);
 
   const info = db.prepare(`
     INSERT INTO posts (user_id, category, title, content, content_format, content_text,
@@ -425,6 +455,7 @@ router.post('/:id(\\d+)/edit', requireLogin, (req, res) => {
   if (!title || title.length > 50 || body.empty || body.tooLong) {
     return fail('제목(50자)과 내용(5,000자)을 확인해주세요.');
   }
+  if (body.tooManyImages) return fail(`사진은 최대 ${MAX_IMAGES}장까지 넣을 수 있어요.`);
 
   db.prepare(`UPDATE posts SET category = ?, title = ?, content = ?, content_format = ?,
               content_text = ?, block_comments = ?,
