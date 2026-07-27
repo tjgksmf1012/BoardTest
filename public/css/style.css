@@ -207,7 +207,8 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 .avatar.border-sunset::before { background: conic-gradient(#ffae34, #ff6b81, #ffd76b, #ffae34); }
 .avatar.border-heart { --glow: rgba(255, 110, 180, .55); }
 .avatar.border-heart::before { background: conic-gradient(#ff6eb4, #c86bff, #ff9ecb, #ff6eb4); }
-.avatar.border-neon svg, .avatar.border-sunset svg, .avatar.border-heart svg {
+.avatar.border-neon svg, .avatar.border-sunset svg, .avatar.border-heart svg,
+.avatar.border-neon img, .avatar.border-sunset img, .avatar.border-heart img {
   position: relative; border-radius: 50%; background: #fff;
 }
 

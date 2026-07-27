@@ -18,15 +18,16 @@ function seed() {
     "INSERT INTO point_logs (user_id, amount, reason, detail) VALUES (?, ?, 'signup', '회원가입')");
 
   // 운영자: admin / admin1234
+  // 데모 계정은 이미지가 준비된 기본 아바타를 장착 (실제 사진으로 통일)
   const admin = insertUser.run('admin', hashPassword('admin1234'), '운영자',
-    25000, 'outfit-01', 'border-sunset', 1).lastInsertRowid;
+    25000, 'basic-02', 'border-sunset', 1).lastInsertRowid;
 
   // 샘플 회원 (비밀번호는 모두 test1234)
   const pw = hashPassword('test1234');
   const cherry = insertUser.run('cherry', pw, '체리블라썸', 1800, 'basic-01', null, 0).lastInsertRowid;
-  const mint = insertUser.run('mint', pw, '민트소다', 6200, 'hair-02', null, 0).lastInsertRowid;
+  const mint = insertUser.run('mint', pw, '민트소다', 6200, 'basic-09', null, 0).lastInsertRowid;
   const street = insertUser.run('street', pw, '스트릿캡', 3400, 'basic-05', null, 0).lastInsertRowid;
-  const gold = insertUser.run('gold', pw, '골드웨이브', 12500, 'outfit-03', null, 0).lastInsertRowid;
+  const gold = insertUser.run('gold', pw, '골드웨이브', 12500, 'basic-06', null, 0).lastInsertRowid;
 
   // 각 회원의 포인트 총액과 적립 내역이 일치하도록 로그를 채워 넣는다
   const logRow = db.prepare(
