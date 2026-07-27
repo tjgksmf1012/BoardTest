@@ -6,6 +6,16 @@
   <title><%= typeof title !== 'undefined' && title ? title + ' · ' : '' %>포인트라운지</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%2300a99d'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white'%3EP%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="/css/style.css">
+  <script>
+    // 화면이 그려지기 전에 테마를 적용해야 밝은 화면이 번쩍이지 않는다.
+    // 저장된 선택이 없으면 기기 설정(prefers-color-scheme)을 그대로 따른다.
+    (function () {
+      try {
+        var t = localStorage.getItem('pl-theme');
+        if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
   <a class="skip-link" href="#main">본문 바로가기</a>
@@ -16,6 +26,10 @@
         <span class="logo-text">포인트<span>라운지</span></span>
       </a>
       <div class="topbar-user">
+        <button class="theme-btn" id="themeBtn" type="button" aria-label="화면 테마 바꾸기" title="화면 테마 바꾸기">
+          <span class="theme-ico theme-sun"><%- icon('sun', 20) %></span>
+          <span class="theme-ico theme-moon"><%- icon('moon', 20) %></span>
+        </button>
         <% if (me) { %>
           <a href="/notifications" class="bell" title="알림">
             <%- icon('bell', 22) %><% if (unread > 0) { %><span class="bell-badge"><%= unread > 99 ? '99+' : unread %></span><% } %>

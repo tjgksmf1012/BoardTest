@@ -16,10 +16,11 @@ function isValid(id) {
 }
 
 // 말머리 태그 HTML
+// 색은 인라인이 아니라 클래스로 준다 — 그래야 다크 모드에서 밝은 색으로 바꿔줄 수 있다.
 function catTag(id) {
   const c = byId.get(id);
   if (!c) return '';
-  return `<span class="cat-tag" style="color:${c.color};background:${c.color}1a">${c.id}</span>`;
+  return `<span class="cat-tag ${c.cls}">${c.id}</span>`;
 }
 
 module.exports = { CATEGORIES, isValid, catTag };
