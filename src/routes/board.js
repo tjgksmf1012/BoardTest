@@ -11,7 +11,7 @@ const { CATEGORIES, isValid: isValidCategory } = require('../categories');
 
 const router = express.Router();
 
-const UPLOAD_DIR = path.join(__dirname, '..', '..', 'uploads');
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 // 이미지 첨부: 최대 5장, JPG/PNG, 장당 10MB 이하 (기획안 그대로)

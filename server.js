@@ -53,18 +53,48 @@ app.use((req, res, next) => {
 
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use(session({
-  secret: SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
+// 업로드 폴더: 기본은 프로젝트 내 uploads, 읽기전용 서버리스(Vercel)에서는 /tmp 사용
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(UPLOAD_DIR));
+
+// 세션: 일반 서버(컨테이너·로컬)는 express-session,
+// 파일시스템·메모리가 요청마다 초기화되는 서버리스(Vercel)에서는 쿠키 기반 세션을 써서
+// 여러 인스턴스·콜드스타트에도 로그인이 유지되게 한다.
+if (process.env.VERCEL) {
+  const cookieSession = require('cookie-session');
+  const base = cookieSession({
+    name: 'sess',
+    secret: SESSION_SECRET,
     maxAge: 1000 * 60 * 60 * 24 * 7,
-    httpOnly: true,           // JS에서 쿠키 접근 차단(XSS 완화)
-    sameSite: 'lax',          // 타 사이트발 요청에 쿠키 미전송(CSRF 완화)
-    secure: isProd ? 'auto' : false, // HTTPS 요청일 때만 secure (프록시 뒤 HTTP도 안전하게 동작)
-  },
-}));
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: true,
+  });
+  // express-session API(destroy/regenerate) 호환 shim — 쿠키 세션엔 없어서 얹어준다
+  app.use((req, res, next) => base(req, res, () => {
+    if (req.session && typeof req.session.destroy !== 'function') {
+      Object.defineProperty(req.session, 'destroy', {
+        value: (cb) => { req.session = null; if (cb) cb(); }, enumerable: false,
+      });
+      Object.defineProperty(req.session, 'regenerate', {
+        value: (cb) => { if (cb) cb(); }, enumerable: false,
+      });
+    }
+    next();
+  }));
+} else {
+  app.use(session({
+    secret: SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+      httpOnly: true,           // JS에서 쿠키 접근 차단(XSS 완화)
+      sameSite: 'lax',          // 타 사이트발 요청에 쿠키 미전송(CSRF 완화)
+      secure: isProd ? 'auto' : false, // HTTPS 요청일 때만 secure (프록시 뒤 HTTP도 안전하게 동작)
+    },
+  }));
+}
 
 // 모든 뷰에서 쓰는 공통 데이터 (로그인 사용자, 아바타 렌더러, 플래시 메시지)
 app.use((req, res, next) => {

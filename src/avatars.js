@@ -273,15 +273,22 @@ function canUseBorder(user, borderId) {
 
 // public/avatars 폴더를 스캔해 아바타 id별 이미지 파일을 찾아둔다 (서버 시작 시 1회)
 const AVATAR_IMG_DIR = path.join(__dirname, '..', 'public', 'avatars');
+// 이미지 제공 경로. 기본은 로컬 정적 폴더(/avatars).
+// 읽기전용 서버리스(Vercel)에선 외부(GitHub raw 등) 주소로 대체할 수 있다.
+const AVATAR_BASE_URL = (process.env.AVATAR_BASE_URL || '/avatars').replace(/\/$/, '');
 const imageMap = new Map(); // avatarId -> 파일명
 function scanAvatarImages() {
   imageMap.clear();
-  let files = [];
-  try { files = fs.readdirSync(AVATAR_IMG_DIR); } catch { return; }
-  for (const f of files) {
-    const m = f.match(/^(.+)\.(png|jpe?g|webp)$/i);
-    if (m && avatarMap.has(m[1])) imageMap.set(m[1], f);
-  }
+  const add = (list) => {
+    for (const f of list) {
+      const m = f.match(/^(.+)\.(png|jpe?g|webp)$/i);
+      if (m && avatarMap.has(m[1]) && !imageMap.has(m[1])) imageMap.set(m[1], f);
+    }
+  };
+  // 1) 디스크 스캔 (로컬·컨테이너)
+  try { add(fs.readdirSync(AVATAR_IMG_DIR)); } catch { /* 폴더 없음 */ }
+  // 2) 매니페스트 보강 (이미지가 외부에 있어 디스크에 없을 때도 어떤 아바타가 이미지형인지 파악)
+  try { add(JSON.parse(fs.readFileSync(path.join(AVATAR_IMG_DIR, 'manifest.json'), 'utf8'))); } catch { /* 매니페스트 없음 */ }
 }
 scanAvatarImages();
 
@@ -293,7 +300,7 @@ function renderAvatar(avatarId, borderId, size = 44) {
   // 이미지 파일이 있으면 그걸 사용, 없으면 벡터로 폴백
   const img = imageMap.get(a.id);
   const inner = img
-    ? `<img src="/avatars/${encodeURIComponent(img)}" alt="" loading="lazy">`
+    ? `<img src="${AVATAR_BASE_URL}/${encodeURIComponent(img)}" alt="" loading="lazy">`
     : buildSvg(a.cfg);
   return `<span class="avatar${cls}" style="width:${size}px;height:${size}px">${inner}</span>`;
 }
