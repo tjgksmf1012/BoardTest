@@ -1,0 +1,17 @@
+# Render.com 배포 블루프린트 (무료 웹 서비스)
+# 사용법: render.com 로그인 → New → Blueprint → 이 저장소 선택 → Apply
+services:
+  - type: web
+    name: pointlounge
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /board
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true   # Render가 안전한 랜덤 값 자동 생성
+      - key: TZ
+        value: Asia/Seoul
