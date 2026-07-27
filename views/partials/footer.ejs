@@ -61,14 +61,41 @@
         var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
         var startStreak = <%= attendanceStreak %>;
 
+        // 팝업이 떠 있는 동안 키보드 포커스를 팝업 안에 가두고 배경 스크롤을 막는다
+        var lastFocused = document.activeElement;
+        function focusables() {
+          return Array.prototype.filter.call(
+            pop.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'),
+            function (el) { return !el.disabled && el.offsetParent !== null; }
+          );
+        }
+        function open() {
+          pop.hidden = false;
+          document.documentElement.classList.add('modal-open');
+          var f = focusables();
+          if (f.length) f[f.length - 1].focus(); // '확인' 버튼에 포커스
+        }
         function close() {
           pop.hidden = true;
+          document.documentElement.classList.remove('modal-open');
           try { localStorage.setItem(key, '1'); } catch (e) {}
+          if (lastFocused && lastFocused.focus) lastFocused.focus();
         }
         document.getElementById('attPopClose').addEventListener('click', close);
         document.getElementById('attPopDone').addEventListener('click', close);
         pop.addEventListener('click', function (e) { if (e.target === pop) close(); });
-        document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !pop.hidden) close(); });
+        document.addEventListener('keydown', function (e) {
+          if (pop.hidden) return;
+          if (e.key === 'Escape') { close(); return; }
+          if (e.key !== 'Tab') return;
+          // Tab이 팝업 밖으로 빠져나가지 않도록 순환시킨다
+          var f = focusables();
+          if (!f.length) return;
+          var first = f[0], last = f[f.length - 1];
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+          else if (!pop.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+        });
 
         // 숫자가 스르륵 올라가는 연출
         function countUp(el, to, ms) {
@@ -135,7 +162,7 @@
             '<span class="att-fail">잠시 후 마이페이지 &gt; 출석 탭에서 다시 시도해주세요.</span>';
         }
 
-        pop.hidden = false;
+        open();
         document.getElementById('attStreakNum').textContent = startStreak;
 
         // 묻지 않고 바로 출석 처리 (어차피 접속하면 하는 일이라 한 단계를 없앴다)

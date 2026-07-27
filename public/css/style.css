@@ -85,6 +85,9 @@ a:focus-visible, .chip:focus-visible, .tab:focus-visible, .ptab:focus-visible,
 .soft-scrollbar::-webkit-scrollbar-thumb:hover, .editor::-webkit-scrollbar-thumb:hover,
 .log-list::-webkit-scrollbar-thumb:hover { background: #d5d1c8; background-clip: content-box; }
 
+/* 모달이 떠 있는 동안 뒤 배경이 스크롤되지 않게 잠근다 */
+.modal-open, .modal-open body { overflow: hidden; }
+
 /* 페이지 자체가 옆으로 밀리는 일이 없도록 방어.
    overflow-x: hidden은 body를 스크롤 컨테이너로 만들어 상단바의 sticky를 깨뜨리므로
    스크롤 컨테이너를 만들지 않는 clip을 쓴다. */
