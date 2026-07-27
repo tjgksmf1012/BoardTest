@@ -52,6 +52,42 @@ a:focus-visible, .chip:focus-visible, .tab:focus-visible, .ptab:focus-visible,
   }
 }
 
+/* ---- 스크롤바 정책 ----
+   안드로이드 크롬 등은 스크롤 영역에 두꺼운 회색 막대를 상시 표시해서 UI가 지저분해진다.
+   가로로 미는 영역(도구 모음 등)은 막대를 완전히 숨기고 — 잘린 항목과 가장자리 그림자가
+   "더 있다"는 신호를 대신한다 — 세로 스크롤 영역은 얇고 은은하게만 보이게 한다. */
+/* (1) 막대를 완전히 숨기는 영역 — 가로로 미는 도구 모음 등 */
+.no-scrollbar, .editor-toolbar {
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar, .editor-toolbar::-webkit-scrollbar {
+  width: 0; height: 0; display: none;
+}
+
+/* (2) 세로로 길어지는 영역 — 위치는 알려주되 얇고 은은하게 */
+.soft-scrollbar, .editor, .log-list {
+  scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+}
+.soft-scrollbar::-webkit-scrollbar, .editor::-webkit-scrollbar, .log-list::-webkit-scrollbar {
+  width: 8px; height: 8px;
+}
+.soft-scrollbar::-webkit-scrollbar-track, .editor::-webkit-scrollbar-track,
+.log-list::-webkit-scrollbar-track { background: transparent; }
+.soft-scrollbar::-webkit-scrollbar-thumb, .editor::-webkit-scrollbar-thumb,
+.log-list::-webkit-scrollbar-thumb {
+  background: var(--line); border-radius: 999px;
+  border: 2px solid transparent; background-clip: content-box;
+}
+.soft-scrollbar::-webkit-scrollbar-thumb:hover, .editor::-webkit-scrollbar-thumb:hover,
+.log-list::-webkit-scrollbar-thumb:hover { background: #d5d1c8; background-clip: content-box; }
+
+/* 페이지 자체가 옆으로 밀리는 일이 없도록 방어.
+   overflow-x: hidden은 body를 스크롤 컨테이너로 만들어 상단바의 sticky를 깨뜨리므로
+   스크롤 컨테이너를 만들지 않는 clip을 쓴다. */
+body { overflow-x: clip; }
+/* 긴 URL·단어가 칸을 밀어내지 않도록 */
+.post-body, .post-preview, .editor, .comment-text { overflow-wrap: anywhere; }
+
 /* 아이콘 공통: 텍스트와 함께 쓸 때 세로 중앙 정렬 */
 .ico { display: inline-block; vertical-align: -0.18em; flex-shrink: 0; }
 .btn .ico { vertical-align: -0.2em; }
@@ -319,10 +355,8 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
   position: sticky; top: 0; z-index: 5;
   display: flex; align-items: center; gap: 6px;
   padding: 8px; background: var(--bg); border-bottom: 1px solid var(--line);
-  overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: thin;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
 }
-.editor-toolbar::-webkit-scrollbar { height: 4px; }
-.editor-toolbar::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
 .tb-group { display: flex; gap: 4px; flex-shrink: 0; padding-right: 6px; border-right: 1px solid var(--line); }
 .tb-group:last-child { border-right: none; padding-right: 0; }
 /* 사진 버튼은 툴바를 옆으로 밀어도 항상 보이게 오른쪽에 고정 (모바일에서 특히 중요) */
@@ -593,7 +627,9 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 
 /* ---- 말머리(카테고리) ---- */
 .cat-tag { display: inline-block; font-size: 11.5px; font-weight: 800; border-radius: 6px; padding: 1px 7px; vertical-align: 1px; margin-right: 2px; }
-.cat-chips { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; padding-bottom: 2px; }
+/* 말머리는 개수가 적으므로 가로 스크롤 대신 줄바꿈 — 스크롤바가 생기지 않고
+   화면 밖으로 숨는 항목도 없다 */
+.cat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .cat-select {
   border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; font-size: 14.5px;
   font-family: inherit; font-weight: 600; background: var(--card); color: var(--text);
