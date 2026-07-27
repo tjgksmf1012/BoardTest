@@ -112,8 +112,7 @@ router.get('/', (req, res) => {
   // 공지는 기본 목록에서만 상단 고정 (검색·인기글 필터 중엔 결과에 집중하도록 숨김)
   const notices = (q || hot) ? [] : db.prepare(`
     SELECT p.*, u.nickname, u.avatar_id, u.border_id,
-      (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count,
-      (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS like_count
+      (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count
     FROM posts p JOIN users u ON u.id = p.user_id
     WHERE p.is_notice = 1 ORDER BY p.id DESC`).all();
 
@@ -125,7 +124,7 @@ router.get('/', (req, res) => {
     + (hot ? ' AND p.is_popular = 1' : '')
     + (category ? ' AND p.category = @category' : '')
     + ' AND (p.is_hidden = 0 OR @admin = 1)';
-  const orderBy = sort === 'likes' ? 'like_count DESC, p.id DESC'
+  const orderBy = sort === 'likes' ? 'p.like_count DESC, p.id DESC'
     : sort === 'views' ? 'p.views DESC, p.id DESC'
     : 'p.id DESC';
   const escapeLike = (v) => v.replace(/[\\%_]/g, (m) => '\\' + m);
@@ -136,7 +135,6 @@ router.get('/', (req, res) => {
   const posts = db.prepare(`
     SELECT p.*, u.nickname, u.avatar_id, u.border_id,
       (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count,
-      (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS like_count,
       (SELECT COUNT(*) FROM post_images i WHERE i.post_id = p.id) AS image_count
     FROM posts p JOIN users u ON u.id = p.user_id
     WHERE p.is_notice = 0 ${where}
@@ -146,12 +144,11 @@ router.get('/', (req, res) => {
   let trending = [];
   if (page === 1 && !q && !hot && !category) {
     trending = db.prepare(`
-      SELECT p.id, p.title,
-        (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS like_count
+      SELECT p.id, p.title, p.like_count
       FROM posts p
       WHERE p.is_notice = 0 AND p.is_anonymous = 0 AND p.is_hidden = 0
         AND p.created_at >= datetime('now', 'localtime', '-7 days')
-      ORDER BY like_count DESC, p.id DESC LIMIT 5`).all()
+      ORDER BY p.like_count DESC, p.id DESC LIMIT 5`).all()
       .filter((t) => t.like_count > 0);
   }
 
@@ -233,7 +230,6 @@ router.post('/', requireLogin, (req, res) => {
 router.get('/:id(\\d+)', (req, res) => {
   const post = db.prepare(`
     SELECT p.*, u.nickname, u.avatar_id, u.border_id, u.points AS author_points,
-      (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS like_count,
       (SELECT COUNT(*) FROM reports r WHERE r.post_id = p.id) AS report_count
     FROM posts p JOIN users u ON u.id = p.user_id WHERE p.id = ?`).get(req.params.id);
   if (!post) return res.status(404).render('error', { message: '존재하지 않는 게시글이에요.' });
@@ -358,13 +354,14 @@ router.post('/:id(\\d+)/like', requireLogin, (req, res) => {
   } else {
     try {
       db.prepare('INSERT INTO likes (post_id, user_id) VALUES (?, ?)').run(post.id, req.session.userId);
+      db.prepare('UPDATE posts SET like_count = like_count + 1 WHERE id = ?').run(post.id);
       award(post.user_id, 'like_received', `추천받기 (게시글 #${post.id})`);
       notify(post.user_id, req.session.userId,
         `${res.locals.me.nickname}님이 회원님의 글을 추천했어요. (+10P)`, `/board/${post.id}`);
       req.session.flash = '추천했어요. 작성자에게 +10P가 적립됐어요.';
 
       // 추천 10개 이상이면 인기글 선정 (+1,000P, 최초 1회)
-      const likeCount = db.prepare('SELECT COUNT(*) AS c FROM likes WHERE post_id = ?').get(post.id).c;
+      const likeCount = db.prepare('SELECT like_count FROM posts WHERE id = ?').get(post.id).like_count;
       if (likeCount >= 10 && !post.is_popular) {
         db.prepare('UPDATE posts SET is_popular = 1 WHERE id = ?').run(post.id);
         award(post.user_id, 'popular', `인기글 선정 (게시글 #${post.id})`);

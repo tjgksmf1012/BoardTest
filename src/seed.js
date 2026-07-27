@@ -153,6 +153,9 @@ function seed() {
   db.prepare("UPDATE posts SET content = ?, content_format = 'html', content_text = ? WHERE id = ?")
     .run(richHtml, htmlToText(richHtml), p4);
 
+  // 추천을 직접 넣었으므로 글에 저장된 추천 수를 맞춰준다
+  db.exec('UPDATE posts SET like_count = (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id)');
+
   // 나머지 데모 글은 평문이므로 목록·검색용 평문 사본을 본문 그대로 채워둔다
   db.exec('UPDATE posts SET content_text = content WHERE content_text IS NULL');
 

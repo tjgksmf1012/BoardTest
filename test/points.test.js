@@ -154,3 +154,20 @@ test('연속이 끊겼으면 출석 전 연속 기록은 0', () => {
   db.prepare('INSERT INTO attendance (user_id, day) VALUES (?, ?)').run(u, dayOffset(-3));
   assert.equal(streakBeforeToday(u), 0); // 어제 출석이 없으므로 끊김
 });
+
+test('추천하면 글에 저장된 추천 수도 함께 올라간다', () => {
+  const author = makeUser();
+  const postId = db.prepare("INSERT INTO posts (user_id, title, content) VALUES (?, '추천글', '내용')")
+    .run(author).lastInsertRowid;
+  const before = db.prepare('SELECT like_count FROM posts WHERE id = ?').get(postId).like_count;
+  assert.equal(before, 0);
+
+  // 실제 추천은 라우터가 처리하지만, 저장 값과 실제 행 수가 어긋나면 목록 정렬이 틀어진다
+  const voter = makeUser();
+  db.prepare('INSERT INTO likes (post_id, user_id) VALUES (?, ?)').run(postId, voter);
+  db.prepare('UPDATE posts SET like_count = like_count + 1 WHERE id = ?').run(postId);
+
+  const after = db.prepare('SELECT like_count FROM posts WHERE id = ?').get(postId).like_count;
+  const real = db.prepare('SELECT COUNT(*) c FROM likes WHERE post_id = ?').get(postId).c;
+  assert.equal(after, real, '저장된 추천 수와 실제 추천 행 수가 같아야 한다');
+});

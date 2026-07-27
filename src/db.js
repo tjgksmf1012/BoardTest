@@ -140,7 +140,9 @@ CREATE INDEX IF NOT EXISTS idx_creports_comment ON comment_reports(comment_id);
 // CREATE TABLE IF NOT EXISTS는 이미 있는 테이블에 컬럼을 더해주지 않으므로 직접 확인한다.
 function addColumn(table, column, definition) {
   const has = db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
-  if (!has) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  if (has) return false;
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  return true;
 }
 
 // 본문 형식: 'text'(옛 글 — 그대로 이스케이프해 출력) / 'html'(에디터로 쓴 서식 있는 글)
@@ -150,4 +152,25 @@ addColumn('posts', 'content_text', 'TEXT');
 // 옛 글은 본문이 곧 평문이다
 db.exec("UPDATE posts SET content_text = content WHERE content_text IS NULL");
 
+// 추천 수를 글에 함께 저장한다(비정규화).
+// 매번 likes를 세어 정렬하면 글이 늘수록 전체를 훑어야 해서 목록이 느려진다.
+// 추천은 취소가 없어 값이 어긋날 일이 적고, 아래 인덱스로 정렬을 인덱스만으로 끝낼 수 있다.
+if (addColumn('posts', 'like_count', 'INTEGER NOT NULL DEFAULT 0')) {
+  db.exec('UPDATE posts SET like_count = (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id)');
+}
+
+// 정렬용 인덱스 — 추천순·조회순이 임시 정렬(TEMP B-TREE) 없이 앞에서 10건만 읽고 끝나게 한다
+// 그리고 페이지 수 계산용 COUNT가 본문까지 읽지 않고 인덱스만 훑도록 한다
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_posts_likes   ON posts(is_notice, like_count DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_views   ON posts(is_notice, views DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_visible ON posts(is_notice, is_hidden);
+`);
+
+// 추천 수가 어긋난 적이 있어도 기동 때 한 번 맞춰둔다 (데모 데이터 삽입 등)
+function syncLikeCounts() {
+  db.exec('UPDATE posts SET like_count = (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) WHERE like_count <> (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id)');
+}
+
 module.exports = db;
+module.exports.syncLikeCounts = syncLikeCounts;
