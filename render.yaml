@@ -9,6 +9,9 @@ services:
     startCommand: npm start
     healthCheckPath: /board
     envVars:
+      # Node를 안정 LTS로 고정 (기본값은 최신판을 물어와 better-sqlite3 미리빌드 바이너리가 없어 컴파일이 깨진다)
+      - key: NODE_VERSION
+        value: 22.11.0
       - key: NODE_ENV
         value: production
       - key: SESSION_SECRET
