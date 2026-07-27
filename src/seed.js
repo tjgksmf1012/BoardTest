@@ -1,6 +1,7 @@
 // 최초 실행 시 데모용 데이터 생성 (운영자 계정 + 공지 + 샘플 게시글)
 const db = require('./db');
 const { hashPassword } = require('./routes/auth');
+const { htmlToText } = require('./richtext');
 
 function seed() {
   if (db.prepare('SELECT COUNT(*) AS c FROM users').get().c > 0) return;
@@ -137,6 +138,23 @@ function seed() {
   // 댓글 신고 샘플 (p2의 첫 댓글에 1건)
   const insertCReport = db.prepare('INSERT INTO comment_reports (comment_id, user_id) VALUES (?, ?)');
   insertCReport.run(cm1, gold);
+
+  // 서식 에디터로 쓴 글 예시 한 건 (제목·굵게·목록·인용이 어떻게 보이는지 보여주는 용도)
+  const richHtml = [
+    '<h2>면접 전에 꼭 확인할 것</h2>',
+    '<p>알바 면접 다니면서 느낀 체크리스트를 정리했어요.</p>',
+    '<ul><li><strong>급여일</strong>이 언제인지</li><li><strong>주휴수당</strong> 지급 여부</li>',
+    '<li>수습 기간과 수습 시급</li><li>4대보험 가입 여부</li></ul>',
+    '<h3>특히 주휴수당</h3>',
+    '<p>주 15시간 이상 일하면 받을 수 있는데, <u>모르고 넘어가는 경우</u>가 많아요.</p>',
+    '<blockquote>계약서는 꼭 사진으로 찍어두세요. 나중에 문제가 생기면 유일한 증거가 됩니다.</blockquote>',
+    '<p>다들 좋은 곳에서 일하시길 바라요!</p>',
+  ].join('');
+  db.prepare("UPDATE posts SET content = ?, content_format = 'html', content_text = ? WHERE id = ?")
+    .run(richHtml, htmlToText(richHtml), p4);
+
+  // 나머지 데모 글은 평문이므로 목록·검색용 평문 사본을 본문 그대로 채워둔다
+  db.exec('UPDATE posts SET content_text = content WHERE content_text IS NULL');
 
   console.log('데모 데이터를 생성했어요. (운영자: admin / admin1234, 샘플 회원: cherry·mint·street·gold / test1234)');
 }

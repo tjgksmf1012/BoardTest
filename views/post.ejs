@@ -25,14 +25,18 @@
     </div>
   </div>
 
-  <div class="post-body"><%= post.content %></div>
-
-  <% if (images.length > 0) { %>
-    <div class="post-images">
-      <% images.forEach(function (img) { %>
-        <img src="/uploads/<%= img.filename %>" alt="첨부 이미지" loading="lazy">
-      <% }) %>
-    </div>
+  <% if (post.content_format === 'html') { %>
+    <%# 저장 시 정화(sanitize)된 HTML — 사진이 본문 안 원하는 위치에 들어간다 %>
+    <div class="post-body rich"><%- post.content %></div>
+  <% } else { %>
+    <div class="post-body"><%= post.content %></div>
+    <% if (images.length > 0) { %>
+      <div class="post-images">
+        <% images.forEach(function (img) { %>
+          <img src="/uploads/<%= img.filename %>" alt="첨부 이미지" loading="lazy">
+        <% }) %>
+      </div>
+    <% } %>
   <% } %>
 
   <div class="post-actions">

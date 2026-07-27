@@ -4,7 +4,7 @@
   <h1><%= post ? '글 수정' : '글쓰기' %></h1>
   <% if (error) { %><div class="alert"><%= error %></div><% } %>
 
-  <form method="post" enctype="multipart/form-data"
+  <form method="post" id="write-form"
         action="<%= post ? '/board/' + post.id + '/edit' : '/board' %>" class="form">
     <label><span>말머리 <span class="req">*</span></span>
       <select name="category" class="cat-select">
@@ -17,37 +17,49 @@
       <input type="text" name="title" maxlength="50" required
              placeholder="제목을 입력해주세요 (50자 이내)"
              value="<%= post ? post.title : '' %>"
-             oninput="counter(this, 'title-count', 50)">
+             oninput="counter(this.value.length, 'title-count', 50)">
       <span class="count" id="title-count"><%= post ? post.title.length : 0 %> / 50</span>
     </label>
 
-    <label><span>내용 <span class="req">*</span></span>
-      <textarea name="content" rows="12" maxlength="5000" required
-                placeholder="내용을 입력해주세요 (5,000자 이내)"
-                oninput="counter(this, 'content-count', 5000)"><%= post ? post.content : '' %></textarea>
-      <span class="count" id="content-count"><%= post ? post.content.length : 0 %> / 5,000</span>
-    </label>
+    <div class="field">
+      <span class="field-label">내용 <span class="req">*</span></span>
 
-    <div class="file-field">
-      <span class="file-label">사진 첨부 <span class="muted">(선택 · 최대 5장 · JPG, PNG · 장당 10MB 이하)</span></span>
-      <label class="file-btn" for="image-input"><%- icon('image', 16) %> 사진 선택하기</label>
-      <input type="file" id="image-input" name="images" accept="image/jpeg,image/png" multiple hidden>
-    </div>
-
-    <% if (post && images && images.length > 0) { %>
-      <div class="img-previews" id="existing-previews">
-        <% images.forEach(function (img) { %>
-          <div class="img-preview" data-existing="1">
-            <img src="/uploads/<%= img.filename %>" alt="첨부 이미지">
-            <label class="img-remove-check" title="삭제">
-              <input type="checkbox" name="remove_images" value="<%= img.id %>"
-                     onchange="this.closest('.img-preview').classList.toggle('removing', this.checked)">✕
-            </label>
+      <div class="editor-wrap">
+        <div class="editor-toolbar" role="toolbar" aria-label="글 서식 도구">
+          <div class="tb-group">
+            <button type="button" class="tb-btn" data-block="p" title="본문">본문</button>
+            <button type="button" class="tb-btn" data-block="h2" title="제목">제목</button>
+            <button type="button" class="tb-btn tb-sub" data-block="h3" title="소제목">소제목</button>
           </div>
-        <% }) %>
+          <div class="tb-group">
+            <button type="button" class="tb-btn tb-bold" data-cmd="bold" title="굵게">가</button>
+            <button type="button" class="tb-btn tb-under" data-cmd="underline" title="밑줄">가</button>
+          </div>
+          <div class="tb-group">
+            <button type="button" class="tb-btn" data-cmd="insertUnorderedList" title="목록">• 목록</button>
+            <button type="button" class="tb-btn" data-cmd="insertOrderedList" title="번호 목록">1. 번호</button>
+            <button type="button" class="tb-btn" data-block="blockquote" title="인용">❝ 인용</button>
+          </div>
+          <div class="tb-group tb-photo-group">
+            <button type="button" class="tb-btn tb-photo" id="photo-btn" title="사진 넣기">
+              <%- icon('image', 16) %> 사진
+            </button>
+          </div>
+        </div>
+
+        <div id="editor" class="editor" contenteditable="true" role="textbox" aria-multiline="true"
+             aria-label="내용" data-placeholder="내용을 입력해주세요. 사진은 원하는 위치에 커서를 두고 [사진]을 누르면 들어가요."><%- initialHtml %></div>
       </div>
-    <% } %>
-    <div class="img-previews" id="new-previews"></div>
+
+      <div class="editor-foot">
+        <span class="editor-hint">글자 위에 커서를 두고 서식 버튼을 누르면 적용돼요</span>
+        <span class="count" id="content-count">0 / 5,000</span>
+      </div>
+
+      <input type="hidden" name="content" id="content-input">
+      <input type="hidden" name="content_format" value="html">
+      <input type="file" id="photo-input" accept="image/jpeg,image/png" hidden>
+    </div>
 
     <div class="write-options">
       <% if (!post) { %>
@@ -70,54 +82,138 @@
 </div>
 
 <script>
-  function counter(el, id, max) {
-    document.getElementById(id).textContent = el.value.length + ' / ' + max.toLocaleString();
+(function () {
+  var editor = document.getElementById('editor');
+  var form = document.getElementById('write-form');
+  var contentInput = document.getElementById('content-input');
+  var photoBtn = document.getElementById('photo-btn');
+  var photoInput = document.getElementById('photo-input');
+  var MAX = 5000;
+
+  // Enter로 줄을 바꿀 때 <div> 대신 <p>가 생기도록 (서버 허용 태그와 맞춤)
+  try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
+
+  window.counter = function (len, id, max) {
+    document.getElementById(id).textContent = len + ' / ' + max.toLocaleString();
+  };
+
+  function textLength() {
+    return (editor.innerText || '').replace(/\s+/g, ' ').trim().length;
+  }
+  function updateCount() {
+    var n = textLength();
+    var el = document.getElementById('content-count');
+    el.textContent = n.toLocaleString() + ' / 5,000';
+    el.classList.toggle('over', n > MAX);
+    editor.classList.toggle('is-empty', !editor.textContent.trim() && !editor.querySelector('img'));
   }
 
-  // 이미지 첨부 미리보기 + 개별 삭제 (DataTransfer로 FileList 재구성)
-  var imageInput = document.getElementById('image-input');
-  var selectedFiles = [];
-
-  imageInput.addEventListener('change', function () {
-    var existing = document.querySelectorAll('#existing-previews .img-preview:not(.removing)').length;
-    var incoming = Array.from(imageInput.files);
-    for (var i = 0; i < incoming.length; i++) {
-      if (selectedFiles.length + existing >= 5) { alert('사진은 최대 5장까지 첨부할 수 있어요.'); break; }
-      if (incoming[i].size > 10 * 1024 * 1024) { alert(incoming[i].name + ' 은(는) 10MB를 넘어 첨부할 수 없어요.'); continue; }
-      selectedFiles.push(incoming[i]);
-    }
-    syncFiles();
+  // ---- 커서 위치 기억 (사진 버튼을 누르면 포커스가 잠깐 떠나기 때문) ----
+  var savedRange = null;
+  function saveRange() {
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount && editor.contains(sel.anchorNode)) savedRange = sel.getRangeAt(0);
+  }
+  function restoreRange() {
+    editor.focus();
+    if (!savedRange) return;
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedRange);
+  }
+  document.addEventListener('selectionchange', function () {
+    if (document.activeElement === editor) { saveRange(); syncToolbar(); }
   });
 
-  function removeNewImage(idx) {
-    selectedFiles.splice(idx, 1);
-    syncFiles();
+  // ---- 서식 버튼 ----
+  function exec(cmd, value) {
+    restoreRange();
+    document.execCommand(cmd, false, value || null);
+    saveRange();
+    updateCount();
+    syncToolbar();
   }
+  document.querySelectorAll('.tb-btn[data-cmd]').forEach(function (btn) {
+    // mousedown/touchstart에서 막아야 에디터의 선택 영역이 유지된다
+    btn.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    btn.addEventListener('click', function () { exec(btn.dataset.cmd); });
+  });
+  document.querySelectorAll('.tb-btn[data-block]').forEach(function (btn) {
+    btn.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    btn.addEventListener('click', function () { exec('formatBlock', '<' + btn.dataset.block + '>'); });
+  });
 
-  function syncFiles() {
-    var dt = new DataTransfer();
-    selectedFiles.forEach(function (f) { dt.items.add(f); });
-    imageInput.files = dt.files;
-
-    var box = document.getElementById('new-previews');
-    box.innerHTML = '';
-    selectedFiles.forEach(function (f, idx) {
-      var div = document.createElement('div');
-      div.className = 'img-preview';
-      var img = document.createElement('img');
-      img.src = URL.createObjectURL(f);
-      img.onload = function () { URL.revokeObjectURL(img.src); };
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'img-remove-check';
-      btn.textContent = '✕';
-      btn.title = '삭제';
-      btn.onclick = function () { removeNewImage(idx); };
-      div.appendChild(img);
-      div.appendChild(btn);
-      box.appendChild(div);
+  // 현재 커서 위치의 서식을 버튼에 표시
+  function syncToolbar() {
+    document.querySelectorAll('.tb-btn[data-cmd]').forEach(function (b) {
+      var on = false;
+      try { on = document.queryCommandState(b.dataset.cmd); } catch (e) {}
+      b.classList.toggle('on', !!on);
+    });
+    var block = '';
+    try { block = (document.queryCommandValue('formatBlock') || '').toLowerCase(); } catch (e) {}
+    document.querySelectorAll('.tb-btn[data-block]').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.block === block);
     });
   }
+
+  // ---- 사진: 고른 즉시 올리고 커서 자리에 삽입 ----
+  photoBtn.addEventListener('mousedown', function () { saveRange(); });
+  photoBtn.addEventListener('click', function () { saveRange(); photoInput.click(); });
+
+  photoInput.addEventListener('change', function () {
+    var file = photoInput.files && photoInput.files[0];
+    photoInput.value = ''; // 같은 파일을 다시 골라도 동작하도록 초기화
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) { alert('사진은 장당 10MB까지 올릴 수 있어요.'); return; }
+
+    photoBtn.disabled = true;
+    photoBtn.classList.add('loading');
+    var data = new FormData();
+    data.append('image', file);
+    fetch('/board/upload-image', { method: 'POST', body: data, credentials: 'same-origin' })
+      .then(function (r) { return r.json().then(function (j) { return r.ok ? j : Promise.reject(j); }); })
+      .then(function (j) {
+        restoreRange();
+        // 사진 뒤에 이어서 쓸 수 있도록 빈 문단을 함께 넣는다
+        document.execCommand('insertHTML', false,
+          '<p><img src="' + j.url + '" alt="첨부 이미지"></p><p><br></p>');
+        saveRange();
+        updateCount();
+      })
+      .catch(function (e) { alert((e && e.error) || '사진을 올리지 못했어요. 잠시 후 다시 시도해주세요.'); })
+      .finally(function () { photoBtn.disabled = false; photoBtn.classList.remove('loading'); });
+  });
+
+  // ---- 붙여넣기는 글자만 (다른 사이트 서식이 딸려와 깨지는 것 방지) ----
+  editor.addEventListener('paste', function (e) {
+    e.preventDefault();
+    var text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    document.execCommand('insertText', false, text);
+  });
+
+  editor.addEventListener('input', updateCount);
+  editor.addEventListener('focus', saveRange);
+
+  // ---- 전송 ----
+  form.addEventListener('submit', function (e) {
+    var hasImage = !!editor.querySelector('img');
+    if (!textLength() && !hasImage) {
+      e.preventDefault();
+      alert('내용을 입력해주세요.');
+      editor.focus();
+      return;
+    }
+    if (textLength() > MAX) {
+      e.preventDefault();
+      alert('내용은 5,000자 이내로 입력해주세요.');
+      return;
+    }
+    contentInput.value = editor.innerHTML;
+  });
+
+  updateCount();
+})();
 </script>
 
 <%- include('partials/footer') %>

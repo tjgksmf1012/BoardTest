@@ -104,6 +104,83 @@ test('출석 기록은 마이페이지 출석 탭에서 확인된다', async () 
   assert.ok(html.includes('오늘 출석 완료'), '출석했으면 완료 상태로 보여야 한다');
 });
 
+test('서식 있는 글은 정화되어 저장되고 본문에 그대로 출력된다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'rich1', '서식이');
+  await post('/board', {
+    category: '자유', title: '서식 글',
+    content_format: 'html',
+    content: '<h2>소제목</h2><p><strong>굵게</strong></p><script>alert(1)</script>',
+  }, jar);
+  const p = db.prepare("SELECT * FROM posts WHERE title = '서식 글'").get();
+  assert.equal(p.content_format, 'html');
+  assert.ok(!p.content.includes('<script'), '스크립트는 저장되면 안 된다');
+  assert.ok(p.content.includes('<h2>소제목</h2>'));
+  assert.equal(p.content_text, '소제목 굵게', '평문 사본이 함께 저장돼야 한다');
+
+  const html = await (await get(`/board/${p.id}`, jar)).text();
+  assert.ok(html.includes('<h2>소제목</h2>'), '서식이 살아서 출력돼야 한다');
+  assert.ok(!html.includes('alert(1)'));
+});
+
+test('옛 평문 글은 예전처럼 이스케이프되어 안전하게 나온다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'plain1', '평문이');
+  await post('/board', { category: '자유', title: '평문 글', content: '<b>태그처럼 보이는 글</b>' }, jar);
+  const p = db.prepare("SELECT * FROM posts WHERE title = '평문 글'").get();
+  assert.equal(p.content_format, 'text');
+  const html = await (await get(`/board/${p.id}`, jar)).text();
+  assert.ok(html.includes('&lt;b&gt;'), '평문 글의 꺾쇠는 이스케이프돼야 한다');
+});
+
+test('검색은 HTML 태그 이름에 걸리지 않는다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'srch1', '검색이');
+  await post('/board', {
+    category: '자유', title: '검색 대상 글', content_format: 'html',
+    content: '<blockquote>인용한 문장</blockquote>',
+  }, jar);
+  const byTag = await (await get('/board?q=blockquote', jar)).text();
+  assert.ok(!byTag.includes('검색 대상 글'), '태그 이름으로는 검색되면 안 된다');
+  const byWord = await (await get('/board?q=' + encodeURIComponent('인용한'), jar)).text();
+  assert.ok(byWord.includes('검색 대상 글'), '본문 낱말로는 검색돼야 한다');
+});
+
+test('본문에서 지운 사진은 첨부 기록에서도 정리된다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'imgs1', '사진이');
+  await post('/board', {
+    category: '자유', title: '사진 글', content_format: 'html',
+    content: '<p><img src="/uploads/a.png"></p><p><img src="/uploads/b.png"></p>',
+  }, jar);
+  const p = db.prepare("SELECT * FROM posts WHERE title = '사진 글'").get();
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM post_images WHERE post_id = ?').get(p.id).c, 2);
+
+  // 한 장만 남기고 수정
+  await post(`/board/${p.id}/edit`, {
+    category: '자유', title: '사진 글', content_format: 'html',
+    content: '<p><img src="/uploads/a.png"></p>',
+  }, jar);
+  const rows = db.prepare('SELECT filename FROM post_images WHERE post_id = ?').all(p.id);
+  assert.deepEqual(rows.map((r) => r.filename), ['a.png']);
+});
+
+test('사진이 있으면 글자가 없어도 등록된다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'imgonly', '사진만');
+  await post('/board', {
+    category: '자유', title: '사진만 있는 글', content_format: 'html',
+    content: '<p><img src="/uploads/only.png"></p>',
+  }, jar);
+  assert.ok(db.prepare("SELECT 1 FROM posts WHERE title = '사진만 있는 글'").get());
+});
+
+test('사진 업로드는 로그인해야 쓸 수 있다', async () => {
+  const res = await post('/board/upload-image', {});
+  assert.equal(res.status, 302);
+  assert.ok((res.headers.get('location') || '').startsWith('/login'));
+});
+
 test('댓글을 달면 +100P가 지급되고 글 작성자에게 알림이 생성된다', async () => {
   const author = makeJar(); await signup(author, 'cauth', '글쓴이');
   const p = await newPost(author, '댓글 받을 글');

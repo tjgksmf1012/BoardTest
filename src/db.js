@@ -136,4 +136,18 @@ CREATE INDEX IF NOT EXISTS idx_reports_post    ON reports(post_id);
 CREATE INDEX IF NOT EXISTS idx_creports_comment ON comment_reports(comment_id);
 `);
 
+// ---- 마이그레이션 (기존 DB에 새 컬럼 추가) ------------------------------------
+// CREATE TABLE IF NOT EXISTS는 이미 있는 테이블에 컬럼을 더해주지 않으므로 직접 확인한다.
+function addColumn(table, column, definition) {
+  const has = db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
+  if (!has) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
+// 본문 형식: 'text'(옛 글 — 그대로 이스케이프해 출력) / 'html'(에디터로 쓴 서식 있는 글)
+addColumn('posts', 'content_format', "TEXT NOT NULL DEFAULT 'text'");
+// 목록 미리보기·검색용 평문 사본 (HTML 태그가 검색에 걸리지 않도록)
+addColumn('posts', 'content_text', 'TEXT');
+// 옛 글은 본문이 곧 평문이다
+db.exec("UPDATE posts SET content_text = content WHERE content_text IS NULL");
+
 module.exports = db;

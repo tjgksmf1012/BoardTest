@@ -8,6 +8,52 @@ const db = require('../db');
 const { award, unlockMessage } = require('../points');
 const { notify } = require('../notify');
 const { CATEGORIES, isValid: isValidCategory } = require('../categories');
+const { sanitizePostHtml, htmlToText, textToHtml, usedUploadFiles } = require('../richtext');
+
+const MAX_CONTENT = 5000; // 평문 기준 글자 수 제한
+
+// 에디터가 보낸 본문을 저장 가능한 형태로 정리한다.
+// 서식 있는 글이면 정화한 HTML과 평문 사본을 함께 돌려준다.
+function prepareContent(body) {
+  if (body.content_format === 'html') {
+    const html = sanitizePostHtml(body.content);
+    const text = htmlToText(html);
+    // 이미지만 있고 글자가 없는 글도 허용해야 하므로 이미지 유무를 함께 본다
+    const empty = !text && usedUploadFiles(html).length === 0;
+    return { format: 'html', content: html, text, empty, tooLong: text.length > MAX_CONTENT };
+  }
+  const text = (body.content || '').trim();
+  return { format: 'text', content: text, text, empty: !text, tooLong: text.length > MAX_CONTENT };
+}
+
+// 수정 화면의 에디터에 넣을 HTML.
+// 옛 평문 글은 문단으로 바꾸고, 아래에 따로 붙어 있던 사진도 본문 안으로 옮겨
+// 사용자가 위치를 자유롭게 바꿀 수 있게 한다.
+function editableHtml(post, images) {
+  if (post.content_format === 'html') return post.content;
+  const paragraphs = textToHtml(post.content);
+  const imgs = (images || [])
+    .map((i) => `<p><img src="/uploads/${i.filename}" alt="첨부 이미지"></p>`).join('');
+  return sanitizePostHtml(paragraphs + imgs);
+}
+
+// 본문에 실제로 남아 있는 이미지만 post_images에 유지한다 (글 삭제 시 파일 정리용)
+function syncPostImages(postId, format, html) {
+  if (format !== 'html') return;
+  const used = usedUploadFiles(html);
+  const rows = db.prepare('SELECT * FROM post_images WHERE post_id = ?').all(postId);
+  // 본문에서 빠진 이미지는 레코드와 파일을 정리
+  rows.forEach((r) => {
+    if (!used.includes(r.filename)) {
+      db.prepare('DELETE FROM post_images WHERE id = ?').run(r.id);
+      fs.rm(path.join(UPLOAD_DIR, r.filename), { force: true }, () => {});
+    }
+  });
+  // 새로 들어온 이미지는 레코드 추가
+  const known = rows.map((r) => r.filename);
+  const insert = db.prepare('INSERT INTO post_images (post_id, filename) VALUES (?, ?)');
+  used.forEach((f) => { if (!known.includes(f)) insert.run(postId, f); });
+}
 
 const router = express.Router();
 
@@ -64,7 +110,8 @@ router.get('/', (req, res) => {
 
   // 숨김 처리된 글은 일반 사용자에겐 안 보이고, 운영자에겐 목록에 표시(배지로 구분)
   const isAdmin = res.locals.me && res.locals.me.is_admin ? 1 : 0;
-  const where = (q ? `AND (p.title LIKE @like OR p.content LIKE @like)` : '')
+  // 검색은 평문 사본을 본다 (HTML 태그 이름이 검색어에 걸리지 않도록)
+  const where = (q ? `AND (p.title LIKE @like OR COALESCE(p.content_text, p.content) LIKE @like)` : '')
     + (hot ? ' AND p.is_popular = 1' : '')
     + (category ? ' AND p.category = @category' : '')
     + ' AND (p.is_hidden = 0 OR @admin = 1)';
@@ -105,41 +152,51 @@ router.get('/', (req, res) => {
 
 // ---- 글쓰기 ----------------------------------------------------------------
 router.get('/new', requireLogin, (req, res) => {
-  res.render('write', { post: null, images: [], error: null, categories: CATEGORIES });
+  res.render('write', { post: null, images: [], error: null, categories: CATEGORIES, initialHtml: '' });
 });
 
-router.post('/', requireLogin, (req, res) => {
-  upload.array('images', 5)(req, res, (err) => {
-    const fail = (msg) => res.render('write', { post: null, images: [], error: msg, categories: CATEGORIES });
-    if (err) return fail(err.message);
-
-    const title = (req.body.title || '').trim();
-    const content = (req.body.content || '').trim();
-    const category = isValidCategory(req.body.category) ? req.body.category : '자유';
-    const isAnonymous = req.body.is_anonymous ? 1 : 0;
-    const blockComments = req.body.block_comments ? 1 : 0;
-    const isNotice = req.body.is_notice && res.locals.me.is_admin ? 1 : 0;
-
-    if (!title || title.length > 50) return fail('제목은 1~50자로 입력해주세요.');
-    if (!content || content.length > 5000) return fail('내용은 1~5,000자로 입력해주세요.');
-
-    const info = db.prepare(`
-      INSERT INTO posts (user_id, category, title, content, is_anonymous, block_comments, is_notice)
-      VALUES (?, ?, ?, ?, ?, ?, ?)`
-    ).run(req.session.userId, category, title, content, isAnonymous, blockComments, isNotice);
-
-    const insertImage = db.prepare('INSERT INTO post_images (post_id, filename) VALUES (?, ?)');
-    (req.files || []).forEach((f) => insertImage.run(info.lastInsertRowid, f.filename));
-
-    // 일반글 300P(하루 3개), 익명글 100P(하루 3개)
-    if (!isNotice) {
-      const r = award(req.session.userId, isAnonymous ? 'anon_post' : 'post');
-      req.session.flash = r.limited
-        ? '게시글이 등록됐어요. (오늘 게시글 포인트 한도를 모두 받았어요)'
-        : `게시글을 등록했어요. +${r.awarded}P 적립됐어요.` + unlockMessage([r]);
-    }
-    res.redirect(`/board/${info.lastInsertRowid}`);
+// 에디터에서 사진을 고르면 즉시 올려 주소를 돌려준다 → 커서 위치에 바로 삽입
+router.post('/upload-image', requireLogin, (req, res) => {
+  upload.single('image')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.file) return res.status(400).json({ error: '이미지를 선택해주세요.' });
+    res.json({ url: `/uploads/${req.file.filename}` });
   });
+});
+
+// 사진은 에디터에서 미리 올라가 본문 안에 들어오므로, 글 저장은 일반 폼 전송으로 처리한다
+router.post('/', requireLogin, (req, res) => {
+  const title = (req.body.title || '').trim();
+  const body = prepareContent(req.body);
+  const category = isValidCategory(req.body.category) ? req.body.category : '자유';
+  const isAnonymous = req.body.is_anonymous ? 1 : 0;
+  const blockComments = req.body.block_comments ? 1 : 0;
+  const isNotice = req.body.is_notice && res.locals.me.is_admin ? 1 : 0;
+  const fail = (msg) => res.render('write', {
+    post: null, images: [], error: msg, categories: CATEGORIES, initialHtml: body.content,
+  });
+
+  if (!title || title.length > 50) return fail('제목은 1~50자로 입력해주세요.');
+  if (body.empty) return fail('내용을 입력해주세요.');
+  if (body.tooLong) return fail('내용은 5,000자 이내로 입력해주세요.');
+
+  const info = db.prepare(`
+    INSERT INTO posts (user_id, category, title, content, content_format, content_text,
+                       is_anonymous, block_comments, is_notice)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(req.session.userId, category, title, body.content, body.format, body.text,
+    isAnonymous, blockComments, isNotice);
+
+  syncPostImages(info.lastInsertRowid, body.format, body.content);
+
+  // 일반글 300P(하루 3개), 익명글 100P(하루 3개)
+  if (!isNotice) {
+    const r = award(req.session.userId, isAnonymous ? 'anon_post' : 'post');
+    req.session.flash = r.limited
+      ? '게시글이 등록됐어요. (오늘 게시글 포인트 한도를 모두 받았어요)'
+      : `게시글을 등록했어요. +${r.awarded}P 적립됐어요.` + unlockMessage([r]);
+  }
+  res.redirect(`/board/${info.lastInsertRowid}`);
 });
 
 // ---- 상세 ----------------------------------------------------------------
@@ -348,49 +405,36 @@ router.get('/:id(\\d+)/edit', requireLogin, (req, res) => {
   const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(req.params.id);
   if (!post || post.user_id !== req.session.userId) return res.redirect('/board');
   const images = db.prepare('SELECT * FROM post_images WHERE post_id = ?').all(post.id);
-  res.render('write', { post, images, error: null, categories: CATEGORIES });
+  res.render('write', {
+    post, images, error: null, categories: CATEGORIES,
+    initialHtml: editableHtml(post, images),
+  });
 });
 
 router.post('/:id(\\d+)/edit', requireLogin, (req, res) => {
   const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(req.params.id);
   if (!post || post.user_id !== req.session.userId) return res.redirect('/board');
 
-  upload.array('images', 5)(req, res, (err) => {
-    const images = () => db.prepare('SELECT * FROM post_images WHERE post_id = ?').all(post.id);
-    const fail = (msg) => res.render('write', { post, images: images(), error: msg, categories: CATEGORIES });
-    if (err) return fail(err.message);
-
-    const title = (req.body.title || '').trim();
-    const content = (req.body.content || '').trim();
-    const category = isValidCategory(req.body.category) ? req.body.category : post.category;
-    if (!title || title.length > 50 || !content || content.length > 5000) {
-      return fail('제목(50자)과 내용(5,000자)을 확인해주세요.');
-    }
-
-    // 삭제 체크된 기존 이미지 제거
-    const removeIds = [].concat(req.body.remove_images || []).map(Number).filter(Boolean);
-    removeIds.forEach((id) => {
-      const img = db.prepare('SELECT * FROM post_images WHERE id = ? AND post_id = ?').get(id, post.id);
-      if (img) {
-        fs.rm(path.join(UPLOAD_DIR, img.filename), { force: true }, () => {});
-        db.prepare('DELETE FROM post_images WHERE id = ?').run(img.id);
-      }
-    });
-
-    // 새 이미지 추가 (총 5장 초과분은 버림)
-    const remain = 5 - db.prepare('SELECT COUNT(*) AS c FROM post_images WHERE post_id = ?').get(post.id).c;
-    const insertImage = db.prepare('INSERT INTO post_images (post_id, filename) VALUES (?, ?)');
-    (req.files || []).forEach((f, i) => {
-      if (i < remain) insertImage.run(post.id, f.filename);
-      else fs.rm(path.join(UPLOAD_DIR, f.filename), { force: true }, () => {});
-    });
-
-    db.prepare(`UPDATE posts SET category = ?, title = ?, content = ?, block_comments = ?,
-                updated_at = datetime('now', 'localtime') WHERE id = ?`)
-      .run(category, title, content, req.body.block_comments ? 1 : 0, post.id);
-    req.session.flash = '게시글을 수정했어요.';
-    res.redirect(`/board/${post.id}`);
+  const title = (req.body.title || '').trim();
+  const body = prepareContent(req.body);
+  const category = isValidCategory(req.body.category) ? req.body.category : post.category;
+  const fail = (msg) => res.render('write', {
+    post, images: db.prepare('SELECT * FROM post_images WHERE post_id = ?').all(post.id),
+    error: msg, categories: CATEGORIES, initialHtml: body.content,
   });
+  if (!title || title.length > 50 || body.empty || body.tooLong) {
+    return fail('제목(50자)과 내용(5,000자)을 확인해주세요.');
+  }
+
+  db.prepare(`UPDATE posts SET category = ?, title = ?, content = ?, content_format = ?,
+              content_text = ?, block_comments = ?,
+              updated_at = datetime('now', 'localtime') WHERE id = ?`)
+    .run(category, title, body.content, body.format, body.text,
+      req.body.block_comments ? 1 : 0, post.id);
+  // 본문에서 빠진 사진은 여기서 정리된다 (에디터에서 지우면 파일도 삭제)
+  syncPostImages(post.id, body.format, body.content);
+  req.session.flash = '게시글을 수정했어요.';
+  res.redirect(`/board/${post.id}`);
 });
 
 router.post('/:id(\\d+)/delete', requireLogin, (req, res) => {

@@ -35,8 +35,12 @@
   기록(캘린더·연속 출석 보너스)은 마이페이지 '출석' 탭
 - **운영자**: 공지, 운영자 추천글, 게시글 숨김/복구, 삭제, 신고 관리(글·댓글 반려/숨김/삭제),
   회원 관리(제재/해제)
+- **글쓰기**: 서식 에디터(제목·굵게·밑줄·목록·인용)와 **커서 위치 사진 삽입**.
+  본문은 `content_format`으로 구분해 `html`은 정화 후 출력, 옛 `text`는 이스케이프 출력.
+  목록·검색은 평문 사본(`content_text`)을 사용
 - **접근성/보안**: WCAG AA 색 대비, 키보드 포커스, 모션 최소화 존중,
-  보안 헤더·SameSite 쿠키·파라미터 바인딩·XSS 이스케이프·오픈리다이렉트 차단
+  보안 헤더·SameSite 쿠키·파라미터 바인딩·XSS 이스케이프·오픈리다이렉트 차단,
+  서식 본문은 `sanitize-html` 허용목록으로 정화(스크립트·style·iframe 제거, 이미지·링크 출처 제한)
 
 ## 4. 데이터 모델 (SQLite)
 ```
@@ -71,6 +75,7 @@ comment_reports(id, comment_id→comments, user_id→users)  -- UNIQUE(comment_i
 | `POST /board/comments/:cid/like` · `/report` · `/delete` | 댓글 좋아요·신고·삭제 |
 | `POST /board/:id/admin-pick` · `/hide` · `/dismiss-reports` | 운영자 |
 | `POST /board/comments/:cid/dismiss-reports` | 운영자(댓글 신고 반려) |
+| `POST /board/upload-image` | 에디터 사진 업로드 (JSON으로 주소 반환) |
 | `POST /attendance/check` | 출석 (완료 후 보던 화면으로 복귀) |
 | `GET /attendance` | 옛 주소 → `/profile#attendance` 리다이렉트 |
 | `GET /points` · `/ranking` · `/notifications` · `/profile` | 포인트·랭킹·알림·마이 |

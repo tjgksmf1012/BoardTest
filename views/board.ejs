@@ -95,7 +95,7 @@
           <% if (p.image_count > 0) { %><span class="img-mark"><%- icon('image', 14) %></span><% } %>
           <% if (p.comment_count > 0) { %><span class="cmt-count">[<%= p.comment_count %>]</span><% } %>
         </div>
-        <div class="post-preview"><%= p.content.replace(/\s+/g, ' ').slice(0, 60) %></div>
+        <div class="post-preview"><%= (p.content_text || p.content).replace(/\s+/g, ' ').slice(0, 60) %></div>
         <div class="post-meta">
           <%= p.is_anonymous ? '익명' : p.nickname %> · <%= timeAgo(p.created_at) %>
         </div>
