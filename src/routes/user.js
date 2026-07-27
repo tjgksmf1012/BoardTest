@@ -146,6 +146,51 @@ router.get('/ranking', (req, res) => {
   res.render('ranking', { users });
 });
 
+// ---- 공개 프로필 (다른 사람 프로필 보기) --------------------------------------
+// 익명으로 쓴 글은 작성자가 드러나면 안 되므로 목록에서 제외한다.
+// 스크랩·알림처럼 남에게 보일 이유가 없는 정보도 넣지 않는다.
+router.get('/users/:id(\\d+)', (req, res) => {
+  const user = db.prepare(
+    'SELECT id, nickname, points, avatar_id, border_id, is_admin, is_banned, created_at FROM users WHERE id = ?'
+  ).get(req.params.id);
+  if (!user) return res.status(404).render('error', { message: '존재하지 않는 회원이에요.' });
+
+  // 본인이면 마이페이지로 (거기서 더 많은 걸 할 수 있다)
+  if (res.locals.me && res.locals.me.id === user.id) return res.redirect('/profile');
+
+  const stats = {
+    points: user.points,
+    posts: db.prepare(
+      'SELECT COUNT(*) AS c FROM posts WHERE user_id = ? AND is_notice = 0 AND is_anonymous = 0 AND is_hidden = 0'
+    ).get(user.id).c,
+    comments: db.prepare('SELECT COUNT(*) AS c FROM comments WHERE user_id = ?').get(user.id).c,
+    likesReceived: db.prepare(
+      'SELECT COUNT(*) AS c FROM likes l JOIN posts p ON p.id = l.post_id WHERE p.user_id = ?'
+    ).get(user.id).c,
+    attendance: db.prepare('SELECT COUNT(*) AS c FROM attendance WHERE user_id = ?').get(user.id).c,
+    popularPosts: db.prepare('SELECT COUNT(*) AS c FROM posts WHERE user_id = ? AND is_popular = 1').get(user.id).c,
+    adminPicks: db.prepare('SELECT COUNT(*) AS c FROM posts WHERE user_id = ? AND admin_picked = 1').get(user.id).c,
+  };
+
+  const posts = db.prepare(`
+    SELECT id, title, category, created_at, like_count,
+      (SELECT COUNT(*) FROM comments c WHERE c.post_id = posts.id) AS comment_count
+    FROM posts
+    WHERE user_id = ? AND is_notice = 0 AND is_anonymous = 0 AND is_hidden = 0
+    ORDER BY id DESC LIMIT 10`).all(user.id);
+
+  const rank = db.prepare(
+    'SELECT COUNT(*) + 1 AS r FROM users WHERE points > ? OR (points = ? AND id < ?)'
+  ).get(user.points, user.points, user.id).r;
+
+  res.render('user-profile', {
+    title: `${user.nickname}님`,
+    user, stats, posts, rank,
+    level: getLevel(user.points),
+    badges: achievements(stats).filter((b) => b.earned),
+  });
+});
+
 // ---- 프로필 / 아바타 -----------------------------------------------------------
 router.get('/profile', requireLogin, (req, res) => {
   const me = res.locals.me;

@@ -152,6 +152,9 @@ addColumn('posts', 'content_text', 'TEXT');
 // 옛 글은 본문이 곧 평문이다
 db.exec("UPDATE posts SET content_text = content WHERE content_text IS NULL");
 
+// 댓글 수정 시각 (수정된 댓글에 표시를 남기기 위해)
+addColumn('comments', 'updated_at', 'TEXT');
+
 // 추천 수를 글에 함께 저장한다(비정규화).
 // 매번 likes를 세어 정렬하면 글이 늘수록 전체를 훑어야 해서 목록이 느려진다.
 // 추천은 취소가 없어 값이 어긋날 일이 적고, 아래 인덱스로 정렬을 인덱스만으로 끝낼 수 있다.

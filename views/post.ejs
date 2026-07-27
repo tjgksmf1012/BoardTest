@@ -17,8 +17,8 @@
         <%- renderAvatar('basic-12', null, 44) %>
         <div><strong>익명</strong><br><span class="muted"><%= post.created_at.slice(0, 16) %> · 조회 <%= post.views %></span></div>
       <% } else { %>
-        <%- renderAvatar(post.avatar_id, post.border_id, 44) %>
-        <div><strong><%= post.nickname %></strong> <%- levelBadge(post.author_points) %><br><span class="muted"><%= post.created_at.slice(0, 16) %> · 조회 <%= post.views %></span></div>
+        <a class="author-link" href="/users/<%= post.user_id %>" aria-label="<%= post.nickname %>님 프로필"><%- renderAvatar(post.avatar_id, post.border_id, 44) %></a>
+        <div><a class="author-link" href="/users/<%= post.user_id %>"><strong><%= post.nickname %></strong></a> <%- levelBadge(post.author_points) %><br><span class="muted"><%= post.created_at.slice(0, 16) %> · 조회 <%= post.views %></span></div>
       <% } %>
       <div class="spacer"></div>
       <span class="muted post-head-stats"><%- icon('comment', 15) %> <%= commentCount %> · <%- icon('like', 15) %> <%= post.like_count %></span>
@@ -101,11 +101,24 @@
       </div>
     <% } %>
 
+    <% const REPLY_HEAD = 2; // 답글이 많으면 앞 2개만 보이고 나머지는 접어둔다 %>
     <% comments.forEach(function (c) { %>
       <%- include('partials/comment', { c: c, post: post, me: me, isBest: false }) %>
-      <% c.replies.forEach(function (r) { %>
+      <% c.replies.slice(0, REPLY_HEAD).forEach(function (r) { %>
         <%- include('partials/comment', { c: r, post: post, me: me, isBest: false }) %>
       <% }) %>
+      <% if (c.replies.length > REPLY_HEAD) { %>
+        <div class="reply-more-wrap" id="more-<%= c.id %>">
+          <button class="reply-more" type="button" onclick="showMoreReplies(<%= c.id %>)">
+            답글 <%= c.replies.length - REPLY_HEAD %>개 더 보기
+          </button>
+        </div>
+        <div class="reply-rest" id="rest-<%= c.id %>" hidden>
+          <% c.replies.slice(REPLY_HEAD).forEach(function (r) { %>
+            <%- include('partials/comment', { c: r, post: post, me: me, isBest: false }) %>
+          <% }) %>
+        </div>
+      <% } %>
     <% }) %>
 
     <% if (me) { %>
@@ -133,6 +146,29 @@
     var f = document.getElementById('reply-' + id);
     f.hidden = !f.hidden;
     if (!f.hidden) f.querySelector('input[name="content"]').focus();
+  }
+
+  // 댓글 수정: 본문을 감추고 입력칸을 보여준다
+  function toggleEdit(id) {
+    var text = document.getElementById('ctext-' + id);
+    var form = document.getElementById('cedit-' + id);
+    var acts = document.getElementById('cacts-' + id);
+    if (!form) return;
+    var editing = form.hidden;
+    form.hidden = !editing;
+    text.hidden = editing;
+    if (acts) acts.hidden = editing;
+    if (editing) {
+      var input = form.querySelector('input[name="content"]');
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+  }
+
+  // 접어둔 답글 펼치기
+  function showMoreReplies(id) {
+    document.getElementById('rest-' + id).hidden = false;
+    document.getElementById('more-' + id).hidden = true;
   }
 </script>
 

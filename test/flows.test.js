@@ -461,3 +461,76 @@ test('알림 목록을 열면 안 읽은 알림이 읽음 처리된다', async (
   await get('/notifications', author); // 목록 열람
   assert.equal(db.prepare('SELECT COUNT(*) c FROM notifications WHERE user_id=? AND is_read=0').get(uid('ntauth')).c, 0);
 });
+
+test('본인 댓글만 수정할 수 있고, 수정하면 표시가 남는다', async () => {
+  const owner = makeJar(); await signup(owner, 'cedit1', '댓글수정주');
+  const other = makeJar(); await signup(other, 'cedit2', '남의사람');
+  const p = await newPost(owner, '댓글 수정 대상 글');
+  await post(`/board/${p.id}/comments`, { content: '처음 내용' }, owner);
+  const c = db.prepare('SELECT * FROM comments WHERE post_id = ?').get(p.id);
+  assert.equal(c.updated_at, null, '처음엔 수정 표시가 없어야 한다');
+
+  // 남이 고치려 하면 막힌다
+  await post(`/board/comments/${c.id}/edit`, { content: '남이 바꾼 내용' }, other);
+  assert.equal(db.prepare('SELECT content FROM comments WHERE id = ?').get(c.id).content, '처음 내용');
+
+  // 본인은 고칠 수 있고 수정 시각이 남는다
+  await post(`/board/comments/${c.id}/edit`, { content: '고친 내용' }, owner);
+  const after = db.prepare('SELECT * FROM comments WHERE id = ?').get(c.id);
+  assert.equal(after.content, '고친 내용');
+  assert.ok(after.updated_at, '수정 시각이 기록돼야 한다');
+
+  const html = await (await get(`/board/${p.id}`, owner)).text();
+  assert.ok(html.includes('수정됨'), '화면에 수정 표시가 보여야 한다');
+});
+
+test('빈 댓글이나 1,000자 초과로는 수정되지 않는다', async () => {
+  const jar = makeJar(); await signup(jar, 'cedit3', '길이제한');
+  const p = await newPost(jar, '길이 검사 글');
+  await post(`/board/${p.id}/comments`, { content: '원래 내용' }, jar);
+  const c = db.prepare('SELECT * FROM comments WHERE post_id = ?').get(p.id);
+  for (const bad of ['', '   ', 'x'.repeat(1001)]) {
+    await post(`/board/comments/${c.id}/edit`, { content: bad }, jar);
+    assert.equal(db.prepare('SELECT content FROM comments WHERE id = ?').get(c.id).content, '원래 내용');
+  }
+});
+
+test('답글이 많으면 앞 2개만 펼쳐두고 나머지는 접어 둔다', async () => {
+  const jar = makeJar(); await signup(jar, 'creply', '답글러');
+  const p = await newPost(jar, '답글 많은 글');
+  await post(`/board/${p.id}/comments`, { content: '부모 댓글' }, jar);
+  const parent = db.prepare('SELECT * FROM comments WHERE post_id = ?').get(p.id);
+  for (let i = 1; i <= 5; i++) {
+    await post(`/board/${p.id}/comments`, { content: `답글${i}`, parent_id: String(parent.id) }, jar);
+  }
+  const html = await (await get(`/board/${p.id}`, jar)).text();
+  assert.ok(html.includes('답글 3개 더 보기'), '나머지 3개는 접혀 있어야 한다');
+  assert.ok(html.includes('reply-rest'), '접힌 영역이 있어야 한다');
+});
+
+test('공개 프로필은 다른 사람의 활동을 보여주되 익명글은 감춘다', async () => {
+  const author = makeJar(); await signup(author, 'pubp1', '공개프로필');
+  const viewer = makeJar(); await signup(viewer, 'pubp2', '구경꾼');
+  await newPost(author, '공개된 글이에요');
+  await newPost(author, '익명으로 쓴 글', { is_anonymous: '1' });
+  const id = uid('pubp1');
+
+  const html = await (await get(`/users/${id}`, viewer)).text();
+  assert.ok(html.includes('공개프로필'), '닉네임이 보여야 한다');
+  assert.ok(html.includes('공개된 글이에요'), '공개 글은 보여야 한다');
+  assert.ok(!html.includes('익명으로 쓴 글'), '익명글은 감춰야 한다');
+  assert.ok(!html.includes('스크랩한 글'), '남의 스크랩은 보이면 안 된다');
+  assert.ok(!html.includes('아바타 꾸미기'), '남의 아바타 설정은 보이면 안 된다');
+});
+
+test('내 공개 프로필 주소는 마이페이지로 넘어간다', async () => {
+  const jar = makeJar(); await signup(jar, 'pubp3', '본인확인');
+  const res = await get(`/users/${uid('pubp3')}`, jar);
+  assert.equal(res.status, 302);
+  assert.equal(res.headers.get('location'), '/profile');
+});
+
+test('없는 회원의 프로필은 404', async () => {
+  const res = await get('/users/999999');
+  assert.equal(res.status, 404);
+});

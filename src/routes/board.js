@@ -317,6 +317,28 @@ router.post('/comments/:cid(\\d+)/report', requireLogin, (req, res) => {
   res.redirect(`/board/${c.post_id}#comment-${c.id}`);
 });
 
+// ---- 댓글 수정 --------------------------------------------------------------
+// 본인 댓글만 고칠 수 있다. 운영자라도 남의 말을 바꾸는 건 맞지 않아 삭제/숨김만 가능하게 둔다.
+router.post('/comments/:cid(\\d+)/edit', requireLogin, (req, res) => {
+  const c = db.prepare('SELECT * FROM comments WHERE id = ?').get(req.params.cid);
+  if (!c) return res.redirect('/board');
+  if (c.user_id !== req.session.userId) {
+    req.session.flash = '내 댓글만 수정할 수 있어요.';
+    return res.redirect(`/board/${c.post_id}`);
+  }
+  const content = (req.body.content || '').trim();
+  if (!content || content.length > 1000) {
+    req.session.flash = '댓글은 1~1,000자로 입력해주세요.';
+  } else if (content === c.content) {
+    req.session.flash = '변경된 내용이 없어요.';
+  } else {
+    db.prepare("UPDATE comments SET content = ?, updated_at = datetime('now','localtime') WHERE id = ?")
+      .run(content, c.id);
+    req.session.flash = '댓글을 수정했어요.';
+  }
+  res.redirect(`/board/${c.post_id}#comment-${c.id}`);
+});
+
 // ---- 댓글 신고 반려 (운영자) -----------------------------------------------
 router.post('/comments/:cid(\\d+)/dismiss-reports', requireLogin, (req, res) => {
   if (!res.locals.me.is_admin) return res.redirect('/board');

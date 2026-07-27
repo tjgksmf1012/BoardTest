@@ -1,0 +1,60 @@
+<%- include('partials/header', { title: user.nickname + '님', active: '' }) %>
+
+<div class="profile-top card">
+  <div class="profile-avatar"><%- renderAvatar(user.avatar_id, user.border_id, 96) %></div>
+  <div class="profile-info">
+    <h1>
+      <span class="lv-chip" style="background:<%= level.color %>1a;color:<%= level.color %>">Lv.<%= level.level %> <%= level.title %></span>
+      <%= user.nickname %>
+      <% if (user.is_admin) { %><span class="badge badge-notice">운영자</span><% } %>
+      <% if (user.is_banned) { %><span class="badge badge-lock">이용 제한</span><% } %>
+    </h1>
+    <p class="accent big"><%= user.points.toLocaleString() %>P <span class="muted">· 랭킹 <%= rank %>위</span></p>
+    <div class="profile-stats">
+      <span>게시글 <strong><%= stats.posts %></strong></span>
+      <span>댓글 <strong><%= stats.comments %></strong></span>
+      <span>받은 추천 <strong><%= stats.likesReceived %></strong></span>
+      <span>출석 <strong><%= stats.attendance %></strong>일</span>
+    </div>
+    <p class="muted join-date"><%= user.created_at.slice(0, 10) %> 가입</p>
+  </div>
+</div>
+
+<% if (badges.length > 0) { %>
+  <h2 class="section-title">획득한 배지 <span class="muted"><%= badges.length %>개</span></h2>
+  <div class="card badge-card">
+    <div class="badge-grid">
+      <% badges.forEach(function (b) { %>
+        <div class="ach earned" title="<%= b.desc %>">
+          <span class="ach-icon"><%= b.icon %></span>
+          <span class="ach-name"><%= b.name %></span>
+          <span class="ach-desc muted"><%= b.desc %></span>
+        </div>
+      <% }) %>
+    </div>
+  </div>
+<% } %>
+
+<h2 class="section-title">작성한 글</h2>
+<div class="card">
+  <% if (posts.length === 0) { %>
+    <div class="empty small">아직 공개된 글이 없어요.</div>
+  <% } else { %>
+    <ul class="mini-list">
+      <% posts.forEach(function (p) { %>
+        <li><a href="/board/<%= p.id %>">
+          <span class="mini-text"><%- catTag(p.category) %> <%= p.title %></span>
+          <span class="muted"><%- icon('like', 13) %> <%= p.like_count %> · <%- icon('comment', 13) %> <%= p.comment_count %> · <%= timeAgo(p.created_at) %></span>
+        </a></li>
+      <% }) %>
+    </ul>
+  <% } %>
+  <p class="muted profile-note">익명으로 작성한 글은 표시되지 않아요.</p>
+</div>
+
+<div class="write-actions">
+  <a class="btn btn-ghost" href="/ranking">랭킹 보기</a>
+  <a class="btn btn-ghost" href="/board">목록으로</a>
+</div>
+
+<%- include('partials/footer') %>

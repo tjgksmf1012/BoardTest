@@ -82,6 +82,8 @@ comment_reports(id, comment_id→comments, user_id→users)  -- UNIQUE(comment_i
 | `POST /attendance/check` | 출석. `Accept: application/json`이면 도장판·연속일수·포인트를 JSON으로, 아니면 화면 복귀 |
 | `GET /attendance` | 옛 주소 → `/profile#attendance` 리다이렉트 |
 | `GET /points` · `/ranking` · `/notifications` · `/profile` | 포인트·랭킹·알림·마이 |
+| `GET /users/:id` | 공개 프로필 (익명글 제외, 본인은 /profile로) |
+| `POST /board/comments/:cid/edit` | 댓글 수정 (본인만) |
 | `POST /profile/avatar` · `/border` | 아바타·테두리 장착 |
 | `GET /reports`, `GET /admin/members`, `POST /admin/members/:id/ban` | 운영 |
 

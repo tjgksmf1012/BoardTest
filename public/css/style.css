@@ -964,3 +964,29 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
   .post-images img { width: 100%; }
   .toast { top: 64px; }
 }
+
+/* ---- 댓글 수정 / 답글 더보기 / 공개 프로필 ---- */
+.edit-form { display: flex; gap: 6px; margin: 4px 0 6px; flex-wrap: wrap; }
+.edit-form input[type="text"] {
+  flex: 1; min-width: 180px; border: 1px solid var(--primary); border-radius: 9px;
+  padding: 8px 12px; font-size: 14px; font-family: inherit;
+  background: var(--card); color: var(--text);
+}
+.edit-form input:focus { outline: 2px solid var(--primary-soft); }
+.edited-mark { font-size: 12px; }
+
+.reply-more-wrap { margin: 2px 0 8px 46px; }
+.reply-more {
+  background: none; border: none; color: var(--primary-dark);
+  font-size: 13px; font-weight: 700; padding: 6px 2px; font-family: inherit;
+}
+.reply-more:hover { text-decoration: underline; }
+.reply-rest { display: contents; }
+
+.author-link { display: inline-flex; align-items: center; }
+.author-link:hover strong, .author-link:hover { color: var(--primary-dark); }
+.comment-avatar { flex-shrink: 0; line-height: 0; }
+.comment-name:hover strong { color: var(--primary-dark); }
+.join-date { font-size: 12.5px; margin-top: 6px; }
+.profile-note { font-size: 12.5px; margin-top: 10px; }
+.big { font-size: 20px; font-weight: 800; }
