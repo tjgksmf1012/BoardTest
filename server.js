@@ -121,6 +121,8 @@ app.use((req, res, next) => {
   res.locals.attendanceWeek = res.locals.attendanceDue ? recentWeek(res.locals.me.id) : [];
   res.locals.todayKey = todayStr();
   res.locals.currentPath = req.path; // 출석 후 보던 화면으로 돌아가기 위한 경로
+  // 공유 미리보기(og:)에 쓸 절대 주소. 배포 주소가 있으면 그걸 쓰고, 없으면 요청 정보로 만든다.
+  res.locals.siteUrl = (process.env.SITE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
 
   // 제재된 회원은 즉시 로그아웃 처리
   if (res.locals.me && res.locals.me.is_banned) {

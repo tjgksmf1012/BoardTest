@@ -4,6 +4,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title><%= typeof title !== 'undefined' && title ? title + ' · ' : '' %>포인트라운지</title>
+  <%
+    // 카카오톡·트위터 등에 링크를 붙였을 때 보이는 미리보기 정보.
+    // 각 화면에서 share = { title, description, image } 를 넘기면 그 값을 쓴다.
+    const s = typeof share !== 'undefined' && share ? share : {};
+    const ogTitle = s.title || (typeof title !== 'undefined' && title ? title : '포인트라운지');
+    const ogDesc = s.description
+      || '활동할수록 포인트가 쌓이고, 포인트로 아바타가 성장하는 커뮤니티 게시판이에요.';
+    const ogUrl = siteUrl + currentPath;
+  %>
+  <meta name="description" content="<%= ogDesc %>">
+  <meta property="og:type" content="<%= s.type || 'website' %>">
+  <meta property="og:site_name" content="포인트라운지">
+  <meta property="og:title" content="<%= ogTitle %>">
+  <meta property="og:description" content="<%= ogDesc %>">
+  <meta property="og:url" content="<%= ogUrl %>">
+  <% if (s.image) { %><meta property="og:image" content="<%= siteUrl + s.image %>"><% } %>
+  <meta name="twitter:card" content="<%= s.image ? 'summary_large_image' : 'summary' %>">
+  <meta name="twitter:title" content="<%= ogTitle %>">
+  <meta name="twitter:description" content="<%= ogDesc %>">
+  <% if (s.image) { %><meta name="twitter:image" content="<%= siteUrl + s.image %>"><% } %>
+  <link rel="canonical" href="<%= ogUrl %>">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%2300a99d'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white'%3EP%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="/css/style.css">
   <script>

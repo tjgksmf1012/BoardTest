@@ -600,3 +600,47 @@ test('말머리로 거른 상태에서 페이지를 넘겨도 필터가 유지�
   const next = html.match(/href="\/board\?page=2[^"]*"/);
   if (next) assert.ok(next[0].includes('category='), '페이지 링크에 말머리가 남아야 한다');
 });
+
+test('글을 지우면 그 글을 가리키던 알림도 함께 사라진다', async () => {
+  const author = makeJar(); await signup(author, 'noti1', '알림글주인');
+  const other = makeJar(); await signup(other, 'noti2', '알림보낸이');
+  const p = await newPost(author, '알림 정리 대상 글');
+  await post(`/board/${p.id}/comments`, { content: '댓글이요' }, other);
+  assert.equal(
+    db.prepare('SELECT COUNT(*) c FROM notifications WHERE link = ?').get(`/board/${p.id}`).c, 1);
+
+  await post(`/board/${p.id}/delete`, {}, author);
+  assert.equal(
+    db.prepare('SELECT COUNT(*) c FROM notifications WHERE link = ?').get(`/board/${p.id}`).c, 0,
+    '없는 글을 가리키는 알림이 남으면 눌렀을 때 404가 된다');
+});
+
+test('링크를 공유하면 글 제목과 요약이 미리보기로 실린다', async () => {
+  const jar = makeJar(); await signup(jar, 'ogtest', '공유하기');
+  const p = await newPost(jar, '공유될 글 제목');
+  const html = await (await get(`/board/${p.id}`, jar)).text();
+  assert.ok(html.includes('property="og:title" content="공유될 글 제목"'));
+  assert.ok(html.includes('property="og:type" content="article"'));
+  assert.ok(html.includes('property="og:url"'));
+});
+
+test('익명글은 공유 미리보기에 본문이 실리지 않는다', async () => {
+  const jar = makeJar(); await signup(jar, 'oganon', '익명공유');
+  const p = await newPost(jar, '익명 공유 글', { is_anonymous: '1', content: '비밀스러운 본문 내용' });
+  const html = await (await get(`/board/${p.id}`, jar)).text();
+  assert.ok(!html.includes('content="비밀스러운 본문 내용'), '익명글 본문이 미리보기로 새면 안 된다');
+  assert.ok(html.includes('포인트라운지의 게시글이에요'));
+});
+
+test('테스트끼리 아이디·닉네임이 겹치지 않는다 (겹치면 가입이 조용히 실패한다)', () => {
+  const src = fs.readFileSync(__filename, 'utf8');
+  const pairs = [...src.matchAll(/signup\(\w+,\s*'([^']+)',\s*'([^']+)'\)/g)];
+  for (const [label, idx] of [['아이디', 1], ['닉네임', 2]]) {
+    const seen = new Map();
+    for (const m of pairs) {
+      const v = m[idx];
+      assert.ok(!seen.has(v), `${label} 중복: ${v}`);
+      seen.set(v, true);
+    }
+  }
+});

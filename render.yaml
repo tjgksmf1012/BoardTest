@@ -14,6 +14,9 @@ services:
         value: 22.11.0
       - key: NODE_ENV
         value: production
+      # 링크 공유 미리보기(og:)에 쓸 실제 주소. 없으면 요청 정보로 만들어 쓴다.
+      - key: SITE_URL
+        value: https://pointlounge.onrender.com
       - key: SESSION_SECRET
         generateValue: true   # Render가 안전한 랜덤 값 자동 생성
       - key: TZ

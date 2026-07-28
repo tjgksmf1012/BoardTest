@@ -275,8 +275,21 @@ router.get('/:id(\\d+)', (req, res) => {
   const next = db.prepare(
     'SELECT id, title FROM posts WHERE is_notice = 0 AND id > ? ORDER BY id LIMIT 1').get(post.id);
 
+  // 링크를 공유했을 때 보일 미리보기 (익명글은 작성자·본문이 드러나지 않게 최소한만)
+  const firstImage = post.content_format === 'html'
+    ? (usedUploadFiles(post.content)[0] || null)
+    : (images[0] && images[0].filename) || null;
+  const share = {
+    type: 'article',
+    title: post.is_hidden ? '포인트라운지' : post.title,
+    description: post.is_anonymous || post.is_hidden
+      ? '포인트라운지의 게시글이에요.'
+      : (post.content_text || htmlToText(post.content) || '').slice(0, 120),
+    image: firstImage && !post.is_hidden ? `/uploads/${firstImage}` : null,
+  };
+
   res.render('post', {
-    post, images, comments, best,
+    post, images, comments, best, share,
     commentCount: rows.filter((c) => !c.is_deleted).length,
     liked: !!myLike, bookmarked: !!myBookmark, prev, next,
   });
@@ -508,6 +521,8 @@ router.post('/:id(\\d+)/delete', requireLogin, (req, res) => {
   if (post && (post.user_id === req.session.userId || res.locals.me.is_admin)) {
     db.prepare('SELECT filename FROM post_images WHERE post_id = ?').all(post.id)
       .forEach((i) => fs.rm(path.join(UPLOAD_DIR, i.filename), { force: true }, () => {}));
+    // 이 글을 가리키던 알림도 함께 지운다. 남겨두면 눌렀을 때 없는 글로 빠진다.
+    db.prepare('DELETE FROM notifications WHERE link = ?').run(`/board/${post.id}`);
     db.prepare('DELETE FROM posts WHERE id = ?').run(post.id);
     req.session.flash = '게시글을 삭제했어요.';
   }
