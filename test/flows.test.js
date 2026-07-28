@@ -740,3 +740,61 @@ test('모든 화면이 토큰을 내려준다', async () => {
     assert.match(html, /name="csrf-token" content="[^"]+"/, `${url}에 토큰이 없다`);
   }
 });
+
+test('댓글이 20개를 넘으면 쪽으로 나뉜다', async () => {
+  const jar = makeJar(); await signup(jar, 'cpage1', '쪽나눔이');
+  const p = await newPost(jar, '댓글 많은 글');
+  const label = (i) => `쪽나눔-${String(i).padStart(2, '0')}`;
+  for (let i = 1; i <= 25; i++) await post(`/board/${p.id}/comments`, { content: label(i) }, jar);
+
+  const first = await (await get(`/board/${p.id}`, jar)).text();
+  assert.ok(first.includes(label(1)) && first.includes(label(20)), '1쪽에 앞 20개');
+  assert.ok(!first.includes(label(21)), '21번째는 1쪽에 없어야 한다');
+  assert.ok(first.includes('comment-pager'), '쪽 이동 링크가 있어야 한다');
+  assert.ok(first.includes(`?cpage=2#comments`), '다음 쪽 링크');
+
+  const second = await (await get(`/board/${p.id}?cpage=2`, jar)).text();
+  assert.ok(second.includes(label(21)) && second.includes(label(25)), '2쪽에 나머지 5개');
+  assert.ok(!second.includes(label(20)), '20번째는 2쪽에 없어야 한다');
+  assert.ok(second.includes('댓글 <span class="accent">25</span>'), '댓글 수는 전체 기준');
+});
+
+test('댓글을 달면 그 댓글이 보이는 쪽으로 돌아간다', async () => {
+  const jar = makeJar(); await signup(jar, 'cpage2', '되돌이');
+  const p = await newPost(jar, '쪽 이동 확인 글');
+  for (let i = 1; i <= 20; i++) await post(`/board/${p.id}/comments`, { content: `채우기${i}` }, jar);
+
+  // 21번째 = 2쪽 첫 댓글
+  const moved = await post(`/board/${p.id}/comments`, { content: '스물한번째' }, jar);
+  assert.equal(moved.headers.get('location'), `/board/${p.id}?cpage=2#comments`);
+
+  // 답글은 부모를 따라가므로 부모가 있는 1쪽으로 돌아간다
+  const parent = db.prepare('SELECT id FROM comments WHERE post_id = ? ORDER BY id LIMIT 1').get(p.id);
+  const reply = await post(`/board/${p.id}/comments`, { content: '답글', parent_id: String(parent.id) }, jar);
+  assert.equal(reply.headers.get('location'), `/board/${p.id}#comments`);
+});
+
+test('없는 쪽을 요청해도 마지막 쪽을 보여준다', async () => {
+  const jar = makeJar(); await signup(jar, 'cpage3', '범위밖');
+  const p = await newPost(jar, '댓글 적은 글');
+  await post(`/board/${p.id}/comments`, { content: '하나뿐인 댓글' }, jar);
+  const html = await (await get(`/board/${p.id}?cpage=99`, jar)).text();
+  assert.ok(html.includes('하나뿐인 댓글'));
+  assert.ok(!html.includes('comment-pager'), '한 쪽뿐이면 이동 링크가 없다');
+});
+
+test('베스트댓글이 위아래로 겹쳐도 입력칸 id는 겹치지 않는다', async () => {
+  const jar = makeJar(); await signup(jar, 'cbest1', '베스트글쓴이');
+  const p = await newPost(jar, '베스트댓글 있는 글');
+  await post(`/board/${p.id}/comments`, { content: '추천 많은 댓글' }, jar);
+  const c = db.prepare('SELECT id FROM comments WHERE post_id = ?').get(p.id);
+  for (const [u, n] of [['cbest2', '추천이1'], ['cbest3', '추천이2'], ['cbest4', '추천이3']]) {
+    const j = makeJar(); await signup(j, u, n);
+    await post(`/board/comments/${c.id}/like`, {}, j);
+  }
+  const html = await (await get(`/board/${p.id}`, jar)).text();
+  assert.ok(html.includes('BEST'), '베스트댓글로 뽑혀야 한다');
+  const ids = [...html.matchAll(/id="reply-([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(ids, [`b${c.id}`, `${c.id}`], '위쪽 베스트 사본은 b를 붙여 구분한다');
+  assert.equal(new Set(ids).size, ids.length, 'id가 겹치면 안 된다');
+});

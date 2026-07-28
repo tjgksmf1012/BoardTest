@@ -97,7 +97,17 @@ function requireLogin(req, res, next) {
   next();
 }
 
+// 어떤 댓글이 몇 쪽에 있는지 (답글이면 그 부모 기준). 댓글을 단 뒤 그 쪽으로 보내는 데 쓴다.
+function commentPageQuery(postId, rootCommentId) {
+  const before = db.prepare(
+    'SELECT COUNT(*) AS c FROM comments WHERE post_id = ? AND parent_id IS NULL AND id <= ?'
+  ).get(postId, rootCommentId).c;
+  const page = Math.max(1, Math.ceil(before / COMMENT_PAGE_SIZE));
+  return page > 1 ? `?cpage=${page}` : '';
+}
+
 const PAGE_SIZE = 10;
+const COMMENT_PAGE_SIZE = 20; // 한 화면에 보여줄 최상위 댓글 수
 
 // ---- 목록 ----------------------------------------------------------------
 router.get('/', (req, res) => {
@@ -269,7 +279,13 @@ router.get('/:id(\\d+)', (req, res) => {
       EXISTS(SELECT 1 FROM comment_likes cl WHERE cl.comment_id = c.id AND cl.user_id = ?) AS liked
     FROM comments c JOIN users u ON u.id = c.user_id
     WHERE c.post_id = ? ORDER BY c.id`).all(uid, post.id);
-  const comments = rows.filter((c) => !c.parent_id)
+  // 댓글이 수백 개가 되면 한 화면에 다 그리는 게 부담이라 최상위 댓글 기준으로 나눈다.
+  // 답글은 부모를 따라다녀야 흐름이 끊기지 않으므로 같은 쪽에 함께 싣는다.
+  const roots = rows.filter((c) => !c.parent_id);
+  const cTotalPages = Math.max(1, Math.ceil(roots.length / COMMENT_PAGE_SIZE));
+  const cPage = Math.min(cTotalPages, Math.max(1, parseInt(req.query.cpage, 10) || 1));
+  const comments = roots
+    .slice((cPage - 1) * COMMENT_PAGE_SIZE, cPage * COMMENT_PAGE_SIZE)
     .map((c) => ({ ...c, replies: rows.filter((r) => r.parent_id === c.id) }));
 
   // 베스트댓글: 좋아요 3개 이상인 최상위 댓글 중 상위 2개 (에브리타임식)
@@ -304,6 +320,7 @@ router.get('/:id(\\d+)', (req, res) => {
 
   res.render('post', {
     post, images, comments, best, share,
+    cPage, cTotalPages,
     commentCount: rows.filter((c) => !c.is_deleted).length,
     liked: !!myLike, bookmarked: !!myBookmark, prev, next,
   });
@@ -444,7 +461,7 @@ router.post('/:id(\\d+)/comments', requireLogin, (req, res) => {
       return res.redirect(`/board/${post.id}`);
     }
   }
-  db.prepare('INSERT INTO comments (post_id, user_id, parent_id, content) VALUES (?, ?, ?, ?)')
+  const added = db.prepare('INSERT INTO comments (post_id, user_id, parent_id, content) VALUES (?, ?, ?, ?)')
     .run(post.id, req.session.userId, parentId, content);
 
   // 글 작성자에게 알림, 답글이면 원 댓글 작성자에게도 알림 (중복 제외)
@@ -463,7 +480,8 @@ router.post('/:id(\\d+)/comments', requireLogin, (req, res) => {
   req.session.flash = r.limited
     ? '댓글이 등록됐어요. (오늘 댓글 포인트 한도를 모두 받았어요)'
     : `댓글을 등록했어요. +${r.awarded}P 적립됐어요.` + unlockMessage([r]);
-  res.redirect(`/board/${post.id}#comments`);
+  // 방금 쓴 댓글이 보이도록 그 댓글이 있는 쪽으로 돌려보낸다
+  res.redirect(`/board/${post.id}${commentPageQuery(post.id, parentId || added.lastInsertRowid)}#comments`);
 });
 
 router.post('/comments/:cid(\\d+)/delete', requireLogin, (req, res) => {

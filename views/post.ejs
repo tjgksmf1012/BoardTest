@@ -121,6 +121,31 @@
       <% } %>
     <% }) %>
 
+    <% if (cTotalPages > 1) { %>
+      <%
+        const cw = 2;
+        let cf = Math.max(1, cPage - cw), ct = Math.min(cTotalPages, cPage + cw);
+        if (cPage <= cw + 1) ct = Math.min(cTotalPages, cw * 2 + 1);
+        if (cPage >= cTotalPages - cw) cf = Math.max(1, cTotalPages - cw * 2);
+        const chref = (n) => `/board/${post.id}` + (n > 1 ? `?cpage=${n}` : '') + '#comments';
+      %>
+      <nav class="pager comment-pager" aria-label="댓글 페이지 이동">
+        <% if (cPage > 1) { %>
+          <a class="page page-nav" href="<%= chref(cPage - 1) %>" rel="prev" aria-label="이전 댓글">‹</a>
+        <% } %>
+        <% if (cf > 1) { %><span class="page-gap">…</span><% } %>
+        <% for (let i = cf; i <= ct; i++) { %>
+          <a class="page <%= i === cPage ? 'on' : '' %>" href="<%= chref(i) %>"
+             <%= i === cPage ? 'aria-current="page"' : '' %>><%= i %></a>
+        <% } %>
+        <% if (ct < cTotalPages) { %><span class="page-gap">…</span><% } %>
+        <% if (cPage < cTotalPages) { %>
+          <a class="page page-nav" href="<%= chref(cPage + 1) %>" rel="next" aria-label="다음 댓글">›</a>
+        <% } %>
+        <span class="page-info muted"><%= cPage %> / <%= cTotalPages %></span>
+      </nav>
+    <% } %>
+
     <% if (me) { %>
       <form action="/board/<%= post.id %>/comments" method="post" class="comment-form"><%- csrfField() %>
         <input type="text" name="content" placeholder="댓글을 입력해주세요 (+100P, 하루 10개까지)" required maxlength="1000">
