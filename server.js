@@ -10,6 +10,7 @@ const seed = require('./src/seed');
 const { renderAvatar } = require('./src/avatars');
 const { unreadCount } = require('./src/notify');
 const { startUploadsGc } = require('./src/uploads-gc');
+const { rebuildMissing } = require('./src/search');
 const { checkedToday, streakBeforeToday, todayStr, recentWeek } = require('./src/points');
 const { levelBadge, getLevel } = require('./src/levels');
 const { catTag } = require('./src/categories');
@@ -20,6 +21,12 @@ const userRouter = require('./src/routes/user');
 
 seed(); // 최초 실행 시 데모 데이터 생성
 startUploadsGc(); // 어느 글에도 속하지 않는 오래된 업로드 파일을 주기적으로 정리
+
+// 아직 검색 색인이 없는 글을 채운다 (기존 DB에서 올라온 경우·데모 데이터)
+{
+  const n = rebuildMissing();
+  if (n > 0) console.log(`검색 색인을 ${n}건 새로 만들었어요.`);
+}
 
 // 목록에 쓰는 상대 시간 ("3시간 전"). 일주일이 지나면 날짜로 표시
 function timeAgo(dateStr) {

@@ -9,6 +9,7 @@ const { award, unlockMessage } = require('../points');
 const { notify } = require('../notify');
 const { CATEGORIES, isValid: isValidCategory } = require('../categories');
 const { sanitizePostHtml, htmlToText, textToHtml, usedUploadFiles } = require('../richtext');
+const { toMatchQuery, indexPost, unindexPost } = require('../search');
 
 const MAX_CONTENT = 5000; // 평문 기준 글자 수 제한
 const MAX_IMAGES = 5;     // 글 한 편에 넣을 수 있는 사진 수
@@ -118,9 +119,16 @@ router.get('/', (req, res) => {
 
   // 숨김 처리된 글은 일반 사용자에겐 안 보이고, 운영자에겐 목록에 표시(배지로 구분)
   const isAdmin = res.locals.me && res.locals.me.is_admin ? 1 : 0;
-  // 검색은 평문 사본을 본다 (HTML 태그 이름이 검색어에 걸리지 않도록).
-  // LIKE의 와일드카드(% _)를 그대로 두면 '%' 한 글자로 전체 글이 검색되므로 이스케이프한다.
-  const where = (q ? `AND (p.title LIKE @like ESCAPE '\\' OR COALESCE(p.content_text, p.content) LIKE @like ESCAPE '\\')` : '')
+  // 검색: 전문검색(FTS5) 색인으로 후보를 좁힌 뒤, 실제 문자열이 들어 있는지 한 번 더 확인한다.
+  // 두 글자 미만이면 색인으로 좁힐 수 없어 예전처럼 훑는다(그런 검색은 드물다).
+  // LIKE의 와일드카드(% _)는 이스케이프해 글자 그대로 찾게 한다.
+  const match = q ? toMatchQuery(q) : null;
+  const likeCond = `(p.title LIKE @like ESCAPE '\\' OR COALESCE(p.content_text, p.content) LIKE @like ESCAPE '\\')`;
+  const searchCond = !q ? ''
+    : match
+      ? ` AND p.id IN (SELECT rowid FROM posts_fts WHERE g MATCH @fts) AND ${likeCond}`
+      : ` AND ${likeCond}`;
+  const where = searchCond
     + (hot ? ' AND p.is_popular = 1' : '')
     + (category ? ' AND p.category = @category' : '')
     + ' AND (p.is_hidden = 0 OR @admin = 1)';
@@ -128,7 +136,7 @@ router.get('/', (req, res) => {
     : sort === 'views' ? 'p.views DESC, p.id DESC'
     : 'p.id DESC';
   const escapeLike = (v) => v.replace(/[\\%_]/g, (m) => '\\' + m);
-  const params = { like: `%${escapeLike(q)}%`, category, admin: isAdmin, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
+  const params = { like: `%${escapeLike(q)}%`, fts: match, category, admin: isAdmin, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
   const total = db.prepare(
     `SELECT COUNT(*) AS c FROM posts p WHERE p.is_notice = 0 ${where}`
   ).get(params).c;
@@ -215,6 +223,7 @@ router.post('/', requireLogin, (req, res) => {
     isAnonymous, blockComments, isNotice);
 
   syncPostImages(info.lastInsertRowid, body.format, body.content);
+  indexPost(info.lastInsertRowid, title, body.text);
 
   // 일반글 300P(하루 3개), 익명글 100P(하루 3개)
   if (!isNotice) {
@@ -512,6 +521,7 @@ router.post('/:id(\\d+)/edit', requireLogin, (req, res) => {
       req.body.block_comments ? 1 : 0, post.id);
   // 본문에서 빠진 사진은 여기서 정리된다 (에디터에서 지우면 파일도 삭제)
   syncPostImages(post.id, body.format, body.content);
+  indexPost(post.id, title, body.text);
   req.session.flash = '게시글을 수정했어요.';
   res.redirect(`/board/${post.id}`);
 });
@@ -524,6 +534,7 @@ router.post('/:id(\\d+)/delete', requireLogin, (req, res) => {
     // 이 글을 가리키던 알림도 함께 지운다. 남겨두면 눌렀을 때 없는 글로 빠진다.
     db.prepare('DELETE FROM notifications WHERE link = ?').run(`/board/${post.id}`);
     db.prepare('DELETE FROM posts WHERE id = ?').run(post.id);
+    unindexPost(post.id);
     req.session.flash = '게시글을 삭제했어요.';
   }
   // 신고 관리 페이지에서 삭제한 경우 그 목록으로 복귀

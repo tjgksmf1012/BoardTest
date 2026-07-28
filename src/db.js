@@ -173,6 +173,9 @@ CREATE INDEX IF NOT EXISTS idx_posts_views   ON posts(is_notice, views DESC, id 
 CREATE INDEX IF NOT EXISTS idx_posts_visible ON posts(is_notice, is_hidden);
 `);
 
+// 전문검색용 색인 테이블 (내용은 src/search.js가 두 글자씩 잘라 넣는다)
+db.exec("CREATE VIRTUAL TABLE IF NOT EXISTS posts_fts USING fts5(g, tokenize='unicode61')");
+
 // 추천 수가 어긋난 적이 있어도 기동 때 한 번 맞춰둔다 (데모 데이터 삽입 등)
 function syncLikeCounts() {
   db.exec('UPDATE posts SET like_count = (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id) WHERE like_count <> (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id)');
