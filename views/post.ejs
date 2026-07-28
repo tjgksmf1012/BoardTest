@@ -22,6 +22,43 @@
       <% } %>
       <div class="spacer"></div>
       <span class="muted post-head-stats"><%- icon('comment', 15) %> <%= commentCount %> · <%- icon('like', 15) %> <%= post.like_count %></span>
+
+      <%# 신고·수정·삭제·운영자 기능은 자주 쓰지 않는데 버튼으로 늘어놓으면 본문보다 눈에 띈다.
+          기획안대로 점 3개 안에 모아, 밖에는 목록·스크랩·추천만 남긴다. %>
+      <% if (me && (me.id === post.user_id || me.is_admin || !post.is_notice)) { %>
+        <div class="menu">
+          <button class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="글 더보기">
+            <%- icon('more', 18) %>
+          </button>
+          <div class="menu-pop" role="menu" hidden>
+            <% if (me.id === post.user_id) { %>
+              <a class="menu-item" role="menuitem" href="/board/<%= post.id %>/edit">수정하기</a>
+            <% } %>
+            <% if (me.id === post.user_id || me.is_admin) { %>
+              <form action="/board/<%= post.id %>/delete" method="post"
+                    onsubmit="return confirm('정말 삭제할까요?')"><%- csrfField() %>
+                <button class="menu-item danger" role="menuitem" type="submit">삭제하기</button>
+              </form>
+            <% } %>
+            <% if (!post.is_notice && me.id !== post.user_id) { %>
+              <form action="/board/<%= post.id %>/report" method="post"><%- csrfField() %>
+                <button class="menu-item" role="menuitem" type="submit">신고하기</button>
+              </form>
+            <% } %>
+            <% if (me.is_admin && !post.is_notice) { %>
+              <div class="menu-sep" role="separator">운영자</div>
+              <% if (!post.admin_picked) { %>
+                <form action="/board/<%= post.id %>/admin-pick" method="post"><%- csrfField() %>
+                  <button class="menu-item" role="menuitem" type="submit">운영자 추천</button>
+                </form>
+              <% } %>
+              <form action="/board/<%= post.id %>/hide" method="post"><%- csrfField() %>
+                <button class="menu-item" role="menuitem" type="submit"><%= post.is_hidden ? '숨김 해제' : '숨김 처리' %></button>
+              </form>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
     </div>
   </div>
 
@@ -48,30 +85,6 @@
         <button class="btn btn-ghost <%= bookmarked ? 'active' : '' %>" type="submit">
           <%- icon('bookmark', 16) %> <%= bookmarked ? '스크랩됨' : '스크랩' %>
         </button>
-      </form>
-    <% } %>
-    <% if (me && !post.is_notice && me.id !== post.user_id) { %>
-      <form action="/board/<%= post.id %>/report" method="post" class="inline"><%- csrfField() %>
-        <button class="btn btn-ghost" type="submit"><%- icon('report', 16) %> 신고</button>
-      </form>
-    <% } %>
-    <% if (me && me.is_admin && !post.admin_picked && !post.is_notice) { %>
-      <form action="/board/<%= post.id %>/admin-pick" method="post" class="inline"><%- csrfField() %>
-        <button class="btn btn-ghost" type="submit"><%- icon('trophy', 16) %> 운영자 추천</button>
-      </form>
-    <% } %>
-    <% if (me && me.is_admin && !post.is_notice) { %>
-      <form action="/board/<%= post.id %>/hide" method="post" class="inline"><%- csrfField() %>
-        <button class="btn btn-ghost" type="submit"><%= post.is_hidden ? '숨김 해제' : '숨김 처리' %></button>
-      </form>
-    <% } %>
-    <% if (me && (me.id === post.user_id || me.is_admin)) { %>
-      <% if (me.id === post.user_id) { %>
-        <a class="btn btn-ghost" href="/board/<%= post.id %>/edit">수정</a>
-      <% } %>
-      <form action="/board/<%= post.id %>/delete" method="post" class="inline"
-            onsubmit="return confirm('정말 삭제할까요?')"><%- csrfField() %>
-        <button class="btn btn-ghost danger" type="submit">삭제</button>
       </form>
     <% } %>
 

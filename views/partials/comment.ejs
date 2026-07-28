@@ -21,13 +21,29 @@
       <%- levelBadge(c.author_points) %>
       <span class="muted"><%= timeAgo(c.created_at) %></span>
       <% if (c.updated_at) { %><span class="muted edited-mark">· 수정됨</span><% } %>
-      <% if (me && me.id === c.user_id) { %>
-        <button class="link-btn" type="button" onclick="toggleEdit('<%= eid %>')">수정</button>
-      <% } %>
-      <% if (me && (me.id === c.user_id || me.is_admin)) { %>
-        <form action="/board/comments/<%= c.id %>/delete" method="post" class="inline"><%- csrfField() %>
-          <button class="link-btn" type="submit">삭제</button>
-        </form>
+
+      <%# 수정·삭제·신고는 점 3개 안으로. 댓글마다 링크가 서너 개씩 붙으면 목록이 어수선해진다 %>
+      <% if (me) { %>
+        <div class="menu comment-menu">
+          <button class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="댓글 더보기">
+            <%- icon('more', 16) %>
+          </button>
+          <div class="menu-pop" role="menu" hidden>
+            <% if (me.id === c.user_id) { %>
+              <button class="menu-item" role="menuitem" type="button" onclick="toggleEdit('<%= eid %>')">수정하기</button>
+            <% } %>
+            <% if (me.id === c.user_id || me.is_admin) { %>
+              <form action="/board/comments/<%= c.id %>/delete" method="post"><%- csrfField() %>
+                <button class="menu-item danger" role="menuitem" type="submit">삭제하기</button>
+              </form>
+            <% } %>
+            <% if (me.id !== c.user_id) { %>
+              <form action="/board/comments/<%= c.id %>/report" method="post"><%- csrfField() %>
+                <button class="menu-item" role="menuitem" type="submit">신고하기</button>
+              </form>
+            <% } %>
+          </div>
+        </div>
       <% } %>
     </div>
 
@@ -48,11 +64,6 @@
         </form>
         <% if (!c.parent_id) { %>
           <button class="link-btn" type="button" onclick="toggleReply('<%= eid %>')">답글</button>
-        <% } %>
-        <% if (me.id !== c.user_id) { %>
-          <form action="/board/comments/<%= c.id %>/report" method="post" class="inline"><%- csrfField() %>
-            <button class="link-btn" type="submit">신고</button>
-          </form>
         <% } %>
       <% } else { %>
         <span class="clike-static"><%- icon('like', 14) %> <%= c.like_count %></span>

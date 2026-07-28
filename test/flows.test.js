@@ -921,3 +921,42 @@ test('연결을 못 여는 환경을 위해 안 읽은 개수를 따로 알려�
   const anon = await get('/notifications/count');
   assert.equal(anon.status, 302); // 로그인 화면으로
 });
+
+// ---- 점 3개(더보기) 메뉴 -------------------------------------------------------
+// 기획안: 다른 사람의 글·댓글 → 신고하기 / 내가 쓴 글·댓글 → 수정·삭제 / 운영자 → 숨김 처리
+test('점 3개 메뉴에는 그 사람이 할 수 있는 일만 담긴다', async () => {
+  const owner = makeJar(); await signup(owner, 'menu1', '메뉴주인');
+  const guest = makeJar(); await signup(guest, 'menu2', '메뉴손님');
+  const p = await newPost(owner, '점 3개 메뉴 확인 글');
+
+  const mine = await (await get(`/board/${p.id}`, owner)).text();
+  assert.ok(mine.includes('수정하기') && mine.includes('삭제하기'), '내 글이면 수정·삭제');
+  assert.ok(!mine.includes('신고하기'), '내 글은 신고할 수 없다');
+
+  const theirs = await (await get(`/board/${p.id}`, guest)).text();
+  assert.ok(theirs.includes('신고하기'), '남의 글이면 신고');
+  assert.ok(!theirs.includes('수정하기') && !theirs.includes('삭제하기'), '남의 글은 고치거나 지울 수 없다');
+  assert.ok(!theirs.includes('숨김 처리'), '일반 회원에겐 운영자 기능이 없다');
+
+  const admin = makeJar(); await login(admin, 'admin', 'admin1234');
+  const asAdmin = await (await get(`/board/${p.id}`, admin)).text();
+  assert.ok(asAdmin.includes('숨김 처리') && asAdmin.includes('운영자 추천'), '운영자 기능은 메뉴 안에');
+  assert.ok(asAdmin.includes('삭제하기'), '운영자는 남의 글도 지울 수 있다');
+});
+
+test('메뉴는 자바스크립트가 열기 전까지 닫혀 있다', async () => {
+  const jar = makeJar(); await signup(jar, 'menu3', '닫힘확인');
+  const p = await newPost(jar, '메뉴 초기 상태 글');
+  const html = await (await get(`/board/${p.id}`, jar)).text();
+  assert.match(html, /<div class="menu-pop" role="menu" hidden>/, '처음에는 hidden');
+  assert.match(html, /aria-expanded="false"/, '처음에는 접힌 상태로 알린다');
+});
+
+test('로그인하지 않으면 점 3개 메뉴가 아예 없다', async () => {
+  const jar = makeJar(); await signup(jar, 'menu4', '비회원용글쓴이');
+  const p = await newPost(jar, '비회원이 보는 글');
+  const html = await (await get(`/board/${p.id}`)).text();
+  // 'menu-btn'은 공용 스크립트에도 들어 있으니 실제 버튼 태그로 확인한다
+  assert.ok(!html.includes('<button class="menu-btn"'), '할 수 있는 게 없으면 버튼도 두지 않는다');
+  assert.ok(!html.includes('<div class="menu-pop"'), '메뉴 내용도 없어야 한다');
+});

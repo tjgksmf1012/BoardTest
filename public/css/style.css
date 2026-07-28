@@ -444,6 +444,10 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 /* ---- 게시글 상세 ---- */
 .post-detail-head h1 { margin-bottom: 12px; }
 .post-author { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid var(--line); font-size: 14px; }
+/* 오른쪽 끝(댓글·추천 수 + 점 3개)은 줄이 바뀌면 안 되고,
+   자리가 모자라면 왼쪽 작성자 정보가 줄어들어야 한다 */
+.post-author > div:not(.spacer) { min-width: 0; }
+.post-head-stats { white-space: nowrap; flex-shrink: 0; }
 .post-body { padding: 18px 2px; white-space: pre-wrap; word-break: break-word; font-size: 15px; }
 .post-images { display: flex; flex-wrap: wrap; gap: 10px; padding-bottom: 14px; }
 .post-images img { max-width: 100%; width: 260px; border-radius: 10px; border: 1px solid var(--line); }
@@ -974,6 +978,39 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 .sort-select:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
 
 .btn-ghost.active { border-color: var(--primary); color: var(--primary-dark); background: var(--primary-soft); }
+
+/* ---- 점 3개(더보기) 메뉴 ----
+   신고·수정·삭제·운영자 기능은 어쩌다 한 번 쓰는데 버튼으로 늘어놓으면
+   정작 본문보다 눈에 띈다. 기획안대로 한 곳에 모아 둔다. */
+.menu { position: relative; flex-shrink: 0; }
+.menu-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; border-radius: 8px;
+  border: 0; background: none; color: var(--muted); cursor: pointer;
+}
+.menu-btn:hover, .menu-btn[aria-expanded="true"] { background: var(--bg); color: var(--text); }
+.menu-pop {
+  position: absolute; top: calc(100% + 4px); right: 0; z-index: 30;
+  min-width: 132px; padding: 5px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 11px;
+  box-shadow: 0 8px 24px var(--shadow-strong);
+}
+.menu-pop form { display: block; }
+.menu-item {
+  display: block; width: 100%; text-align: left;
+  padding: 8px 11px; border: 0; border-radius: 7px; background: none;
+  font-size: 13.5px; font-weight: 600; font-family: inherit;
+  color: var(--text); white-space: nowrap; cursor: pointer;
+}
+.menu-item:hover { background: var(--bg); }
+.menu-item.danger { color: var(--danger); }
+.menu-sep {
+  padding: 8px 11px 4px; font-size: 11.5px; font-weight: 700;
+  color: var(--muted); border-top: 1px solid var(--line); margin-top: 4px;
+}
+/* 댓글 안에서는 오른쪽 끝으로 밀어 붙인다 */
+.comment-menu { margin-left: auto; }
+.comment-menu .menu-btn { width: 26px; height: 26px; }
 
 /* ---- 알림 ---- */
 .noti-list { padding: 4px 0; }
