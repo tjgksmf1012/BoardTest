@@ -5,6 +5,8 @@ const { RULES, checkAttendance, unlockMessage, nextUnlock, attendanceView,
   currentStreak, recentWeek, nextMilestone } = require('../points');
 const { AVATARS, BORDERS, TIER_INFO, canUseAvatar, canUseBorder, eventOpen } = require('../avatars');
 const { getLevel, achievements } = require('../levels');
+const { unreadCount } = require('../notify');
+const { subscribe } = require('../realtime');
 
 const router = express.Router();
 
@@ -84,6 +86,25 @@ router.get('/notifications', requireLogin, (req, res) => {
   db.prepare('UPDATE notifications SET is_read = 1 WHERE user_id = ? AND is_read = 0')
     .run(req.session.userId);
   res.render('notifications', { items });
+});
+
+// 실시간 알림 (SSE). 브라우저가 이 주소를 열어두면 새 알림이 생길 때 서버가 곧바로 밀어준다.
+router.get('/notifications/stream', (req, res) => {
+  if (!req.session.userId) return res.status(401).end();
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream; charset=utf-8',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'X-Accel-Buffering': 'no', // 중간 서버(nginx 등)가 응답을 모아두지 않게
+  });
+  res.write('retry: 5000\n\n'); // 끊기면 5초 뒤 다시 붙어라
+  res.write(`event: ready\ndata: ${JSON.stringify({ unread: unreadCount(req.session.userId) })}\n\n`);
+  subscribe(req.session.userId, res);
+});
+
+// 연결을 못 여는 환경(서버리스·구형 브라우저)을 위한 대체 수단
+router.get('/notifications/count', requireLogin, (req, res) => {
+  res.json({ unread: unreadCount(req.session.userId) });
 });
 
 // ---- 신고 관리 (운영자) --------------------------------------------------------

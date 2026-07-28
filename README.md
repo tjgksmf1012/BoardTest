@@ -13,7 +13,7 @@
 ```bash
 npm install
 npm start   # 서버 실행 (http://localhost:3000)
-npm test    # 단위 + HTTP 통합 테스트 (49개)
+npm test    # 단위 + HTTP 통합 테스트 (124개)
 ```
 
 ### Docker
@@ -109,6 +109,10 @@ docker run -e SESSION_SECRET=$(openssl rand -hex 32) \
 ### 알림
 - 내 글 추천·댓글, 답글, 인기글/운영자 추천 선정 시 알림 발송
 - 상단 🔔 벨의 안 읽은 개수 뱃지, 알림 목록 확인 시 자동 읽음 처리
+- **실시간 수신(SSE)** — 새로고침하지 않아도 벨 뱃지가 바뀌고 화면 아래에 안내가 뜸.
+  안내를 누르면 해당 글로 이동. 연결이 끊기면 브라우저가 자동 재접속하고,
+  계속 실패하면 1분 간격 조회로 대체(서버리스·구형 브라우저 대비).
+  한 사람당 연결 5개까지, 25초마다 신호를 보내 중간 서버가 끊지 않게 유지
 
 ### 출석 (출석부 연출)
 - **그날 첫 접속 때 출석부가 뜨면서 자동으로 출석 처리** — "출석할까요?"라고 묻지 않음
@@ -255,10 +259,13 @@ docker run -e SESSION_SECRET=$(openssl rand -hex 32) \
 
 ## 테스트
 
-`npm test` — 총 31개 (`node --test`)
-- 단위: 포인트 규칙·한도·연속출석, 레벨/업적, 카테고리, 알림
+`npm test` — 총 124개 (`node --test`)
+- 단위: 포인트 규칙·한도·연속출석, 레벨/업적, 카테고리, 알림, 아바타,
+  본문 정화(sanitize), 검색 색인, 이미지 최적화, 업로드 정리
 - 통합(실제 HTTP): 보안 헤더, 회원가입·포인트, 권한(삭제/추천), 추천 멱등성,
   카테고리 검증, XSS 이스케이프
+- 흐름: 출석부, 댓글·답글·수정·삭제, 댓글 페이지네이션, 스크랩, 신고·운영자 처리,
+  검색, 공개 프로필, 공유 미리보기, CSRF 방어, 실시간 알림(SSE)
 
 ## 폴더 구조
 
@@ -269,10 +276,18 @@ src/seed.js          최초 실행 데모 데이터
 src/points.js        포인트 지급 규칙·한도·연속 출석 로직
 src/avatars.js       SVG 아바타 생성기 + 해금 카탈로그
 src/notify.js        알림 생성·집계 헬퍼
+src/realtime.js      알림 실시간 전달(SSE) 연결 관리
 src/levels.js        레벨/등급 + 업적(배지) 로직
+src/categories.js    말머리(카테고리) 정의·검증
+src/icons.js         인라인 SVG 아이콘
+src/richtext.js      본문 HTML 정화(sanitize)·본문 텍스트 추출
+src/search.js        FTS5 전문검색 색인(한글 바이그램)
+src/images.js        업로드 이미지 축소·EXIF 제거·회전 보정
+src/uploads-gc.js    어느 글에도 안 붙은 업로드 파일 정리
+src/csrf.js          CSRF 토큰 발급·검증
 src/routes/          auth(회원) / board(게시판·스크랩·댓글좋아요) / user(출석·포인트·알림·랭킹·신고관리·프로필)
 views/               EJS 템플릿 (partials/comment.ejs 재사용)
 public/css/          스타일 (테두리 애니메이션 포함)
-test/                단위·통합 자동 테스트 (node --test, 31개)
+test/                단위·통합 자동 테스트 (node --test, 124개)
 data/, uploads/      DB 파일·첨부 이미지 (git 제외)
 ```

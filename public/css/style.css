@@ -26,6 +26,8 @@
   --shadow-strong: rgba(16, 32, 28, .28);
   --overlay: rgba(16, 32, 28, .45);
   --on-primary: #ffffff;   /* 강조색 배경 위 글자 */
+  --toast-bg: #263531;     /* 안내 말풍선 — 배경과 반대로 가야 눈에 띈다 */
+  --toast-fg: #ffffff;
   color-scheme: light;
 }
 
@@ -56,6 +58,8 @@
     --shadow-strong: rgba(0, 0, 0, .5);
     --overlay: rgba(0, 0, 0, .6);
     --on-primary: #0a1714;   /* 밝은 청록 위에는 어두운 글자가 잘 읽힌다 */
+    --toast-bg: #e6efeb;     /* 어두운 화면에서는 반대로 밝은 말풍선 */
+    --toast-fg: #16231f;
     color-scheme: dark;
   }
 }
@@ -84,6 +88,8 @@
   --shadow-strong: rgba(0, 0, 0, .5);
   --overlay: rgba(0, 0, 0, .6);
   --on-primary: #0a1714;
+  --toast-bg: #e6efeb;
+  --toast-fg: #16231f;
   color-scheme: dark;
 }
 
@@ -287,11 +293,41 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 .toast {
   position: fixed; top: 74px; left: 50%; transform: translateX(-50%);
   max-width: min(92vw, 520px); text-align: center;
-  background: var(--text); color: #fff; padding: 12px 22px; border-radius: 14px;
+  background: var(--toast-bg); color: var(--toast-fg); padding: 12px 22px; border-radius: 14px;
   font-size: 14px; font-weight: 600; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,.2);
   transition: opacity .4s, transform .4s; animation: toast-in .35s ease;
 }
 .toast.hide { opacity: 0; transform: translate(-50%, -12px); }
+
+/* 실시간 알림 안내 — 화면 아래쪽에서 뜨고 누르면 그 글로 이동한다.
+   위쪽 flash 안내와 겹치지 않도록 자리를 나눠 썼다. */
+/* .toast에 화면 크기별 top이 걸려 있어 클래스 두 개로 우선순위를 높인다 */
+.toast.toast-notify {
+  top: auto; bottom: 24px; text-decoration: none; cursor: pointer;
+  animation: toast-up .35s ease;
+}
+.toast.toast-notify:hover { color: var(--toast-fg); }
+.toast-notify.hide { transform: translate(-50%, 12px); }
+@keyframes toast-up {
+  from { opacity: 0; transform: translate(-50%, 14px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+@media (max-width: 700px) { .toast.toast-notify { top: auto; bottom: 78px; } }
+
+/* 새 알림이 오면 종이 한 번 흔들린다 */
+.bell.ring { animation: bell-ring .7s ease; transform-origin: 50% 10%; }
+@keyframes bell-ring {
+  0%, 100% { transform: rotate(0); }
+  15% { transform: rotate(14deg); }
+  30% { transform: rotate(-12deg); }
+  45% { transform: rotate(9deg); }
+  60% { transform: rotate(-6deg); }
+  75% { transform: rotate(3deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bell.ring { animation: none; }
+  .toast-notify { animation: none; }
+}
 
 /* ---- 진행률 바 ---- */
 .next-unlock { margin-bottom: 16px; padding: 16px 20px; }

@@ -53,8 +53,8 @@
           <span class="theme-ico theme-moon"><%- icon('moon', 20) %></span>
         </button>
         <% if (me) { %>
-          <a href="/notifications" class="bell" title="알림">
-            <%- icon('bell', 22) %><% if (unread > 0) { %><span class="bell-badge"><%= unread > 99 ? '99+' : unread %></span><% } %>
+          <a href="/notifications" class="bell" id="bell" title="알림">
+            <%- icon('bell', 22) %><span class="bell-badge" id="bellBadge" <%= unread > 0 ? '' : 'hidden' %>><%= unread > 99 ? '99+' : unread %></span>
           </a>
           <a href="/profile" class="me-chip">
             <%- renderAvatar(me.avatar_id, me.border_id, 34) %>

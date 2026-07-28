@@ -798,3 +798,126 @@ test('베스트댓글이 위아래로 겹쳐도 입력칸 id는 겹치지 않는
   assert.deepEqual(ids, [`b${c.id}`, `${c.id}`], '위쪽 베스트 사본은 b를 붙여 구분한다');
   assert.equal(new Set(ids).size, ids.length, 'id가 겹치면 안 된다');
 });
+
+// ---- 실시간 알림 (SSE) -------------------------------------------------------
+const realtime = require('../src/realtime');
+test.after(() => realtime.closeAll());
+
+// 서버가 흘려보내는 이벤트를 한 개씩 꺼내 읽는 도우미
+function sseReader(res) {
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '';
+  const queue = [];
+  const waiters = [];
+  (async () => {
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i;
+        while ((i = buf.indexOf('\n\n')) >= 0) {
+          const chunk = buf.slice(0, i);
+          buf = buf.slice(i + 2);
+          const ev = {};
+          for (const line of chunk.split('\n')) {
+            if (line.startsWith('event: ')) ev.event = line.slice(7);
+            else if (line.startsWith('data: ')) ev.data = JSON.parse(line.slice(6));
+          }
+          if (ev.event) { const w = waiters.shift(); if (w) w(ev); else queue.push(ev); }
+        }
+      }
+    } catch { /* 연결을 끊으면 여기로 온다 */ }
+  })();
+  return {
+    next(ms = 3000) {
+      if (queue.length) return Promise.resolve(queue.shift());
+      return new Promise((resolve, reject) => {
+        const t = setTimeout(() => reject(new Error('이벤트가 오지 않았다')), ms);
+        waiters.push((ev) => { clearTimeout(t); resolve(ev); });
+      });
+    },
+    close() { reader.cancel().catch(() => {}); },
+  };
+}
+
+async function openStream(jar) {
+  const res = await fetch(base + '/notifications/stream', { headers: jar.header() });
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get('content-type'), /text\/event-stream/);
+  return sseReader(res);
+}
+
+// 연결이 끊기는 시점은 서버가 알아채는 대로라 잠깐 기다려준다
+async function until(fn, ms = 2000) {
+  const end = Date.now() + ms;
+  for (;;) {
+    if (fn()) return true;
+    if (Date.now() > end) return false;
+    await new Promise((r) => setTimeout(r, 20));
+  }
+}
+
+test('알림이 생기면 열어둔 화면으로 곧바로 전달된다', async () => {
+  const owner = makeJar(); await signup(owner, 'sse1', '실시간주인');
+  const guest = makeJar(); await signup(guest, 'sse2', '실시간손님');
+  const p = await newPost(owner, '실시간 알림 확인 글');
+
+  const stream = await openStream(owner);
+  const ready = await stream.next();
+  assert.equal(ready.event, 'ready');
+  assert.equal(ready.data.unread, 0);
+
+  await post(`/board/${p.id}/comments`, { content: '실시간 댓글' }, guest);
+  const ev = await stream.next();
+  assert.equal(ev.event, 'notify');
+  assert.match(ev.data.message, /댓글을 남겼어요/);
+  assert.equal(ev.data.link, `/board/${p.id}`);
+  assert.equal(ev.data.unread, 1);
+
+  stream.close();
+  await until(() => realtime.connectionCount(uid('sse1')) === 0);
+});
+
+test('내가 한 일로는 내 화면에 알림이 오지 않는다', async () => {
+  const jar = makeJar(); await signup(jar, 'sse3', '혼잣말');
+  const p = await newPost(jar, '내가 내 글에 댓글 다는 글');
+  const stream = await openStream(jar);
+  await stream.next(); // ready
+  await post(`/board/${p.id}/comments`, { content: '내 댓글' }, jar);
+  await assert.rejects(stream.next(300), /오지 않았다/);
+  stream.close();
+});
+
+test('로그인하지 않으면 실시간 연결을 열 수 없다', async () => {
+  const res = await fetch(base + '/notifications/stream');
+  assert.equal(res.status, 401);
+  await res.text();
+});
+
+test('탭을 너무 많이 열면 오래된 연결부터 정리된다', async () => {
+  const jar = makeJar(); await signup(jar, 'sse4', '탭부자');
+  const id = uid('sse4');
+  const opened = [];
+  for (let i = 0; i < realtime.MAX_PER_USER + 2; i++) {
+    const s = await openStream(jar);
+    await s.next(); // ready까지 받아야 연결이 잡힌 것
+    opened.push(s);
+  }
+  assert.ok(await until(() => realtime.connectionCount(id) === realtime.MAX_PER_USER),
+    `열린 연결이 ${realtime.MAX_PER_USER}개로 제한돼야 한다 (지금 ${realtime.connectionCount(id)})`);
+  opened.forEach((s) => s.close());
+  await until(() => realtime.connectionCount(id) === 0);
+});
+
+test('연결을 못 여는 환경을 위해 안 읽은 개수를 따로 알려준다', async () => {
+  const owner = makeJar(); await signup(owner, 'sse5', '개수확인');
+  const guest = makeJar(); await signup(guest, 'sse6', '개수손님');
+  const p = await newPost(owner, '개수 확인용 글');
+  assert.deepEqual(await (await get('/notifications/count', owner)).json(), { unread: 0 });
+  await post(`/board/${p.id}/comments`, { content: '댓글이요' }, guest);
+  assert.deepEqual(await (await get('/notifications/count', owner)).json(), { unread: 1 });
+  const anon = await get('/notifications/count');
+  assert.equal(anon.status, 302); // 로그인 화면으로
+});

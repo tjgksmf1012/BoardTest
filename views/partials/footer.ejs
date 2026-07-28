@@ -181,6 +181,63 @@
     </script>
   <% } %>
 
+  <% if (me) { %>
+  <script>
+    // 실시간 알림 — 새로고침하지 않아도 종 배지가 바뀌고 안내가 뜬다.
+    // 서버가 열어둔 연결(SSE)로 밀어주고, 연결이 안 되는 환경에서는 주기적으로 물어본다.
+    (function () {
+      var badge = document.getElementById('bellBadge');
+      var bell = document.getElementById('bell');
+      if (!badge) return;
+
+      function setUnread(n) {
+        if (typeof n !== 'number' || n < 0) return;
+        badge.textContent = n > 99 ? '99+' : n;
+        badge.hidden = n === 0;
+      }
+
+      function announce(data) {
+        if (bell) { bell.classList.remove('ring'); void bell.offsetWidth; bell.classList.add('ring'); }
+        var el = document.createElement('a');
+        el.className = 'toast toast-notify';
+        el.href = data.link || '/notifications';
+        el.textContent = data.message;
+        document.body.appendChild(el);
+        setTimeout(function () { el.classList.add('hide'); }, 4200);
+        setTimeout(function () { el.remove(); }, 4800);
+      }
+
+      // (2) 대체 수단: 1분마다 안 읽은 개수만 물어본다
+      var polling = null;
+      function startPolling() {
+        if (polling) return;
+        polling = setInterval(function () {
+          if (document.hidden) return; // 안 보고 있는 탭은 쉬게 둔다
+          fetch('/notifications/count', { credentials: 'same-origin' })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (d) { if (d) setUnread(d.unread); })
+            .catch(function () {});
+        }, 60000);
+      }
+
+      // (1) 기본: 서버가 밀어주는 연결
+      if (!window.EventSource) { startPolling(); return; }
+      var es = new EventSource('/notifications/stream');
+      var fails = 0;
+      es.addEventListener('ready', function (e) { fails = 0; setUnread(JSON.parse(e.data).unread); });
+      es.addEventListener('notify', function (e) {
+        var data = JSON.parse(e.data);
+        setUnread(data.unread);
+        announce(data);
+      });
+      es.onerror = function () {
+        // 브라우저가 알아서 다시 붙지만, 계속 실패하면 조용히 물어보기로 바꾼다
+        if (++fails >= 3) { es.close(); startPolling(); }
+      };
+    })();
+  </script>
+  <% } %>
+
   <script>
     // 화면 테마 전환: 밝게 ↔ 어둡게. 고른 값은 기기에 저장해 다음에도 유지된다.
     (function () {
