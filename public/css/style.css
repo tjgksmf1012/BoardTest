@@ -990,3 +990,12 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 .join-date { font-size: 12.5px; margin-top: 6px; }
 .profile-note { font-size: 12.5px; margin-top: 10px; }
 .big { font-size: 20px; font-weight: 800; }
+
+.comment.deleted { opacity: .75; }
+.deleted-note {
+  font-size: 13.5px; color: var(--muted); font-style: normal;
+  background: var(--bg); border-radius: 8px; padding: 8px 12px; display: inline-block;
+}
+.page-nav { font-weight: 800; }
+.page-gap { color: var(--muted); padding: 0 2px; align-self: center; }
+.page-info { margin-left: 8px; font-size: 12.5px; align-self: center; }

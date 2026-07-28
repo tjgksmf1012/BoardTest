@@ -109,12 +109,38 @@
 </div>
 
 <% if (totalPages > 1) { %>
-  <div class="pager">
-    <% for (let i = 1; i <= totalPages; i++) { %>
-      <a class="page <%= i === page ? 'on' : '' %>"
-         href="/board?page=<%= i %>&sort=<%= sort %><%= hot ? '&filter=hot' : '' %><%= q ? '&q=' + encodeURIComponent(q) : '' %>"><%= i %></a>
+  <%
+    // 페이지가 많아도 링크는 현재 위치 주변 몇 개만 보여준다.
+    // 전부 그리면 글이 늘어날수록 목록 아래가 숫자로 뒤덮인다.
+    const WINDOW = 2;
+    let from = Math.max(1, page - WINDOW);
+    let to = Math.min(totalPages, page + WINDOW);
+    if (page <= WINDOW + 1) to = Math.min(totalPages, WINDOW * 2 + 1);
+    if (page >= totalPages - WINDOW) from = Math.max(1, totalPages - WINDOW * 2);
+    const href = (n) => `/board?page=${n}&sort=${sort}`
+      + (hot ? '&filter=hot' : '')
+      + (category ? '&category=' + encodeURIComponent(category) : '')
+      + (q ? '&q=' + encodeURIComponent(q) : '');
+  %>
+  <nav class="pager" aria-label="페이지 이동">
+    <% if (page > 1) { %>
+      <a class="page page-nav" href="<%= href(1) %>" aria-label="첫 페이지">«</a>
+      <a class="page page-nav" href="<%= href(page - 1) %>" rel="prev" aria-label="이전 페이지">‹</a>
     <% } %>
-  </div>
+
+    <% if (from > 1) { %><span class="page-gap">…</span><% } %>
+    <% for (let i = from; i <= to; i++) { %>
+      <a class="page <%= i === page ? 'on' : '' %>" href="<%= href(i) %>"
+         <%= i === page ? 'aria-current="page"' : '' %>><%= i %></a>
+    <% } %>
+    <% if (to < totalPages) { %><span class="page-gap">…</span><% } %>
+
+    <% if (page < totalPages) { %>
+      <a class="page page-nav" href="<%= href(page + 1) %>" rel="next" aria-label="다음 페이지">›</a>
+      <a class="page page-nav" href="<%= href(totalPages) %>" aria-label="마지막 페이지">»</a>
+    <% } %>
+    <span class="page-info muted"><%= page %> / <%= totalPages %></span>
+  </nav>
 <% } %>
 
 <%- include('partials/footer') %>

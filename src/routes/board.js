@@ -112,7 +112,7 @@ router.get('/', (req, res) => {
   // 공지는 기본 목록에서만 상단 고정 (검색·인기글 필터 중엔 결과에 집중하도록 숨김)
   const notices = (q || hot) ? [] : db.prepare(`
     SELECT p.*, u.nickname, u.avatar_id, u.border_id,
-      (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count
+      (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id AND c.is_deleted = 0) AS comment_count
     FROM posts p JOIN users u ON u.id = p.user_id
     WHERE p.is_notice = 1 ORDER BY p.id DESC`).all();
 
@@ -134,7 +134,7 @@ router.get('/', (req, res) => {
   ).get(params).c;
   const posts = db.prepare(`
     SELECT p.*, u.nickname, u.avatar_id, u.border_id,
-      (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count,
+      (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id AND c.is_deleted = 0) AS comment_count,
       (SELECT COUNT(*) FROM post_images i WHERE i.post_id = p.id) AS image_count
     FROM posts p JOIN users u ON u.id = p.user_id
     WHERE p.is_notice = 0 ${where}
@@ -259,7 +259,7 @@ router.get('/:id(\\d+)', (req, res) => {
     .map((c) => ({ ...c, replies: rows.filter((r) => r.parent_id === c.id) }));
 
   // 베스트댓글: 좋아요 3개 이상인 최상위 댓글 중 상위 2개 (에브리타임식)
-  const best = rows.filter((c) => !c.parent_id && c.like_count >= 3)
+  const best = rows.filter((c) => !c.parent_id && !c.is_deleted && c.like_count >= 3)
     .sort((a, b) => b.like_count - a.like_count || a.id - b.id)
     .slice(0, 2);
 
@@ -277,7 +277,7 @@ router.get('/:id(\\d+)', (req, res) => {
 
   res.render('post', {
     post, images, comments, best,
-    commentCount: rows.length,
+    commentCount: rows.filter((c) => !c.is_deleted).length,
     liked: !!myLike, bookmarked: !!myBookmark, prev, next,
   });
 });
@@ -442,8 +442,24 @@ router.post('/:id(\\d+)/comments', requireLogin, (req, res) => {
 router.post('/comments/:cid(\\d+)/delete', requireLogin, (req, res) => {
   const c = db.prepare('SELECT * FROM comments WHERE id = ?').get(req.params.cid);
   if (c && (c.user_id === req.session.userId || res.locals.me.is_admin)) {
-    db.prepare('DELETE FROM comments WHERE id = ?').run(c.id);
-    req.session.flash = '댓글을 삭제했어요.';
+    // 답글이 달려 있으면 흔적만 남긴다. 통째로 지우면 남이 단 답글까지 함께 사라진다.
+    const replies = db.prepare('SELECT COUNT(*) AS c FROM comments WHERE parent_id = ? AND is_deleted = 0')
+      .get(c.id).c;
+    if (replies > 0) {
+      db.prepare("UPDATE comments SET is_deleted = 1, content = '' WHERE id = ?").run(c.id);
+      req.session.flash = '댓글을 삭제했어요. (답글이 있어 자리는 남겨둬요)';
+    } else {
+      db.prepare('DELETE FROM comments WHERE id = ?').run(c.id);
+      req.session.flash = '댓글을 삭제했어요.';
+      // 흔적만 남아 있던 부모에 답글이 하나도 안 남았다면 부모도 정리한다
+      if (c.parent_id) {
+        const parent = db.prepare('SELECT * FROM comments WHERE id = ?').get(c.parent_id);
+        const left = db.prepare('SELECT COUNT(*) AS c FROM comments WHERE parent_id = ?').get(c.parent_id).c;
+        if (parent && parent.is_deleted && left === 0) {
+          db.prepare('DELETE FROM comments WHERE id = ?').run(parent.id);
+        }
+      }
+    }
   }
   if (req.body.back === 'reports') return res.redirect('/reports');
   res.redirect(c ? `/board/${c.post_id}` : '/board');

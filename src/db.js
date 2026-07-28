@@ -154,6 +154,9 @@ db.exec("UPDATE posts SET content_text = content WHERE content_text IS NULL");
 
 // 댓글 수정 시각 (수정된 댓글에 표시를 남기기 위해)
 addColumn('comments', 'updated_at', 'TEXT');
+// 답글이 달린 댓글은 지워도 흔적만 남긴다.
+// 그냥 지우면 ON DELETE CASCADE로 남이 단 답글까지 함께 사라지기 때문이다.
+addColumn('comments', 'is_deleted', 'INTEGER NOT NULL DEFAULT 0');
 
 // 추천 수를 글에 함께 저장한다(비정규화).
 // 매번 likes를 세어 정렬하면 글이 늘수록 전체를 훑어야 해서 목록이 느려진다.

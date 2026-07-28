@@ -534,3 +534,69 @@ test('없는 회원의 프로필은 404', async () => {
   const res = await get('/users/999999');
   assert.equal(res.status, 404);
 });
+
+test('답글이 달린 댓글을 지워도 남의 답글은 남는다', async () => {
+  const owner = makeJar(); await signup(owner, 'sdel1', '부모작성자');
+  const other = makeJar(); await signup(other, 'sdel2', '답글작성자');
+  const p = await newPost(owner, '삭제 연쇄 검사 글');
+  await post(`/board/${p.id}/comments`, { content: '부모 댓글' }, owner);
+  const parent = db.prepare('SELECT * FROM comments WHERE post_id = ?').get(p.id);
+  for (const t of ['답글 하나', '답글 둘']) {
+    await post(`/board/${p.id}/comments`, { content: t, parent_id: String(parent.id) }, other);
+  }
+
+  await post(`/board/comments/${parent.id}/delete`, {}, owner);
+  const after = db.prepare('SELECT * FROM comments WHERE id = ?').get(parent.id);
+  assert.ok(after, '부모 자리는 남아야 한다');
+  assert.equal(after.is_deleted, 1);
+  assert.equal(after.content, '', '내용은 지워져야 한다');
+  assert.equal(
+    db.prepare('SELECT COUNT(*) c FROM comments WHERE parent_id = ?').get(parent.id).c, 2,
+    '남이 단 답글은 그대로 있어야 한다');
+
+  const html = await (await get(`/board/${p.id}`, owner)).text();
+  assert.ok(html.includes('삭제된 댓글이에요'));
+  assert.ok(!html.includes('부모 댓글'), '지운 내용이 화면에 남으면 안 된다');
+});
+
+test('답글 없는 댓글은 흔적 없이 지워진다', async () => {
+  const jar = makeJar(); await signup(jar, 'sdel3', '단독댓글');
+  const p = await newPost(jar, '단독 댓글 글');
+  await post(`/board/${p.id}/comments`, { content: '혼자 있는 댓글' }, jar);
+  const c = db.prepare('SELECT * FROM comments WHERE post_id = ?').get(p.id);
+  await post(`/board/comments/${c.id}/delete`, {}, jar);
+  assert.ok(!db.prepare('SELECT 1 FROM comments WHERE id = ?').get(c.id));
+});
+
+test('삭제 흔적은 댓글 수에 세지 않는다', async () => {
+  const owner = makeJar(); await signup(owner, 'sdel4', '집계주인');
+  const other = makeJar(); await signup(other, 'sdel5', '집계답글');
+  const p = await newPost(owner, '댓글 수 집계 글');
+  await post(`/board/${p.id}/comments`, { content: '지울 부모' }, owner);
+  const parent = db.prepare('SELECT * FROM comments WHERE post_id = ?').get(p.id);
+  await post(`/board/${p.id}/comments`, { content: '남는 답글', parent_id: String(parent.id) }, other);
+  await post(`/board/comments/${parent.id}/delete`, {}, owner);
+
+  const row = db.prepare(
+    'SELECT (SELECT COUNT(*) FROM comments c WHERE c.post_id = ? AND c.is_deleted = 0) AS n'
+  ).get(p.id);
+  assert.equal(row.n, 1, '살아 있는 댓글만 세야 한다');
+});
+
+test('페이지가 많아도 링크는 일부만 그린다', async () => {
+  const jar = makeJar(); await signup(jar, 'pager1', '페이저');
+  const u = uid('pager1');
+  const ins = db.prepare("INSERT INTO posts (user_id, title, content, content_text) VALUES (?, ?, '본문', '본문')");
+  db.transaction(() => { for (let i = 0; i < 300; i++) ins.run(u, `페이지용 글 ${i}`); })();
+
+  const html = await (await get('/board')).text();
+  const links = (html.match(/class="page/g) || []).length;
+  assert.ok(links > 0 && links <= 12, `페이지 링크가 너무 많다: ${links}개`);
+  assert.ok(html.includes('/ '), '현재 위치 표시가 있어야 한다');
+});
+
+test('말머리로 거른 상태에서 페이지를 넘겨도 필터가 유지된다', async () => {
+  const html = await (await get('/board?category=' + encodeURIComponent('질문'))).text();
+  const next = html.match(/href="\/board\?page=2[^"]*"/);
+  if (next) assert.ok(next[0].includes('category='), '페이지 링크에 말머리가 남아야 한다');
+});
