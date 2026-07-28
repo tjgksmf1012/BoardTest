@@ -75,7 +75,7 @@
         <% myComments.forEach(function (c) { %>
           <li><a href="/board/<%= c.post_id %>">
             <span class="mini-text"><%= c.content %></span>
-            <span class="muted">on <%= c.post_title %></span>
+            <span class="muted"><%= c.post_title %>에 남긴 댓글</span>
           </a></li>
         <% }) %>
       </ul>

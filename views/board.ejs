@@ -3,66 +3,90 @@
 <div class="board-head">
   <div>
     <h1>커뮤니티</h1>
-    <p class="muted">일상 이야기부터 고민까지 편하게 나누는 공간이에요. 글을 쓰면 포인트가 쌓여요!</p>
+    <p class="muted">일상 이야기부터 고민까지 편하게 나누는 공간이에요.</p>
   </div>
-  <a class="btn btn-primary" href="/board/new"><%- icon('pencil', 18) %> 글쓰기</a>
+  <a class="btn btn-primary" href="/board/new"><%- icon('pencil', 17) %> 글쓰기</a>
 </div>
 
-<form class="search" method="get" action="/board">
-  <span class="search-ico"><%- icon('search', 18) %></span>
-  <input type="text" name="q" value="<%= q %>" placeholder="제목이나 내용으로 검색">
+<form class="search" method="get" action="/board" role="search">
+  <span class="search-ico"><%- icon('search', 17) %></span>
+  <label class="sr-only" for="q">검색어</label>
+  <input type="search" id="q" name="q" value="<%= q %>" enterkeyhint="search"
+         placeholder="제목이나 내용으로 검색">
   <% if (sort !== 'latest') { %><input type="hidden" name="sort" value="<%= sort %>"><% } %>
   <% if (hot) { %><input type="hidden" name="filter" value="hot"><% } %>
-  <button class="btn btn-ghost" type="submit">검색</button>
+  <% if (category) { %><input type="hidden" name="category" value="<%= category %>"><% } %>
+  <button class="sr-only" type="submit">검색</button>
 </form>
 
 <% if (trending && trending.length > 0) { %>
-  <div class="card trending">
-    <div class="trending-head"><%- icon('flame', 18) %> 지금 뜨는 글</div>
+  <section class="trending" aria-label="지금 뜨는 글">
+    <h2 class="trending-head"><%- icon('flame', 15) %> 지금 뜨는 글</h2>
     <ol class="trending-list">
-      <% trending.forEach(function (t, i) { %>
+      <% trending.slice(0, 3).forEach(function (t, i) { %>
         <li><a href="/board/<%= t.id %>">
           <span class="tr-rank"><%= i + 1 %></span>
           <span class="tr-title"><%= t.title %></span>
-          <span class="tr-like"><%- icon('like', 15) %> <%= t.like_count %></span>
+          <span class="tr-like"><%- icon('like', 14) %> <%= t.like_count %></span>
         </a></li>
       <% }) %>
     </ol>
-  </div>
+  </section>
 <% } %>
 
-<div class="cat-chips">
-  <a class="chip <%= !category && !hot ? 'on' : '' %>" href="/board?sort=<%= sort %><%= q ? '&q=' + encodeURIComponent(q) : '' %>">전체</a>
-  <% categories.forEach(function (c) { %>
-    <a class="chip <%= category === c.id ? 'on' : '' %>"
-       href="/board?category=<%= encodeURIComponent(c.id) %>&sort=<%= sort %><%= q ? '&q=' + encodeURIComponent(q) : '' %>"><%= c.id %></a>
-  <% }) %>
-</div>
+<%
+  // 지금 보고 있는 조건을 유지한 채 한 가지만 바꾼 주소를 만든다
+  const listHref = (over) => {
+    const p = new URLSearchParams();
+    const v = { category, sort, filter: hot ? 'hot' : '', q, ...over };
+    if (v.category) p.set('category', v.category);
+    if (v.filter) p.set('filter', v.filter);
+    if (v.sort && v.sort !== 'latest') p.set('sort', v.sort);
+    if (v.q) p.set('q', v.q);
+    const s = p.toString();
+    return '/board' + (s ? '?' + s : '');
+  };
+%>
 
-<div class="filter-bar">
-  <div class="chips">
-    <a class="chip <%= !hot ? 'on' : '' %>" href="/board?<%= category ? 'category=' + encodeURIComponent(category) + '&' : '' %>sort=<%= sort %><%= q ? '&q=' + encodeURIComponent(q) : '' %>">전체글</a>
-    <a class="chip <%= hot ? 'on' : '' %>" href="/board?filter=hot&sort=<%= sort %><%= q ? '&q=' + encodeURIComponent(q) : '' %>">인기글</a>
+<nav class="cat-tabs" aria-label="말머리">
+  <a class="cat-tab <%= !category ? 'on' : '' %>" href="<%= listHref({ category: '' }) %>"
+     <%= !category ? 'aria-current="page"' : '' %>>전체</a>
+  <% categories.forEach(function (c) { %>
+    <a class="cat-tab <%= category === c.id ? 'on' : '' %>" href="<%= listHref({ category: c.id }) %>"
+       <%= category === c.id ? 'aria-current="page"' : '' %>><%= c.id %></a>
+  <% }) %>
+</nav>
+
+<div class="list-tools">
+  <div class="seg">
+    <a class="seg-item <%= !hot ? 'on' : '' %>" href="<%= listHref({ filter: '' }) %>">전체글</a>
+    <a class="seg-item <%= hot ? 'on' : '' %>" href="<%= listHref({ filter: 'hot' }) %>">인기글</a>
   </div>
-  <div class="chips">
-    <% ['latest', 'likes', 'views'].forEach(function (s) { %>
-      <a class="chip <%= sort === s ? 'on' : '' %>"
-         href="/board?sort=<%= s %><%= category ? '&category=' + encodeURIComponent(category) : '' %><%= hot ? '&filter=hot' : '' %><%= q ? '&q=' + encodeURIComponent(q) : '' %>">
-        <%= s === 'latest' ? '최신순' : s === 'likes' ? '추천순' : '조회순' %>
-      </a>
-    <% }) %>
-  </div>
+
+  <%# 정렬은 목록에 들어갈 글은 그대로 두고 순서만 바꾼다 — 선택 상자 하나로 충분하다 %>
+  <form class="sort-form" method="get" action="/board">
+    <% if (category) { %><input type="hidden" name="category" value="<%= category %>"><% } %>
+    <% if (hot) { %><input type="hidden" name="filter" value="hot"><% } %>
+    <% if (q) { %><input type="hidden" name="q" value="<%= q %>"><% } %>
+    <label class="sr-only" for="sort">정렬 기준</label>
+    <select class="sort-select" id="sort" name="sort" onchange="this.form.submit()">
+      <% [['latest', '최신순'], ['likes', '추천순'], ['views', '조회순']].forEach(function (s) { %>
+        <option value="<%= s[0] %>" <%= sort === s[0] ? 'selected' : '' %>><%= s[1] %></option>
+      <% }) %>
+    </select>
+    <noscript><button class="btn btn-ghost btn-sm" type="submit">적용</button></noscript>
+  </form>
 </div>
 
 <div class="post-list card">
   <% notices.forEach(function (p) { %>
-    <a class="post-row notice" href="/board/<%= p.id %>">
-      <%- renderAvatar(p.avatar_id, p.border_id, 46) %>
+    <a class="post-row" href="/board/<%= p.id %>">
+      <%- renderAvatar(p.avatar_id, p.border_id, 44) %>
       <div class="post-mid">
         <div class="post-title"><span class="badge badge-notice">공지</span> <%= p.title %></div>
         <div class="post-meta"><%= p.nickname %> · <%= p.created_at.slice(0, 10) %></div>
       </div>
-      <div class="post-stats">👁 <%= p.views.toLocaleString() %></div>
+      <div class="post-stats"><span><%- icon('eye', 15) %> <%= p.views.toLocaleString() %></span></div>
     </a>
   <% }) %>
 
@@ -81,9 +105,9 @@
   <% posts.forEach(function (p) { %>
     <a class="post-row" href="/board/<%= p.id %>">
       <% if (p.is_anonymous) { %>
-        <%- renderAvatar('basic-12', null, 46) %>
+        <%- renderAvatar('basic-12', null, 44) %>
       <% } else { %>
-        <%- renderAvatar(p.avatar_id, p.border_id, 46) %>
+        <%- renderAvatar(p.avatar_id, p.border_id, 44) %>
       <% } %>
       <div class="post-mid">
         <div class="post-title">
@@ -92,10 +116,9 @@
           <% if (p.is_popular) { %><span class="badge badge-hot">인기</span><% } %>
           <% if (p.admin_picked) { %><span class="badge badge-pick">운영자 추천</span><% } %>
           <%= p.title %>
+          <%# 댓글 수는 오른쪽에 이미 있어서 제목 옆 [3]은 같은 말을 두 번 하는 셈이다 %>
           <% if (p.image_count > 0) { %><span class="img-mark"><%- icon('image', 14) %></span><% } %>
-          <% if (p.comment_count > 0) { %><span class="cmt-count">[<%= p.comment_count %>]</span><% } %>
         </div>
-        <div class="post-preview"><%= (p.content_text || p.content).replace(/\s+/g, ' ').slice(0, 60) %></div>
         <div class="post-meta">
           <%= p.is_anonymous ? '익명' : p.nickname %> · <%= timeAgo(p.created_at) %>
         </div>
