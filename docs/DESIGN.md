@@ -79,7 +79,7 @@ comment_reports(id, comment_id→comments, user_id→users)  -- UNIQUE(comment_i
 | `POST /board/comments/:cid/like` · `/report` · `/delete` | 댓글 좋아요·신고·삭제 |
 | `POST /board/:id/admin-pick` · `/hide` · `/dismiss-reports` | 운영자 |
 | `POST /board/comments/:cid/dismiss-reports` | 운영자(댓글 신고 반려) |
-| `POST /board/upload-image` | 에디터 사진 업로드 (JSON으로 주소 반환) |
+| `POST /board/upload-image` | 에디터 사진 업로드 — 축소·EXIF 제거 후 저장, JSON으로 주소 반환 |
 | `POST /attendance/check` | 출석. `Accept: application/json`이면 도장판·연속일수·포인트를 JSON으로, 아니면 화면 복귀 |
 | `GET /attendance` | 옛 주소 → `/profile#attendance` 리다이렉트 |
 | `GET /points` · `/ranking` · `/notifications` · `/profile` | 포인트·랭킹·알림·마이 |

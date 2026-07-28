@@ -10,6 +10,7 @@ const { notify } = require('../notify');
 const { CATEGORIES, isValid: isValidCategory } = require('../categories');
 const { sanitizePostHtml, htmlToText, textToHtml, usedUploadFiles } = require('../richtext');
 const { toMatchQuery, indexPost, unindexPost } = require('../search');
+const { storeUpload } = require('../images');
 
 const MAX_CONTENT = 5000; // 평문 기준 글자 수 제한
 const MAX_IMAGES = 5;     // 글 한 편에 넣을 수 있는 사진 수
@@ -70,16 +71,12 @@ const router = express.Router();
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', '..', 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-// 이미지 첨부: 최대 5장, JPG/PNG, 장당 10MB 이하 (기획안 그대로)
+// 이미지 첨부: JPG/PNG, 장당 10MB 이하 (기획안 그대로)
+// 원본을 바로 디스크에 쓰지 않고 메모리로 받아 다듬은 뒤 저장한다
+// (원본 4000px·5MB를 그대로 남길 이유가 없다)
 const upload = multer({
-  storage: multer.diskStorage({
-    destination: UPLOAD_DIR,
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase();
-      cb(null, `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`);
-    },
-  }),
-  limits: { fileSize: 10 * 1024 * 1024, files: 5 },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024, files: 1 },
   fileFilter: (req, file, cb) => {
     const ok = ['image/jpeg', 'image/png'].includes(file.mimetype);
     cb(ok ? null : new Error('JPG, PNG 파일만 첨부할 수 있어요.'), ok);
@@ -191,10 +188,18 @@ router.post('/upload-image', requireLogin, (req, res) => {
   if (!uploadAllowed(req.session.userId)) {
     return res.status(429).json({ error: '사진을 너무 많이 올렸어요. 잠시 후 다시 시도해주세요.' });
   }
-  upload.single('image')(req, res, (err) => {
+  upload.single('image')(req, res, async (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: '이미지를 선택해주세요.' });
-    res.json({ url: `/uploads/${req.file.filename}` });
+    try {
+      const { filename } = await storeUpload(
+        req.file.buffer, UPLOAD_DIR, req.file.mimetype,
+        (ext) => `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${ext}`
+      );
+      res.json({ url: `/uploads/${filename}` });
+    } catch {
+      res.status(400).json({ error: '사진을 처리하지 못했어요. 다른 사진으로 시도해주세요.' });
+    }
   });
 });
 
