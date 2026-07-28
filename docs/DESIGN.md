@@ -41,7 +41,7 @@
   목록은 평문 사본(`content_text`)을 사용.
   검색은 FTS5 바이그램 색인(`posts_fts`, `src/search.js`)으로 후보를 좁힌 뒤 원문 대조
 - **접근성/보안**: WCAG AA 색 대비, 키보드 포커스, 모션 최소화 존중,
-  보안 헤더·SameSite 쿠키·파라미터 바인딩·XSS 이스케이프·오픈리다이렉트 차단,
+  보안 헤더·SameSite 쿠키·CSRF 토큰(`src/csrf.js`)·파라미터 바인딩·XSS 이스케이프·오픈리다이렉트 차단,
   서식 본문은 `sanitize-html` 허용목록으로 정화(스크립트·style·iframe 제거, 이미지·링크 출처 제한),
   로그인·가입 시 세션 재발급(세션 고정 방어), 검색어의 LIKE 와일드카드 이스케이프,
   업로드 횟수 제한 + 고아 파일 주기적 정리(`src/uploads-gc.js`)

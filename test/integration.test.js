@@ -22,16 +22,32 @@ test.before(async () => {
 });
 test.after(() => server && server.close());
 
-// 아주 작은 쿠키 저장소
 function makeJar() {
   let cookie = '';
   return {
+    token: null,
     header: () => (cookie ? { Cookie: cookie } : {}),
-    capture: (res) => {
+    capture(res) {
       const sc = res.headers.getSetCookie ? res.headers.getSetCookie() : [];
-      for (const c of sc) { const m = c.match(/^connect\.sid=[^;]+/); if (m) cookie = m[0]; }
+      for (const c of sc) {
+        const m = c.match(/^connect\.sid=[^;]+/);
+        // 세션이 바뀌면(로그인·가입) CSRF 토큰도 새로 발급되므로 캐시를 버린다
+        if (m && m[0] !== cookie) { cookie = m[0]; this.token = null; }
+      }
     },
   };
+}
+
+// CSRF 토큰은 화면에서 받아온다 (실제 사용자가 폼을 열어보는 것과 같은 흐름)
+async function csrfToken(jar) {
+  if (jar && jar.token) return jar.token;
+  const res = await fetch(base + '/board', { headers: jar ? jar.header() : {}, redirect: 'manual' });
+  if (jar) jar.capture(res);
+  const html = await res.text();
+  const m = html.match(/name="csrf-token" content="([^"]+)"/);
+  const t = m ? m[1] : '';
+  if (jar) jar.token = t;
+  return t;
 }
 
 function form(obj) {
@@ -39,10 +55,13 @@ function form(obj) {
 }
 
 async function post(pathname, body, jar) {
+  // jar를 안 넘기면 세션이 이어지지 않아 CSRF 토큰이 어긋난다 — 일회용 jar로 대신한다
+  if (!jar) jar = makeJar();
+  const _csrf = await csrfToken(jar);
   const res = await fetch(base + pathname, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...(jar ? jar.header() : {}) },
-    body: form(body),
+    body: form({ _csrf, ...body }),
     redirect: 'manual',
   });
   if (jar) jar.capture(res);

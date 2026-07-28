@@ -24,16 +24,16 @@
         </a>
         <div class="report-acts">
           <form action="/board/<%= p.id %>/dismiss-reports" method="post" class="inline"
-                onsubmit="return confirm('신고를 반려하고 처리를 종료할까요?')">
+                onsubmit="return confirm('신고를 반려하고 처리를 종료할까요?')"><%- csrfField() %>
             <input type="hidden" name="back" value="reports">
             <button class="btn btn-ghost btn-sm" type="submit">반려</button>
           </form>
-          <form action="/board/<%= p.id %>/hide" method="post" class="inline">
+          <form action="/board/<%= p.id %>/hide" method="post" class="inline"><%- csrfField() %>
             <input type="hidden" name="back" value="reports">
             <button class="btn btn-ghost btn-sm" type="submit">숨김</button>
           </form>
           <form action="/board/<%= p.id %>/delete" method="post" class="inline"
-                onsubmit="return confirm('이 게시글을 영구 삭제할까요?')">
+                onsubmit="return confirm('이 게시글을 영구 삭제할까요?')"><%- csrfField() %>
             <input type="hidden" name="back" value="reports">
             <button class="btn btn-ghost btn-sm danger" type="submit">삭제</button>
           </form>
@@ -57,11 +57,11 @@
         </a>
         <div class="report-acts">
           <form action="/board/comments/<%= c.id %>/dismiss-reports" method="post" class="inline"
-                onsubmit="return confirm('이 댓글 신고를 반려할까요?')">
+                onsubmit="return confirm('이 댓글 신고를 반려할까요?')"><%- csrfField() %>
             <button class="btn btn-ghost btn-sm" type="submit">반려</button>
           </form>
           <form action="/board/comments/<%= c.id %>/delete" method="post" class="inline"
-                onsubmit="return confirm('이 댓글을 삭제할까요?')">
+                onsubmit="return confirm('이 댓글을 삭제할까요?')"><%- csrfField() %>
             <input type="hidden" name="back" value="reports">
             <button class="btn btn-ghost btn-sm danger" type="submit">삭제</button>
           </form>

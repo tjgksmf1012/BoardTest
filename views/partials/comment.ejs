@@ -20,7 +20,7 @@
         <button class="link-btn" type="button" onclick="toggleEdit(<%= c.id %>)">수정</button>
       <% } %>
       <% if (me && (me.id === c.user_id || me.is_admin)) { %>
-        <form action="/board/comments/<%= c.id %>/delete" method="post" class="inline">
+        <form action="/board/comments/<%= c.id %>/delete" method="post" class="inline"><%- csrfField() %>
           <button class="link-btn" type="submit">삭제</button>
         </form>
       <% } %>
@@ -29,7 +29,7 @@
     <p class="comment-text" id="ctext-<%= c.id %>"><%= c.content %></p>
 
     <% if (me && me.id === c.user_id) { %>
-      <form action="/board/comments/<%= c.id %>/edit" method="post" class="edit-form" id="cedit-<%= c.id %>" hidden>
+      <form action="/board/comments/<%= c.id %>/edit" method="post" class="edit-form" id="cedit-<%= c.id %>" hidden><%- csrfField() %>
         <input type="text" name="content" value="<%= c.content %>" required maxlength="1000" aria-label="댓글 수정">
         <button class="btn btn-primary btn-sm" type="submit">저장</button>
         <button class="btn btn-ghost btn-sm" type="button" onclick="toggleEdit(<%= c.id %>)">취소</button>
@@ -38,14 +38,14 @@
 
     <div class="comment-actions" id="cacts-<%= c.id %>">
       <% if (me) { %>
-        <form action="/board/comments/<%= c.id %>/like" method="post" class="inline">
+        <form action="/board/comments/<%= c.id %>/like" method="post" class="inline"><%- csrfField() %>
           <button class="clike <%= c.liked ? 'on' : '' %>" type="submit"><%- icon('like', 14) %> <%= c.like_count %></button>
         </form>
         <% if (!c.parent_id) { %>
           <button class="link-btn" type="button" onclick="toggleReply(<%= c.id %>)">답글</button>
         <% } %>
         <% if (me.id !== c.user_id) { %>
-          <form action="/board/comments/<%= c.id %>/report" method="post" class="inline">
+          <form action="/board/comments/<%= c.id %>/report" method="post" class="inline"><%- csrfField() %>
             <button class="link-btn" type="submit">신고</button>
           </form>
         <% } %>
@@ -54,7 +54,7 @@
       <% } %>
     </div>
     <% if (me && !c.parent_id) { %>
-      <form action="/board/<%= post.id %>/comments" method="post" class="reply-form" id="reply-<%= c.id %>" hidden>
+      <form action="/board/<%= post.id %>/comments" method="post" class="reply-form" id="reply-<%= c.id %>" hidden><%- csrfField() %>
         <input type="hidden" name="parent_id" value="<%= c.id %>">
         <input type="text" name="content" placeholder="답글을 입력해주세요" required maxlength="1000">
         <button class="btn btn-primary btn-sm" type="submit">등록</button>

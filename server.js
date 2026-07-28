@@ -11,6 +11,7 @@ const { renderAvatar } = require('./src/avatars');
 const { unreadCount } = require('./src/notify');
 const { startUploadsGc } = require('./src/uploads-gc');
 const { rebuildMissing } = require('./src/search');
+const { csrfToken, csrfVerify } = require('./src/csrf');
 const { checkedToday, streakBeforeToday, todayStr, recentWeek } = require('./src/points');
 const { levelBadge, getLevel } = require('./src/levels');
 const { catTag } = require('./src/categories');
@@ -106,6 +107,9 @@ if (process.env.VERCEL) {
   }));
 }
 
+// CSRF 토큰 발급 (어느 화면에서든 폼에 넣을 수 있도록 가장 먼저)
+app.use(csrfToken());
+
 // 모든 뷰에서 쓰는 공통 데이터 (로그인 사용자, 아바타 렌더러, 플래시 메시지)
 app.use((req, res, next) => {
   res.locals.me = req.session.userId
@@ -142,6 +146,9 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// CSRF 검증. 막힐 때 보여줄 오류 화면도 상단바를 그리므로 공통 데이터 설정 뒤에 둔다.
+app.use(csrfVerify());
 
 app.use('/', authRouter);
 app.use('/board', boardRouter);

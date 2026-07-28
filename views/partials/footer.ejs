@@ -44,7 +44,7 @@
 
         <%# 자바스크립트가 막혔거나 통신에 실패했을 때를 위한 평범한 출석 버튼 %>
         <noscript>
-          <form action="/attendance/check" method="post">
+          <form action="/attendance/check" method="post"><%- csrfField() %>
             <input type="hidden" name="next" value="<%= currentPath %>">
             <button class="btn btn-primary btn-block" type="submit">출석체크 하고 100P 받기</button>
           </form>
@@ -168,7 +168,7 @@
         // 묻지 않고 바로 출석 처리 (어차피 접속하면 하는 일이라 한 단계를 없앴다)
         fetch('/attendance/check', {
           method: 'POST',
-          headers: { 'Accept': 'application/json' },
+          headers: { 'Accept': 'application/json', 'X-CSRF-Token': '<%= csrfToken %>' },
           credentials: 'same-origin',
         })
           .then(function (r) { return r.ok ? r.json() : Promise.reject(r); })

@@ -30,7 +30,7 @@
           <span class="muted">—</span>
         <% } else { %>
           <form action="/admin/members/<%= u.id %>/ban" method="post" class="inline"
-                onsubmit="return confirm('<%= u.is_banned ? u.nickname + " 제재를 해제할까요?" : u.nickname + " 회원을 제재할까요? (로그인·활동이 차단됩니다)" %>')">
+                onsubmit="return confirm('<%= u.is_banned ? u.nickname + " 제재를 해제할까요?" : u.nickname + " 회원을 제재할까요? (로그인·활동이 차단됩니다)" %>')"><%- csrfField() %>
             <button class="btn btn-sm <%= u.is_banned ? 'btn-ghost' : 'btn-ghost danger' %>" type="submit">
               <%= u.is_banned ? '제재 해제' : '제재' %>
             </button>

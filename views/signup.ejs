@@ -4,7 +4,7 @@
   <h1>회원가입</h1>
   <p class="muted">가입 즉시 <strong>1,000P</strong>와 기본 아바타 12종이 열려요!</p>
   <% if (error) { %><div class="alert"><%= error %></div><% } %>
-  <form method="post" action="/signup" class="form">
+  <form method="post" action="/signup" class="form"><%- csrfField() %>
     <label>아이디 (영문/숫자 4~20자)
       <input type="text" name="username" value="<%= form.username || '' %>" required autofocus>
     </label>

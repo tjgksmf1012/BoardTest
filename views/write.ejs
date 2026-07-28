@@ -5,7 +5,7 @@
   <% if (error) { %><div class="alert"><%= error %></div><% } %>
 
   <form method="post" id="write-form"
-        action="<%= post ? '/board/' + post.id + '/edit' : '/board' %>" class="form">
+        action="<%= post ? '/board/' + post.id + '/edit' : '/board' %>" class="form"><%- csrfField() %>
     <label><span>말머리 <span class="req">*</span></span>
       <select name="category" class="cat-select">
         <% categories.forEach(function (c) { %>
@@ -176,7 +176,10 @@
     photoBtn.classList.add('loading');
     var data = new FormData();
     data.append('image', file);
-    fetch('/board/upload-image', { method: 'POST', body: data, credentials: 'same-origin' })
+    fetch('/board/upload-image', {
+      method: 'POST', body: data, credentials: 'same-origin',
+      headers: { 'X-CSRF-Token': '<%= csrfToken %>' },
+    })
       .then(function (r) { return r.json().then(function (j) { return r.ok ? j : Promise.reject(j); }); })
       .then(function (j) {
         restoreRange();

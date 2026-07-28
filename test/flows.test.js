@@ -20,13 +20,37 @@ test.after(() => server && server.close());
 function makeJar() {
   let cookie = '';
   return {
+    token: null,
     header: () => (cookie ? { Cookie: cookie } : {}),
-    capture: (res) => { const sc = res.headers.getSetCookie ? res.headers.getSetCookie() : []; for (const c of sc) { const m = c.match(/^connect\.sid=[^;]+/); if (m) cookie = m[0]; } },
+    capture(res) {
+      const sc = res.headers.getSetCookie ? res.headers.getSetCookie() : [];
+      for (const c of sc) {
+        const m = c.match(/^connect\.sid=[^;]+/);
+        // 세션이 바뀌면(로그인·가입) CSRF 토큰도 새로 발급되므로 캐시를 버린다
+        if (m && m[0] !== cookie) { cookie = m[0]; this.token = null; }
+      }
+    },
   };
 }
+
+// CSRF 토큰은 화면에서 받아온다 (실제 사용자가 폼을 열어보는 것과 같은 흐름)
+async function csrfToken(jar) {
+  if (jar && jar.token) return jar.token;
+  const res = await fetch(base + '/board', { headers: jar ? jar.header() : {}, redirect: 'manual' });
+  if (jar) jar.capture(res);
+  const html = await res.text();
+  const m = html.match(/name="csrf-token" content="([^"]+)"/);
+  const t = m ? m[1] : '';
+  if (jar) jar.token = t;
+  return t;
+}
+
 const form = (o) => new URLSearchParams(o).toString();
 async function post(p, body, jar) {
-  const res = await fetch(base + p, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...(jar ? jar.header() : {}) }, body: form(body), redirect: 'manual' });
+  // jar를 안 넘기면 세션이 이어지지 않아 CSRF 토큰이 어긋난다 — 일회용 jar로 대신한다
+  if (!jar) jar = makeJar();
+  const _csrf = await csrfToken(jar);
+  const res = await fetch(base + p, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...(jar ? jar.header() : {}) }, body: form({ _csrf, ...body }), redirect: 'manual' });
   if (jar) jar.capture(res); return res;
 }
 async function get(p, jar) {
@@ -69,7 +93,9 @@ test('출석부는 JSON으로 도장판·연속일수·다음 보너스를 함�
   const jar = makeJar();
   await signup(jar, 'attjson', '출석부');
   const res = await fetch(base + '/attendance/check', {
-    method: 'POST', headers: { Accept: 'application/json', ...jar.header() }, redirect: 'manual',
+    method: 'POST',
+    headers: { Accept: 'application/json', 'X-CSRF-Token': await csrfToken(jar), ...jar.header() },
+    redirect: 'manual',
   });
   assert.equal(res.status, 200);
   const d = await res.json();
@@ -86,9 +112,11 @@ test('출석부는 JSON으로 도장판·연속일수·다음 보너스를 함�
 test('같은 날 두 번 요청해도 포인트는 한 번만 지급된다', async () => {
   const jar = makeJar();
   await signup(jar, 'attdup', '중복이');
-  const call = () => fetch(base + '/attendance/check', {
-    method: 'POST', headers: { Accept: 'application/json', ...jar.header() }, redirect: 'manual',
-  }).then((r) => r.json());
+  const call = async () => (await fetch(base + '/attendance/check', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'X-CSRF-Token': await csrfToken(jar), ...jar.header() },
+    redirect: 'manual',
+  })).json();
   const first = await call();
   const second = await call();
   assert.equal(first.awarded, 100);
@@ -110,9 +138,11 @@ test('3일 연속이면 보너스가 함께 지급된다', async () => {
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
   [1, 2].forEach((o) => db.prepare('INSERT INTO attendance (user_id, day) VALUES (?, ?)').run(id, dayAgo(o)));
 
-  const d = await fetch(base + '/attendance/check', {
-    method: 'POST', headers: { Accept: 'application/json', ...jar.header() }, redirect: 'manual',
-  }).then((r) => r.json());
+  const d = await (await fetch(base + '/attendance/check', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'X-CSRF-Token': await csrfToken(jar), ...jar.header() },
+    redirect: 'manual',
+  })).json();
   assert.equal(d.streak, 3);
   assert.equal(d.base, 100);
   assert.equal(d.bonus, 500, '3일 연속 보너스');
@@ -270,7 +300,8 @@ test('사진이 있으면 글자가 없어도 등록된다', async () => {
 });
 
 test('사진 업로드는 로그인해야 쓸 수 있다', async () => {
-  const res = await post('/board/upload-image', {});
+  const guest = makeJar();               // 로그인만 안 한 평범한 방문자
+  const res = await post('/board/upload-image', {}, guest);
   assert.equal(res.status, 302);
   assert.ok((res.headers.get('location') || '').startsWith('/login'));
 });
@@ -348,14 +379,20 @@ test('검색 결과가 없으면 전용 안내 문구가 나온다', async () =>
 test('로그인 실패가 반복되면 일시적으로 차단된다(무차별 대입 방어)', async () => {
   await signup(makeJar(), 'brute', '표적'); // 대상 계정 존재
   // 다른 테스트의 로그인에 영향을 주지 않도록 가짜 IP로 격리해서 실패 반복
+  const attacker = makeJar();
   let blocked = false;
   for (let i = 0; i < 12; i++) {
     const res = await fetch(base + '/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Forwarded-For': '203.0.113.7' },
-      body: form({ username: 'brute', password: 'wrong' + i }),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Forwarded-For': '203.0.113.7',
+        ...attacker.header(),
+      },
+      body: form({ _csrf: await csrfToken(attacker), username: 'brute', password: 'wrong' + i }),
       redirect: 'manual',
     });
+    attacker.capture(res);
     if (/시도가 너무 많아요/.test(await res.text())) { blocked = true; break; }
   }
   assert.ok(blocked, '반복 실패 후 차단 메시지가 나와야 한다');
@@ -642,5 +679,64 @@ test('테스트끼리 아이디·닉네임이 겹치지 않는다 (겹치면 가
       assert.ok(!seen.has(v), `${label} 중복: ${v}`);
       seen.set(v, true);
     }
+  }
+});
+
+test('토큰 없는 쓰기 요청은 막힌다 (CSRF 방어)', async () => {
+  const jar = makeJar();
+  await signup(jar, 'csrf1', '토큰이');
+  const p = await newPost(jar, 'CSRF 검사 글');
+
+  // 다른 사이트가 흉내내듯, 쿠키는 있지만 토큰 없이 보낸 요청
+  const res = await fetch(base + `/board/${p.id}/delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...jar.header() },
+    body: '', redirect: 'manual',
+  });
+  assert.equal(res.status, 403);
+  assert.ok(db.prepare('SELECT 1 FROM posts WHERE id = ?').get(p.id), '글이 지워지면 안 된다');
+});
+
+test('남의 토큰을 가져다 써도 막힌다', async () => {
+  const a = makeJar(); await signup(a, 'csrf2', '내세션');
+  const b = makeJar(); await signup(b, 'csrf3', '남세션');
+  const p = await newPost(a, '토큰 바꿔치기 검사 글');
+
+  const res = await fetch(base + `/board/${p.id}/delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...a.header() },
+    body: form({ _csrf: await csrfToken(b) }), // b의 토큰을 a의 쿠키로
+    redirect: 'manual',
+  });
+  assert.equal(res.status, 403);
+  assert.ok(db.prepare('SELECT 1 FROM posts WHERE id = ?').get(p.id));
+});
+
+test('JSON 요청은 헤더로 토큰을 보낼 수 있다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'csrf4', '헤더토큰');
+  const res = await fetch(base + '/attendance/check', {
+    method: 'POST',
+    headers: { Accept: 'application/json', 'X-CSRF-Token': await csrfToken(jar), ...jar.header() },
+    redirect: 'manual',
+  });
+  assert.equal(res.status, 200);
+
+  // 헤더가 빠지면 막힌다
+  const blocked = await fetch(base + '/attendance/check', {
+    method: 'POST',
+    headers: { Accept: 'application/json', ...jar.header() },
+    redirect: 'manual',
+  });
+  assert.equal(blocked.status, 403);
+  assert.match((await blocked.json()).error, /만료/);
+});
+
+test('모든 화면이 토큰을 내려준다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'csrf5', '토큰확인');
+  for (const url of ['/board', '/points', '/ranking', '/profile', '/notifications']) {
+    const html = await (await get(url, jar)).text();
+    assert.match(html, /name="csrf-token" content="[^"]+"/, `${url}에 토큰이 없다`);
   }
 });

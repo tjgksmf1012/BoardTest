@@ -13,6 +13,7 @@
       || '활동할수록 포인트가 쌓이고, 포인트로 아바타가 성장하는 커뮤니티 게시판이에요.';
     const ogUrl = siteUrl + currentPath;
   %>
+  <meta name="csrf-token" content="<%= csrfToken %>">
   <meta name="description" content="<%= ogDesc %>">
   <meta property="og:type" content="<%= s.type || 'website' %>">
   <meta property="og:site_name" content="포인트라운지">
@@ -60,7 +61,7 @@
             <span class="me-name"><%= me.nickname %></span>
             <span class="me-points"><%= me.points.toLocaleString() %>P</span>
           </a>
-          <form action="/logout" method="post" class="inline logout-form">
+          <form action="/logout" method="post" class="inline logout-form"><%- csrfField() %>
             <button class="btn btn-ghost btn-sm" type="submit">로그아웃</button>
           </form>
         <% } else { %>
