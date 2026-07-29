@@ -35,7 +35,7 @@
   <div class="card">
     <h2>적립 기준</h2>
     <table class="rules">
-      <tr><td>회원가입 <span class="muted">(최초 1회)</span></td><td>1,000P</td></tr>
+      <tr><td><%= authMode === 'host' ? '커뮤니티 첫 방문' : '회원가입' %> <span class="muted">(최초 1회)</span></td><td>1,000P</td></tr>
       <tr><td>출석체크 <span class="muted">(하루 1회)</span></td><td>100P</td></tr>
       <tr><td>일반 게시글 작성 <span class="muted">(하루 3개까지)</span></td><td>300P</td></tr>
       <tr><td>익명 게시글 작성 <span class="muted">(하루 3개까지)</span></td><td>100P</td></tr>

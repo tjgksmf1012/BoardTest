@@ -1,8 +1,13 @@
 // 회원가입 / 로그인 / 로그아웃
+//
+// A사이트에 붙는 연동(host) 모드에서는 이 화면들이 필요 없다.
+// 이미 A사이트 회원인 사람에게 계정을 한 번 더 만들게 할 이유가 없기 때문이다.
+// (신원을 어디서 가져오는지는 src/identity.js)
 const crypto = require('crypto');
 const express = require('express');
 const db = require('../db');
 const { award } = require('../points');
+const identity = require('../identity');
 
 const router = express.Router();
 
@@ -13,17 +18,26 @@ function hashPassword(password) {
 }
 
 function verifyPassword(password, stored) {
+  // 연동 모드로 만들어진 프로필은 비밀번호를 갖지 않는다(빈 해시). 항상 막는다.
+  if (typeof stored !== 'string' || !stored.includes(':')) return false;
   const [salt, hash] = stored.split(':');
+  if (!salt || !hash) return false;
   const check = crypto.scryptSync(password, salt, 64).toString('hex');
   return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(check, 'hex'));
 }
 
-router.get('/signup', (req, res) => {
+// 연동 모드에서 자체 가입·로그인 경로를 닫는다
+function standaloneOnly(req, res, next) {
+  if (identity.isStandalone()) return next();
+  return res.redirect('/login');
+}
+
+router.get('/signup', standaloneOnly, (req, res) => {
   if (req.session.userId) return res.redirect('/board');
   res.render('signup', { error: null, form: {} });
 });
 
-router.post('/signup', (req, res) => {
+router.post('/signup', standaloneOnly, (req, res) => {
   const username = (req.body.username || '').trim();
   const nickname = (req.body.nickname || '').trim();
   const password = req.body.password || '';
@@ -94,10 +108,20 @@ function recordFail(key) {
 
 router.get('/login', (req, res) => {
   if (req.session.userId) return res.redirect('/board');
+  // 연동 모드에서는 A사이트 로그인 화면으로 넘긴다. 돌아올 곳도 함께 알려준다.
+  if (identity.isHost()) {
+    const back = res.locals.siteUrl + safeNext(req.query.next);
+    if (!identity.LOGIN_URL) {
+      return res.status(500).render('error', { message: '로그인 주소가 설정되지 않았어요. 운영자에게 문의해주세요.' });
+    }
+    const url = new URL(identity.LOGIN_URL);
+    url.searchParams.set('returnUrl', back);
+    return res.redirect(url.toString());
+  }
   res.render('login', { error: null, form: {}, next: safeNext(req.query.next) });
 });
 
-router.post('/login', (req, res) => {
+router.post('/login', standaloneOnly, (req, res) => {
   const username = (req.body.username || '').trim();
   const next = safeNext(req.body.next);
   const key = throttleKey(req);
@@ -126,7 +150,10 @@ router.post('/login', (req, res) => {
 });
 
 router.post('/logout', (req, res) => {
-  req.session.destroy(() => res.redirect('/board'));
+  // 연동 모드에서 커뮤니티만 로그아웃하면 A사이트에는 그대로 로그인돼 있어 헷갈린다.
+  // A사이트가 로그아웃 주소를 알려준 경우 그쪽까지 보낸다.
+  const to = identity.isHost() && identity.LOGOUT_URL ? identity.LOGOUT_URL : '/board';
+  req.session.destroy(() => res.redirect(to));
 });
 
 module.exports = { router, hashPassword };

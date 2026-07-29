@@ -65,8 +65,13 @@
             <button class="btn btn-ghost btn-sm" type="submit">로그아웃</button>
           </form>
         <% } else { %>
-          <a class="btn btn-ghost btn-sm" href="/login">로그인</a>
-          <a class="btn btn-primary btn-sm" href="/signup">회원가입</a>
+          <%# 연동 모드에서는 A사이트 회원이 곧 커뮤니티 회원이라 '회원가입'이 없다 %>
+          <% if (authMode === 'host') { %>
+            <a class="btn btn-primary btn-sm" href="/login">로그인</a>
+          <% } else { %>
+            <a class="btn btn-ghost btn-sm" href="/login">로그인</a>
+            <a class="btn btn-primary btn-sm" href="/signup">회원가입</a>
+          <% } %>
         <% } %>
       </div>
     </div>

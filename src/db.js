@@ -165,6 +165,14 @@ if (addColumn('posts', 'like_count', 'INTEGER NOT NULL DEFAULT 0')) {
   db.exec('UPDATE posts SET like_count = (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id)');
 }
 
+// A사이트(커뮤니티를 삽입할 알바채용 사이트) 회원번호.
+// 연동 모드에서는 이 값이 사람을 가리키는 열쇠이고, users 행은 아이디 저장소가 아니라
+// 그 회원번호에 매달린 '커뮤니티 프로필'(포인트·아바타·활동)이 된다.
+// 혼자 띄우는 모드에서는 비어 있다.
+addColumn('users', 'external_id', 'TEXT');
+// ALTER TABLE로는 UNIQUE를 걸 수 없어 인덱스로 대신한다 (NULL은 여럿이어도 되므로 딱 맞다)
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_external ON users(external_id)');
+
 // 정렬용 인덱스 — 추천순·조회순이 임시 정렬(TEMP B-TREE) 없이 앞에서 10건만 읽고 끝나게 한다
 // 그리고 페이지 수 계산용 COUNT가 본문까지 읽지 않고 인덱스만 훑도록 한다
 db.exec(`

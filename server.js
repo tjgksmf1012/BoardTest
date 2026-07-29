@@ -12,7 +12,8 @@ const { unreadCount } = require('./src/notify');
 const { startUploadsGc } = require('./src/uploads-gc');
 const { rebuildMissing } = require('./src/search');
 const { csrfToken, csrfVerify } = require('./src/csrf');
-const { checkedToday, streakBeforeToday, todayStr, recentWeek } = require('./src/points');
+const { award, checkedToday, streakBeforeToday, todayStr, recentWeek } = require('./src/points');
+const identity = require('./src/identity');
 const { levelBadge, getLevel } = require('./src/levels');
 const { catTag } = require('./src/categories');
 const { icon } = require('./src/icons');
@@ -107,6 +108,41 @@ if (process.env.VERCEL) {
   }));
 }
 
+// A사이트에서 넘어온 회원 받기 (연동 모드에서만)
+//
+// A사이트가 로그인한 회원을 커뮤니티로 보낼 때 서명된 토큰을 ?sso=... 로 붙인다.
+// 여기서 한 번 확인하고 세션을 연 뒤, 토큰은 주소에서 떼어내고 같은 곳으로 다시 보낸다.
+// (주소창·방문기록·Referer에 토큰이 남지 않게)
+if (identity.isHost()) {
+  if (!identity.hasSecret()) {
+    console.warn('⚠ AUTH_MODE=host 인데 HOST_SSO_SECRET이 없습니다. 아무도 로그인할 수 없어요.');
+  }
+  app.use((req, res, next) => {
+    if (!req.query.sso) return next();
+    const url = new URL(req.originalUrl, 'http://placeholder');
+    url.searchParams.delete('sso');
+    const clean = url.pathname + url.search;
+
+    const claims = identity.verify(req.query.sso);
+    if (!claims) return res.redirect(clean); // 위조·만료된 토큰은 조용히 무시한다
+
+    const { user, created } = identity.ensureProfile(claims);
+    if (user.is_banned) return res.redirect(clean);
+
+    // 세션 고정 방어: 로그인 시점에 세션 ID를 새로 발급한다
+    req.session.regenerate((err) => {
+      if (err) return next(err);
+      req.session.userId = user.id;
+      if (created) {
+        // 기획서의 '회원가입 1,000P'에 해당한다. 커뮤니티에는 가입 절차가 없으므로 첫 방문에 준다.
+        award(user.id, 'signup');
+        req.session.flash = '커뮤니티에 오신 걸 환영해요! 첫 방문 포인트 +1,000P를 받았어요.';
+      }
+      res.redirect(clean);
+    });
+  });
+}
+
 // CSRF 토큰 발급 (어느 화면에서든 폼에 넣을 수 있도록 가장 먼저)
 app.use(csrfToken());
 
@@ -132,6 +168,7 @@ app.use((req, res, next) => {
   res.locals.attendanceWeek = res.locals.attendanceDue ? recentWeek(res.locals.me.id) : [];
   res.locals.todayKey = todayStr();
   res.locals.currentPath = req.path; // 출석 후 보던 화면으로 돌아가기 위한 경로
+  res.locals.authMode = identity.MODE;  // 'standalone' | 'host' — 화면의 로그인 안내가 달라진다
   // 공유 미리보기(og:)에 쓸 절대 주소. 배포 주소가 있으면 그걸 쓰고, 없으면 요청 정보로 만든다.
   res.locals.siteUrl = (process.env.SITE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
 
