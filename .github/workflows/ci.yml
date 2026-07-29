@@ -10,7 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [20.x, 22.x]
+        # 22.22.2 는 실제로 배포하는 버전(.node-version). 20.x·22.x 는 최신 패치라
+        # 배포 버전에서만 깨지는 문제를 놓칠 수 있어 고정 버전을 함께 돌린다.
+        node-version: [20.x, 22.x, 22.22.2]
     steps:
       - uses: actions/checkout@v4
 

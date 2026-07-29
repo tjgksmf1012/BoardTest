@@ -9,9 +9,11 @@ services:
     startCommand: npm start
     healthCheckPath: /board
     envVars:
-      # Node를 안정 LTS로 고정 (기본값은 최신판을 물어와 better-sqlite3 미리빌드 바이너리가 없어 컴파일이 깨진다)
+      # Node를 고정한다. 기본값(최신판)은 better-sqlite3 미리빌드 바이너리가 없어 컴파일이 깨지고,
+      # 22.12.0 미만은 CommonJS에서 ESM 모듈을 require 할 수 없어
+      # sanitize-html → htmlparser2(ESM 전용) 불러오기에서 서버가 뜨자마자 죽는다.
       - key: NODE_VERSION
-        value: 22.11.0
+        value: 22.22.2
       - key: NODE_ENV
         value: production
       # 링크 공유 미리보기(og:)에 쓸 실제 주소. 없으면 요청 정보로 만들어 쓴다.
