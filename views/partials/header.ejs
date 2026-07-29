@@ -27,7 +27,7 @@
   <% if (s.image) { %><meta name="twitter:image" content="<%= siteUrl + s.image %>"><% } %>
   <link rel="canonical" href="<%= ogUrl %>">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%2300a99d'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white'%3EP%3C/text%3E%3C/svg%3E">
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>">
   <script>
     // 화면이 그려지기 전에 테마를 적용해야 밝은 화면이 번쩍이지 않는다.
     // 저장된 선택이 없으면 기기 설정(prefers-color-scheme)을 그대로 따른다.

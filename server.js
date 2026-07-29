@@ -24,6 +24,15 @@ const userRouter = require('./src/routes/user');
 seed(); // 최초 실행 시 데모 데이터 생성
 startUploadsGc(); // 어느 글에도 속하지 않는 오래된 업로드 파일을 주기적으로 정리
 
+// 스타일 파일 주소 뒤에 붙일 버전. 배포로 파일이 바뀌면 값도 바뀌어
+// 브라우저가 예전에 받아둔 스타일을 계속 쓰는 일이 없다.
+const ASSET_VERSION = (() => {
+  try {
+    const st = require('fs').statSync(path.join(__dirname, 'public', 'css', 'style.css'));
+    return String(Math.floor(st.mtimeMs)).slice(-8);
+  } catch { return '1'; }
+})();
+
 // 아직 검색 색인이 없는 글을 채운다 (기존 DB에서 올라온 경우·데모 데이터)
 {
   const n = rebuildMissing();
@@ -169,6 +178,7 @@ app.use((req, res, next) => {
   res.locals.todayKey = todayStr();
   res.locals.currentPath = req.path; // 출석 후 보던 화면으로 돌아가기 위한 경로
   res.locals.authMode = identity.MODE;  // 'standalone' | 'host' — 화면의 로그인 안내가 달라진다
+  res.locals.assetVersion = ASSET_VERSION;
   // 공유 미리보기(og:)에 쓸 절대 주소. 배포 주소가 있으면 그걸 쓰고, 없으면 요청 정보로 만든다.
   res.locals.siteUrl = (process.env.SITE_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
 
