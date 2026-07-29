@@ -230,7 +230,7 @@ const CHAPTERS = [
     marks: [['.profile-stats', '그 사람의 활동 통계']],
   },
   {
-    title: '회원 관리 (운영자 전용)', url: '/members', as: 'admin',
+    title: '회원 관리 (운영자 전용)', url: '/admin/members', as: 'admin',
     whatis: 'admin 계정으로 로그인하면 보이는 화면. 회원 목록·활동을 보고 부적절한 회원을 제재할 수 있어요.',
     marks: [['.member-row, .card', '회원 목록 · 활동 · 포인트']],
   },
@@ -366,11 +366,21 @@ async function waitUp() {
         await pg.click('form[action^="/login"] button[type=submit]');
         await pg.waitForLoadState('load');
       }
+      let resp = null;
       if (!ch.as || !ch.keepPopup) {
-        await pg.goto(BASE + ch.url);
+        resp = await pg.goto(BASE + ch.url);
         await pg.waitForLoadState('load');
       }
       await pg.waitForTimeout(500);
+
+      // 주소를 잘못 적으면 오류 페이지가 찍힌다. 오류 페이지도 .card 를 써서
+      // 강조 선택자가 매칭돼 버리므로 눈으로는 알아채기 어렵다. 여기서 끊는다.
+      if (resp && resp.status() !== 200) {
+        throw new Error(ch.title + ': ' + ch.url + ' 이 ' + resp.status() + ' 를 돌려줬어요. 주소를 확인해주세요.');
+      }
+      if (await pg.$('.auth-card.center h1')) {
+        throw new Error(ch.title + ': ' + ch.url + ' 에서 오류 화면이 떴어요.');
+      }
 
       if (!ch.keepPopup) {
         const x = await pg.$('#attPopClose');
@@ -421,7 +431,9 @@ async function waitUp() {
       const png = await pg.screenshot({ type: 'png', clip: { x: 0, y: 0, width: shot.W, height: shot.clipH } });
       shots.push({ ch, png, marks });
       await ctx.close();
-      console.log(`  ✓ ${ch.title}${marks.filter(Boolean).length}/${marks.length} 강조)`);
+      const missed = ch.marks.filter((_, i) => !marks[i]).map((m) => m[0]);
+      console.log('  OK ' + ch.title + ' (' + marks.filter(Boolean).length + '/' + marks.length + ' 강조)'
+        + (missed.length ? '  [!] 못 찾음: ' + missed.join(', ') : ''));
     }
     await browser.close();
 
