@@ -1,1 +1,191 @@
-["basic-01.png","basic-02.png","basic-03.png","basic-04.png","basic-05.png","basic-06.png","basic-07.png","basic-08.png","basic-09.png","basic-10.png","basic-11.png","basic-12.png"]
+[
+  {
+    "code": "male-01",
+    "kind": "character",
+    "memberType": "male",
+    "name": "남성회원 1",
+    "file": "male-01.png",
+    "thumb": "male-01-t.png",
+    "sort": 0
+  },
+  {
+    "code": "male-02",
+    "kind": "character",
+    "memberType": "male",
+    "name": "남성회원 2",
+    "file": "male-02.png",
+    "thumb": "male-02-t.png",
+    "sort": 1
+  },
+  {
+    "code": "male-03",
+    "kind": "character",
+    "memberType": "male",
+    "name": "남성회원 3",
+    "file": "male-03.png",
+    "thumb": "male-03-t.png",
+    "sort": 2
+  },
+  {
+    "code": "male-04",
+    "kind": "character",
+    "memberType": "male",
+    "name": "남성회원 4",
+    "file": "male-04.png",
+    "thumb": "male-04-t.png",
+    "sort": 3
+  },
+  {
+    "code": "male-05",
+    "kind": "character",
+    "memberType": "male",
+    "name": "남성회원 5",
+    "file": "male-05.png",
+    "thumb": "male-05-t.png",
+    "sort": 4
+  },
+  {
+    "code": "venue-01",
+    "kind": "character",
+    "memberType": "venue",
+    "name": "업소회원 1",
+    "file": "venue-01.png",
+    "thumb": "venue-01-t.png",
+    "sort": 5
+  },
+  {
+    "code": "venue-02",
+    "kind": "character",
+    "memberType": "venue",
+    "name": "업소회원 2",
+    "file": "venue-02.png",
+    "thumb": "venue-02-t.png",
+    "sort": 6
+  },
+  {
+    "code": "venue-03",
+    "kind": "character",
+    "memberType": "venue",
+    "name": "업소회원 3",
+    "file": "venue-03.png",
+    "thumb": "venue-03-t.png",
+    "sort": 7
+  },
+  {
+    "code": "venue-04",
+    "kind": "character",
+    "memberType": "venue",
+    "name": "업소회원 4",
+    "file": "venue-04.png",
+    "thumb": "venue-04-t.png",
+    "sort": 8
+  },
+  {
+    "code": "venue-05",
+    "kind": "character",
+    "memberType": "venue",
+    "name": "업소회원 5",
+    "file": "venue-05.png",
+    "thumb": "venue-05-t.png",
+    "sort": 9
+  },
+  {
+    "code": "anon",
+    "kind": "character",
+    "memberType": "anon",
+    "name": "익명",
+    "file": "anon.png",
+    "thumb": "anon-t.png",
+    "sort": 10
+  },
+  {
+    "code": "admin",
+    "kind": "character",
+    "memberType": "admin",
+    "name": "운영자",
+    "file": "admin.png",
+    "thumb": "admin-t.png",
+    "sort": 11
+  },
+  {
+    "code": "border-cyan",
+    "kind": "border",
+    "memberType": null,
+    "name": "시안",
+    "file": "border-cyan.png",
+    "thumb": "border-cyan-t.png",
+    "sort": 12
+  },
+  {
+    "code": "border-gold",
+    "kind": "border",
+    "memberType": null,
+    "name": "골드",
+    "file": "border-gold.png",
+    "thumb": "border-gold-t.png",
+    "sort": 13
+  },
+  {
+    "code": "border-red",
+    "kind": "border",
+    "memberType": null,
+    "name": "레드",
+    "file": "border-red.png",
+    "thumb": "border-red-t.png",
+    "sort": 14
+  },
+  {
+    "code": "border-rainbow",
+    "kind": "border",
+    "memberType": null,
+    "name": "무지개",
+    "file": "border-rainbow.png",
+    "thumb": "border-rainbow-t.png",
+    "sort": 15
+  },
+  {
+    "code": "border-mint",
+    "kind": "border",
+    "memberType": null,
+    "name": "민트",
+    "file": "border-mint.png",
+    "thumb": "border-mint-t.png",
+    "sort": 16
+  },
+  {
+    "code": "border-blue",
+    "kind": "border",
+    "memberType": null,
+    "name": "블루",
+    "file": "border-blue.png",
+    "thumb": "border-blue-t.png",
+    "sort": 17
+  },
+  {
+    "code": "border-silver",
+    "kind": "border",
+    "memberType": null,
+    "name": "실버",
+    "file": "border-silver.png",
+    "thumb": "border-silver-t.png",
+    "sort": 18
+  },
+  {
+    "code": "border-orange",
+    "kind": "border",
+    "memberType": null,
+    "name": "오렌지",
+    "file": "border-orange.png",
+    "thumb": "border-orange-t.png",
+    "sort": 19
+  },
+  {
+    "code": "border-pink",
+    "kind": "border",
+    "memberType": null,
+    "name": "핑크",
+    "file": "border-pink.png",
+    "thumb": "border-pink-t.png",
+    "sort": 20
+  }
+]

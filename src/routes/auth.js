@@ -8,6 +8,7 @@ const express = require('express');
 const db = require('../db');
 const { award } = require('../points');
 const identity = require('../identity');
+const avatars = require('../avatars');
 
 const router = express.Router();
 
@@ -34,38 +35,43 @@ function standaloneOnly(req, res, next) {
 
 router.get('/signup', standaloneOnly, (req, res) => {
   if (req.session.userId) return res.redirect('/board');
-  res.render('signup', { error: null, form: {} });
+  res.render('signup', { error: null, form: {}, memberTypes: avatars.MEMBER_TYPES });
 });
 
 router.post('/signup', standaloneOnly, (req, res) => {
   const username = (req.body.username || '').trim();
   const nickname = (req.body.nickname || '').trim();
   const password = req.body.password || '';
-  const form = { username, nickname };
+  const form = { username, nickname, member_type: req.body.member_type };
 
   if (!/^[a-zA-Z0-9_]{4,20}$/.test(username)) {
-    return res.render('signup', { error: '아이디는 영문/숫자 4~20자로 입력해주세요.', form });
+    return res.render('signup', { error: '아이디는 영문/숫자 4~20자로 입력해주세요.', form, memberTypes: avatars.MEMBER_TYPES });
   }
   if (nickname.length < 2 || nickname.length > 10) {
-    return res.render('signup', { error: '닉네임은 2~10자로 입력해주세요.', form });
+    return res.render('signup', { error: '닉네임은 2~10자로 입력해주세요.', form, memberTypes: avatars.MEMBER_TYPES });
   }
   if (password.length < 8) {
-    return res.render('signup', { error: '비밀번호는 8자 이상으로 입력해주세요.', form });
+    return res.render('signup', { error: '비밀번호는 8자 이상으로 입력해주세요.', form, memberTypes: avatars.MEMBER_TYPES });
   }
   if (db.prepare('SELECT 1 FROM users WHERE username = ?').get(username)) {
-    return res.render('signup', { error: '이미 사용 중인 아이디예요.', form });
+    return res.render('signup', { error: '이미 사용 중인 아이디예요.', form, memberTypes: avatars.MEMBER_TYPES });
   }
   if (db.prepare('SELECT 1 FROM users WHERE nickname = ?').get(nickname)) {
-    return res.render('signup', { error: '이미 사용 중인 닉네임이에요.', form });
+    return res.render('signup', { error: '이미 사용 중인 닉네임이에요.', form, memberTypes: avatars.MEMBER_TYPES });
   }
 
+  // 회원 유형에 따라 쓸 수 있는 캐릭터가 다르다.
+  // 남성·업소회원은 무작위로 하나 배정하고, 여성회원은 나중에 골라 쓴다.
+  const memberType = avatars.MEMBER_TYPES[req.body.member_type] ? req.body.member_type : 'female';
+  const starter = avatars.starterFor(memberType);
+
   const info = db.prepare(
-    'INSERT INTO users (username, password_hash, nickname) VALUES (?, ?, ?)'
-  ).run(username, hashPassword(password), nickname);
+    'INSERT INTO users (username, password_hash, nickname, member_type, avatar_id) VALUES (?, ?, ?, ?, ?)'
+  ).run(username, hashPassword(password), nickname, memberType, starter.assigned ? starter.assigned.code : '');
 
   award(info.lastInsertRowid, 'signup'); // 회원가입 최초 1회 1,000P
   startSession(req, info.lastInsertRowid, (err) => {
-    if (err) return res.render('signup', { error: '가입 처리 중 문제가 생겼어요. 다시 시도해주세요.', form });
+    if (err) return res.render('signup', { error: '가입 처리 중 문제가 생겼어요. 다시 시도해주세요.', form, memberTypes: avatars.MEMBER_TYPES });
     req.session.flash = '가입을 환영해요! 회원가입 포인트 +1,000P를 받았어요.';
     res.redirect('/board');
   });

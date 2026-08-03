@@ -4,7 +4,7 @@ const db = require('../db');
 const { RULES, checkAttendance, unlockMessage, nextUnlock, attendanceView,
   currentStreak, streakBeforeToday, checkedToday, recentWeek, nextMilestone,
   MILESTONES, monthlyCount, challengeView, weekChallenge } = require('../points');
-const { AVATARS, BORDERS, TIER_INFO, canUseAvatar, canUseBorder, eventOpen } = require('../avatars');
+const avatars = require('../avatars');
 const { getLevel, achievements } = require('../levels');
 const { unreadCount } = require('../notify');
 const { subscribe } = require('../realtime');
@@ -231,16 +231,15 @@ router.get('/users/:id(\\d+)', (req, res) => {
 // ---- 프로필 / 아바타 -----------------------------------------------------------
 router.get('/profile', requireLogin, (req, res) => {
   const me = res.locals.me;
-  const groups = ['basic', 'hair', 'outfit', 'event'].map((tier) => ({
-    tier,
-    info: TIER_INFO[tier],
-    avatars: AVATARS.filter((a) => a.tier === tier).map((a) => ({
-      ...a,
-      unlocked: canUseAvatar(me, a.id),
-      seasonOpen: a.tier !== 'event' || eventOpen(a),
-    })),
+  const owned = ownedCodes(me.id);
+  const decorate = (list) => list.map((i) => ({
+    ...i,
+    unlocked: avatars.canUse(me, i.code, owned),
+    owned: owned.has(i.code),
   }));
-  const borders = BORDERS.map((b) => ({ ...b, unlocked: canUseBorder(me, b.id) }));
+  // 내 유형의 캐릭터만 보여준다 (남성회원에게 여성 캐릭터를 팔 이유가 없다)
+  const myCharacters = decorate(avatars.characters(me.member_type));
+  const myBorders = decorate(avatars.borders());
 
   const stats = {
     points: me.points,
@@ -270,19 +269,58 @@ router.get('/profile', requireLogin, (req, res) => {
     WHERE b.user_id = ? ORDER BY b.id DESC LIMIT 5`).all(me.id);
 
   res.render('profile', {
-    groups, borders, stats, badges, myPosts, myComments, myBookmarks,
+    myCharacters, myBorders, memberTypes: avatars.MEMBER_TYPES,
+    stats, badges, myPosts, myComments, myBookmarks,
     next: nextUnlock(me.points), level: getLevel(me.points),
-    att: attendanceView(me.id),
+    att: attendanceView(me.id), milestones: MILESTONES, attendPoint: RULES.attendance.amount,
   });
 });
 
-router.post('/profile/avatar', requireLogin, (req, res) => {
-  const avatarId = req.body.avatar_id;
-  if (canUseAvatar(res.locals.me, avatarId)) {
-    db.prepare('UPDATE users SET avatar_id = ? WHERE id = ?').run(avatarId, req.session.userId);
-    req.session.flash = '아바타를 변경했어요!';
+// 그 사람이 산 항목들
+function ownedCodes(userId) {
+  return new Set(db.prepare('SELECT item_code FROM user_items WHERE user_id = ?')
+    .all(userId).map((r) => r.item_code));
+}
+
+// 포인트로 구매. 차감과 지급을 한 트랜잭션으로 묶어, 중간에 끊겨도
+// '포인트만 빠지고 못 받는' 상태가 남지 않게 한다.
+const buyItem = db.transaction((userId, item) => {
+  const u = db.prepare('SELECT points FROM users WHERE id = ?').get(userId);
+  if (u.points < item.price) return { ok: false, reason: 'points' };
+  db.prepare('UPDATE users SET points = points - ? WHERE id = ?').run(item.price, userId);
+  db.prepare('INSERT INTO user_items (user_id, item_code, price) VALUES (?, ?, ?)')
+    .run(userId, item.code, item.price);
+  db.prepare("INSERT INTO point_logs (user_id, amount, reason, detail) VALUES (?, ?, 'purchase', ?)")
+    .run(userId, -item.price, `${item.name} 구매`);
+  return { ok: true };
+});
+
+router.post('/profile/buy', requireLogin, (req, res) => {
+  const me = res.locals.me;
+  const item = avatars.get(req.body.code);
+  const owned = ownedCodes(me.id);
+  if (!item || item.price === 0) {
+    req.session.flash = '살 수 없는 항목이에요.';
+  } else if (owned.has(item.code)) {
+    req.session.flash = '이미 가지고 있어요.';
+  } else if (item.kind === 'character' && item.memberType !== me.member_type) {
+    req.session.flash = '회원 유형에 맞지 않는 캐릭터예요.';
   } else {
-    req.session.flash = '아직 해금되지 않은 아바타예요.';
+    const r = buyItem(me.id, item);
+    req.session.flash = r.ok
+      ? `${item.name}을(를) 구매했어요! (-${item.price.toLocaleString()}P)`
+      : `포인트가 부족해요. (${item.price.toLocaleString()}P 필요)`;
+  }
+  res.redirect('/profile#avatar');
+});
+
+router.post('/profile/avatar', requireLogin, (req, res) => {
+  const code = req.body.avatar_id;
+  if (avatars.canUse(res.locals.me, code, ownedCodes(req.session.userId))) {
+    db.prepare('UPDATE users SET avatar_id = ? WHERE id = ?').run(code, req.session.userId);
+    req.session.flash = '캐릭터를 변경했어요!';
+  } else {
+    req.session.flash = '아직 가지고 있지 않은 캐릭터예요.';
   }
   res.redirect('/profile#avatar');
 });
@@ -292,11 +330,11 @@ router.post('/profile/border', requireLogin, (req, res) => {
   if (!borderId) {
     db.prepare('UPDATE users SET border_id = NULL WHERE id = ?').run(req.session.userId);
     req.session.flash = '테두리를 해제했어요.';
-  } else if (canUseBorder(res.locals.me, borderId)) {
+  } else if (avatars.canUse(res.locals.me, borderId, ownedCodes(req.session.userId))) {
     db.prepare('UPDATE users SET border_id = ? WHERE id = ?').run(borderId, req.session.userId);
     req.session.flash = '테두리를 장착했어요!';
   } else {
-    req.session.flash = '테두리는 20,000P 부터 해금돼요.';
+    req.session.flash = `테두리는 ${avatars.BORDER_PRICE.toLocaleString()}P에 구매할 수 있어요.`;
   }
   res.redirect('/profile#avatar');
 });

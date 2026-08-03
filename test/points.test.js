@@ -9,7 +9,7 @@ const path = require('path');
 process.env.DB_PATH = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'boardtest-')), 'test.db');
 
 const db = require('../src/db');
-const { award, checkAttendance, crossedUnlocks, todayStr,
+const { award, checkAttendance, crossedUnlocks, todayStr, UNLOCK_THRESHOLDS,
   checkedToday, currentStreak, streakBeforeToday, attendanceView } = require('../src/points');
 
 let seq = 0;
@@ -122,19 +122,22 @@ test('연속 출석이 끊기면 스트릭이 다시 시작됨', () => {
   assert.equal(r.streak, 1);
 });
 
-test('아바타 해금 기준 통과 감지', () => {
-  assert.deepEqual(crossedUnlocks(4900, 5200).map((t) => t.points), [5000]);
-  assert.deepEqual(crossedUnlocks(5000, 5100).map((t) => t.points), []);
-  assert.deepEqual(crossedUnlocks(9000, 21000).map((t) => t.points), [10000, 20000]);
+test('상점에서 살 수 있게 되는 지점을 감지한다', () => {
+  // 기준값은 캐릭터·테두리 가격에서 온다 (한곳에서 나와야 어긋나지 않는다)
+  const [ch, bd] = UNLOCK_THRESHOLDS.map((t) => t.points);
+  assert.deepEqual(crossedUnlocks(ch - 100, ch + 100).map((t) => t.points), [ch]);
+  assert.deepEqual(crossedUnlocks(ch, ch + 100).map((t) => t.points), [], '이미 넘긴 지점은 다시 알리지 않는다');
+  assert.deepEqual(crossedUnlocks(0, bd + 100).map((t) => t.points), [ch, bd]);
   assert.deepEqual(crossedUnlocks(0, 300).map((t) => t.points), []);
 });
 
 test('포인트 지급 시 해금 정보가 함께 반환됨', () => {
   const u = makeUser();
-  db.prepare('UPDATE users SET points = 4900 WHERE id = ?').run(u);
-  const r = award(u, 'post'); // 4900 + 300 = 5200 → 5000 통과
+  const need = UNLOCK_THRESHOLDS[0].points;
+  db.prepare('UPDATE users SET points = ? WHERE id = ?').run(need - 100, u);
+  const r = award(u, 'post'); // +300 → 기준선 통과
   assert.equal(r.unlocked.length, 1);
-  assert.equal(r.unlocked[0].points, 5000);
+  assert.equal(r.unlocked[0].points, need);
 });
 
 test('오늘 날짜 형식이 YYYY-MM-DD', () => {

@@ -2,7 +2,7 @@
 
 <div class="auth-card card">
   <h1>회원가입</h1>
-  <p class="muted">가입 즉시 <strong>1,000P</strong>와 기본 아바타 12종이 열려요!</p>
+  <p class="muted">가입 즉시 <strong>1,000P</strong>와 회원 유형에 맞는 캐릭터를 받아요!</p>
   <% if (error) { %><div class="alert"><%= error %></div><% } %>
   <form method="post" action="/signup" class="form"><%- csrfField() %>
     <label>아이디 (영문/숫자 4~20자)
@@ -13,6 +13,14 @@
     </label>
     <label>비밀번호 (8자 이상)
       <input type="password" name="password" required>
+    </label>
+    <label>회원 유형
+      <select class="cat-select" name="member_type" required>
+        <% Object.keys(memberTypes).forEach(function (k) { %>
+          <option value="<%= k %>" <%= form.member_type === k ? 'selected' : '' %>><%= memberTypes[k].label %></option>
+        <% }) %>
+      </select>
+      <small class="muted">유형에 따라 쓸 수 있는 캐릭터가 달라요.</small>
     </label>
     <button class="btn btn-primary btn-block" type="submit">가입하고 1,000P 받기</button>
   </form>

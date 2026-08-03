@@ -103,7 +103,7 @@
   <% posts.forEach(function (p) { %>
     <a class="post-row" href="/board/<%= p.id %>">
       <% if (p.is_anonymous) { %>
-        <%- renderAvatar('basic-12', null, 44) %>
+        <%- renderAvatar('anon', null, 44) %>
       <% } else { %>
         <%- renderAvatar(p.avatar_id, p.border_id, 44) %>
       <% } %>

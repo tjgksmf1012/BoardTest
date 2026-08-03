@@ -14,7 +14,7 @@
     <% } %>
     <div class="post-author">
       <% if (post.is_anonymous) { %>
-        <%- renderAvatar('basic-12', null, 44) %>
+        <%- renderAvatar('anon', null, 44) %>
         <div><strong>익명</strong><br><span class="muted"><%= post.created_at.slice(0, 16) %> · 조회 <%= post.views %></span></div>
       <% } else { %>
         <a class="author-link" href="/users/<%= post.user_id %>" aria-label="<%= post.nickname %>님 프로필"><%- renderAvatar(post.avatar_id, post.border_id, 44) %></a>

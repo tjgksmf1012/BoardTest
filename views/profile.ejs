@@ -143,10 +143,7 @@
     <% if (att.checkedToday) { %>
       <button class="btn btn-primary btn-block" disabled>오늘 출석 완료! 내일 또 만나요 ✓</button>
     <% } else { %>
-      <form action="/attendance/check" method="post"><%- csrfField() %>
-        <input type="hidden" name="next" value="/profile">
-        <button class="btn btn-primary btn-block" type="submit">출석체크 하고 100P 받기</button>
-      </form>
+      <a class="btn btn-primary btn-block" href="/attendance">출석체크 하러 가기</a>
     <% } %>
   </div>
 
@@ -162,11 +159,13 @@
       <p class="muted att-keep">오늘 출석하면 연속 기록이 시작돼요.</p>
     <% } %>
     <ul class="streak-list">
-      <li class="<%= att.streak >= 3 ? 'done' : '' %>"><span>3일 연속</span><strong>+500P</strong></li>
-      <li class="<%= att.streak >= 7 ? 'done' : '' %>"><span>7일 연속</span><strong>+1,000P</strong></li>
-      <li class="<%= att.streak >= 30 ? 'done' : '' %>"><span>30일 연속</span><strong>+3,000P</strong></li>
+      <% milestones.forEach(function (m) { %>
+        <li class="<%= att.streak >= m.days ? 'done' : '' %>">
+          <span><%= m.days %>일 연속</span><strong>+<%= m.points.toLocaleString() %>P</strong>
+        </li>
+      <% }) %>
     </ul>
-    <p class="muted">하루 출석하면 100P. 연속 출석이 끊기면 처음부터 다시 시작돼요.</p>
+    <p class="muted">하루 출석하면 <%= attendPoint %>P. 연속 출석이 끊기면 처음부터 다시 시작돼요.</p>
   </div>
 </div>
 
@@ -174,119 +173,83 @@
 
 <div class="ptab-panel" id="panel-avatar">
 
-<h2 class="section-title">아바타 해금 가이드</h2>
-<p class="muted">게시판 활동 포인트로 다양한 아바타를 열어보세요. 포인트가 기준에 도달하면 자동으로 해금돼요!</p>
+<h2 class="section-title">캐릭터 꾸미기</h2>
+<p class="muted">
+  <%= memberTypes[me.member_type] ? memberTypes[me.member_type].label : '회원' %>용 캐릭터예요.
+  가입할 때 받은 캐릭터는 바로 쓸 수 있고, 나머지는 포인트로 살 수 있어요.
+</p>
 
-<% groups.forEach(function (g) { %>
-  <div class="card tier-card">
-    <div class="tier-head">
-      <h3><%= g.info.label %></h3>
-      <% if (g.tier === 'event') { %>
-        <span class="badge badge-pick">시즌 한정</span>
-      <% } else if (g.info.need > 0) { %>
-        <span class="badge <%= me.points >= g.info.need ? 'badge-hot' : 'badge-lock' %>">
-          <%= g.info.need.toLocaleString() %>P 해금
-        </span>
-      <% } else { %>
-        <span class="badge badge-free">무료</span>
-      <% } %>
-      <span class="muted"><%= g.info.desc %></span>
-    </div>
-    <% if (g.info.need > 0 && me.points < g.info.need) { %>
-      <div class="progress tier-progress">
-        <div class="progress-fill" style="width: <%= Math.round(me.points / g.info.need * 100) %>%"></div>
-      </div>
-      <p class="tier-progress-label muted"><%= (g.info.need - me.points).toLocaleString() %>P 더 모으면 해금돼요!</p>
-    <% } %>
-    <div class="avatar-grid">
-      <% g.avatars.forEach(function (a) { %>
-        <% if (a.unlocked) { %>
-          <form method="post" action="/profile/avatar" class="avatar-pick <%= me.avatar_id === a.id ? 'selected' : '' %>"><%- csrfField() %>
-            <input type="hidden" name="avatar_id" value="<%= a.id %>">
-            <button type="submit" title="<%= a.name %>">
-              <%- renderAvatar(a.id, null, 64) %>
-              <span class="avatar-name"><%= a.name %></span>
-              <% if (me.avatar_id === a.id) { %><span class="using">사용 중</span><% } %>
-            </button>
-          </form>
-        <% } else { %>
-          <div class="avatar-pick locked" title="<%= a.name %>">
-            <%- renderAvatar(a.id, null, 64) %>
-            <span class="lock-overlay">🔒</span>
-            <span class="avatar-name"><%= a.name %></span>
-            <span class="lock-note">
-              <%= a.tier === 'event' ? (a.months.join('·') + '월 오픈') : (a.need.toLocaleString() + 'P 필요') %>
-            </span>
-          </div>
-        <% } %>
-      <% }) %>
-    </div>
-  </div>
-<% }) %>
-
-<div class="card tier-card">
+<div class="card shop-card">
   <div class="tier-head">
-    <h3>움직이는 테두리</h3>
-    <span class="badge <%= me.points >= 20000 ? 'badge-hot' : 'badge-lock' %>">20,000P 해금</span>
-    <span class="muted">반짝이는 효과와 애니메이션 느낌의 테두리</span>
+    <h3>캐릭터</h3>
+    <span class="muted"><%= myCharacters.filter(function (c) { return c.unlocked; }).length %> / <%= myCharacters.length %> 보유</span>
   </div>
-  <% if (me.points < 20000) { %>
-    <div class="progress tier-progress">
-      <div class="progress-fill" style="width: <%= Math.round(me.points / 20000 * 100) %>%"></div>
-    </div>
-    <p class="tier-progress-label muted"><%= (20000 - me.points).toLocaleString() %>P 더 모으면 해금돼요!</p>
+  <% if (myCharacters.length === 0) { %>
+    <div class="empty small">아직 등록된 캐릭터가 없어요.</div>
   <% } %>
-  <div class="avatar-grid">
-    <% borders.forEach(function (b) { %>
-      <% if (b.unlocked) { %>
-        <form method="post" action="/profile/border" class="avatar-pick <%= me.border_id === b.id ? 'selected' : '' %>"><%- csrfField() %>
-          <input type="hidden" name="border_id" value="<%= b.id %>">
-          <button type="submit" title="<%= b.name %>">
-            <%- renderAvatar(me.avatar_id, b.id, 64) %>
-            <span class="avatar-name"><%= b.name %></span>
-            <% if (me.border_id === b.id) { %><span class="using">사용 중</span><% } %>
+  <div class="shop-grid">
+    <% myCharacters.forEach(function (a) { %>
+      <% if (a.unlocked) { %>
+        <form method="post" action="/profile/avatar" class="shop-item <%= me.avatar_id === a.code ? 'selected' : '' %>"><%- csrfField() %>
+          <input type="hidden" name="avatar_id" value="<%= a.code %>">
+          <button type="submit" title="<%= a.name %> 장착">
+            <%- renderAvatar(a.code, null, 72) %>
+            <span class="shop-name"><%= a.name %></span>
+            <% if (me.avatar_id === a.code) { %><span class="using">사용 중</span><% } %>
           </button>
         </form>
       <% } else { %>
-        <div class="avatar-pick locked" title="<%= b.name %>">
-          <%- renderAvatar(me.avatar_id, b.id, 64) %>
-          <span class="lock-overlay">🔒</span>
-          <span class="avatar-name"><%= b.name %></span>
-          <span class="lock-note">20,000P 필요</span>
-        </div>
+        <form method="post" action="/profile/buy" class="shop-item locked"><%- csrfField() %>
+          <input type="hidden" name="code" value="<%= a.code %>">
+          <button type="submit" title="<%= a.name %> 구매">
+            <%- renderAvatar(a.code, null, 72) %>
+            <span class="shop-name"><%= a.name %></span>
+            <span class="shop-price <%= me.points >= a.price ? 'can' : '' %>"><%= a.price.toLocaleString() %>P</span>
+          </button>
+        </form>
       <% } %>
     <% }) %>
-    <% if (me.border_id) { %>
-      <form method="post" action="/profile/border" class="avatar-pick"><%- csrfField() %>
-        <button type="submit" title="테두리 해제">
-          <%- renderAvatar(me.avatar_id, null, 64) %>
-          <span class="avatar-name">테두리 없음</span>
-        </button>
-      </form>
-    <% } %>
   </div>
 </div>
 
-</div><%# /panel-avatar %>
+<div class="card shop-card">
+  <div class="tier-head">
+    <h3>테두리</h3>
+    <span class="muted">각 <%= myBorders.length ? myBorders[0].price.toLocaleString() : 0 %>P</span>
+  </div>
+  <div class="shop-grid">
+    <form method="post" action="/profile/border" class="shop-item <%= me.border_id ? '' : 'selected' %>"><%- csrfField() %>
+      <input type="hidden" name="border_id" value="">
+      <button type="submit" title="테두리 없음">
+        <%- renderAvatar(me.avatar_id, null, 72) %>
+        <span class="shop-name">사용 안 함</span>
+        <% if (!me.border_id) { %><span class="using">사용 중</span><% } %>
+      </button>
+    </form>
+    <% myBorders.forEach(function (b) { %>
+      <% if (b.unlocked) { %>
+        <form method="post" action="/profile/border" class="shop-item <%= me.border_id === b.code ? 'selected' : '' %>"><%- csrfField() %>
+          <input type="hidden" name="border_id" value="<%= b.code %>">
+          <button type="submit" title="<%= b.name %> 장착">
+            <%- renderAvatar(me.avatar_id, b.code, 72) %>
+            <span class="shop-name"><%= b.name %></span>
+            <% if (me.border_id === b.code) { %><span class="using">사용 중</span><% } %>
+          </button>
+        </form>
+      <% } else { %>
+        <form method="post" action="/profile/buy" class="shop-item locked"><%- csrfField() %>
+          <input type="hidden" name="code" value="<%= b.code %>">
+          <button type="submit" title="<%= b.name %> 구매">
+            <%- renderAvatar(me.avatar_id, b.code, 72) %>
+            <span class="shop-name"><%= b.name %></span>
+            <span class="shop-price <%= me.points >= b.price ? 'can' : '' %>"><%= b.price.toLocaleString() %>P</span>
+          </button>
+        </form>
+      <% } %>
+    <% }) %>
+  </div>
+</div>
 
-<script>
-  (function () {
-    document.documentElement.classList.add('js-tabs');
-    var tabs = document.querySelectorAll('.ptab');
-    var panels = document.querySelectorAll('.ptab-panel');
-    function show(target) {
-      tabs.forEach(function (t) { t.classList.toggle('on', t.dataset.target === target); });
-      panels.forEach(function (p) { p.classList.toggle('on', p.id === 'panel-' + target); });
-    }
-    tabs.forEach(function (t) {
-      t.addEventListener('click', function () {
-        show(t.dataset.target);
-        history.replaceState(null, '', '#' + t.dataset.target);
-      });
-    });
-    var open = location.hash.replace('#', '');
-    if (open && document.getElementById('panel-' + open)) show(open);
-  })();
-</script>
+</div>
 
 <%- include('partials/footer') %>

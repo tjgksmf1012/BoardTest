@@ -30,11 +30,12 @@ function countToday(userId, reason) {
   ).get(userId, reason).c;
 }
 
-// 아바타 해금 기준. 포인트가 이 값을 넘는 순간 축하 메시지를 띄운다
+// 상점에서 살 수 있는 값. 포인트가 이 값을 넘는 순간 축하 메시지를 띄운다.
+// 값은 캐릭터·테두리 카탈로그(src/avatars.js)와 한곳에서 나오게 해 어긋나지 않도록 한다.
+const { CHARACTER_PRICE, BORDER_PRICE } = require('./avatars');
 const UNLOCK_THRESHOLDS = [
-  { points: 5000, label: '스페셜 헤어' },
-  { points: 10000, label: '프리미엄 의상' },
-  { points: 20000, label: '움직이는 테두리' },
+  { points: CHARACTER_PRICE, label: '캐릭터 구매' },
+  { points: BORDER_PRICE, label: '테두리 구매' },
 ];
 
 function crossedUnlocks(before, after) {

@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   nickname      TEXT UNIQUE NOT NULL,
   points        INTEGER NOT NULL DEFAULT 0,
-  avatar_id     TEXT NOT NULL DEFAULT 'basic-01',
+  avatar_id     TEXT NOT NULL DEFAULT '',
   border_id     TEXT,
   is_admin      INTEGER NOT NULL DEFAULT 0,
   is_banned     INTEGER NOT NULL DEFAULT 0,
@@ -113,6 +113,15 @@ CREATE TABLE IF NOT EXISTS comment_likes (
   UNIQUE(comment_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS user_items (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  item_code  TEXT NOT NULL,          -- public/avatars/manifest.json 의 code
+  price      INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+  UNIQUE(user_id, item_code)
+);
+
 CREATE TABLE IF NOT EXISTS comment_reports (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   comment_id INTEGER NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
@@ -134,6 +143,7 @@ CREATE INDEX IF NOT EXISTS idx_pointlogs_user  ON point_logs(user_id, id DESC);
 CREATE INDEX IF NOT EXISTS idx_noti_user       ON notifications(user_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_reports_post    ON reports(post_id);
 CREATE INDEX IF NOT EXISTS idx_creports_comment ON comment_reports(comment_id);
+CREATE INDEX IF NOT EXISTS idx_useritems_user   ON user_items(user_id);
 `);
 
 // ---- 마이그레이션 (기존 DB에 새 컬럼 추가) ------------------------------------
@@ -168,6 +178,20 @@ if (addColumn('posts', 'like_count', 'INTEGER NOT NULL DEFAULT 0')) {
 // 없어진 말머리(알바후기·구인구직)로 저장된 옛 글을 '자유'로 옮긴다.
 // 그대로 두면 어느 탭에도 걸리지 않아 화면에서 사라진다.
 db.exec("UPDATE posts SET category = '자유' WHERE category IN ('알바후기', '구인구직')");
+
+// 회원 유형(여성·남성·업소). 어떤 캐릭터를 배정·판매할지 가른다.
+// 연동 모드에서는 A사이트가 알려주고, 혼자 띄울 때는 가입 화면에서 고른다.
+addColumn('users', 'member_type', "TEXT NOT NULL DEFAULT 'female'");
+
+// 임시로 넣었던 캐릭터(basic-*, hair-*, outfit-*, event-*, border-neon 등)를
+// 이번에 받은 이미지로 갈아끼운다. 옛 코드가 남아 있으면 이미지가 깨진다.
+db.exec(`
+  UPDATE users SET avatar_id = '' WHERE avatar_id LIKE 'basic-%' OR avatar_id LIKE 'hair-%'
+    OR avatar_id LIKE 'outfit-%' OR avatar_id LIKE 'event-%';
+  UPDATE users SET border_id = NULL WHERE border_id IN ('border-neon', 'border-sunset', 'border-heart');
+  DELETE FROM user_items WHERE item_code LIKE 'basic-%' OR item_code LIKE 'hair-%'
+    OR item_code LIKE 'outfit-%' OR item_code LIKE 'event-%';
+`);
 
 // A사이트(커뮤니티를 삽입할 알바채용 사이트) 회원번호.
 // 연동 모드에서는 이 값이 사람을 가리키는 열쇠이고, users 행은 아이디 저장소가 아니라
