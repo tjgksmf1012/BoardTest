@@ -793,7 +793,8 @@ test('베스트댓글이 위아래로 겹쳐도 입력칸 id는 겹치지 않는
     await post(`/board/comments/${c.id}/like`, {}, j);
   }
   const html = await (await get(`/board/${p.id}`, jar)).text();
-  assert.ok(html.includes('BEST'), '베스트댓글로 뽑혀야 한다');
+  // BEST 뱃지는 지웠지만, 베스트댓글 자리는 그대로라 같은 댓글이 위아래 두 번 그려진다
+  assert.ok(html.includes('best-block'), '베스트댓글로 뽑혀야 한다');
   const ids = [...html.matchAll(/id="reply-([^"]+)"/g)].map((m) => m[1]);
   assert.deepEqual(ids, [`b${c.id}`, `${c.id}`], '위쪽 베스트 사본은 b를 붙여 구분한다');
   assert.equal(new Set(ids).size, ids.length, 'id가 겹치면 안 된다');

@@ -39,17 +39,15 @@ const ASSET_VERSION = (() => {
   if (n > 0) console.log(`검색 색인을 ${n}건 새로 만들었어요.`);
 }
 
-// 목록에 쓰는 상대 시간 ("3시간 전"). 일주일이 지나면 날짜로 표시
+// 작성 시각 표기 — 하루가 지나기 전에는 시각(24시간제), 지나면 날짜만.
+// "3시간 전" 같은 상대 표기는 몇 시에 쓴 글인지 알 수 없어서 실제 시각을 보여준다.
 function timeAgo(dateStr) {
   if (!dateStr) return '';
   const then = new Date(dateStr.replace(' ', 'T')).getTime();
+  if (Number.isNaN(then)) return dateStr.slice(0, 10);
   const diff = (Date.now() - then) / 1000;
-  if (diff < 0) return dateStr.slice(0, 10);
-  if (diff < 60) return '방금 전';
-  if (diff < 3600) return `${Math.floor(diff / 60)}분 전`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}시간 전`;
-  if (diff < 86400 * 7) return `${Math.floor(diff / 86400)}일 전`;
-  return dateStr.slice(0, 10);
+  if (diff >= 0 && diff < 86400) return dateStr.slice(11, 16); // HH:MM
+  return dateStr.slice(0, 10);                                  // YYYY-MM-DD
 }
 
 const app = express();

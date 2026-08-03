@@ -94,8 +94,8 @@ function seed() {
   // 말머리(카테고리) 지정
   const setCat = db.prepare('UPDATE posts SET category = ? WHERE id = ?');
   setCat.run('자유', p1);
-  setCat.run('구인구직', p2);
-  setCat.run('알바후기', p3);
+  setCat.run('이벤트', p2);
+  setCat.run('자유', p3);
   setCat.run('정보', p4);
   setCat.run('질문', p5);
 

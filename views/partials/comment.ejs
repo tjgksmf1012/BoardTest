@@ -16,7 +16,6 @@
   </a>
   <div class="comment-body">
     <div class="comment-head">
-      <% if (isBest) { %><span class="badge badge-hot">BEST</span><% } %>
       <a class="comment-name" href="/users/<%= c.user_id %>"><strong><%= c.nickname %></strong></a>
       <%- levelBadge(c.author_points) %>
       <span class="muted"><%= timeAgo(c.created_at) %></span>

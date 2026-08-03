@@ -135,9 +135,13 @@ router.get('/', (req, res) => {
     : match
       ? ` AND p.id IN (SELECT rowid FROM posts_fts WHERE g MATCH @fts) AND ${likeCond}`
       : ` AND ${likeCond}`;
+  // 추천순·조회순은 '최근 일주일' 안에서만 줄을 세운다.
+  // 전체 기간으로 세우면 오래전 인기글이 계속 위에 붙어 새 글이 묻힌다.
+  const rankWindow = sort !== 'latest' ? " AND p.created_at >= datetime('now', 'localtime', '-7 days')" : '';
   const where = searchCond
     + (hot ? ' AND p.is_popular = 1' : '')
     + (category ? ' AND p.category = @category' : '')
+    + rankWindow
     + ' AND (p.is_hidden = 0 OR @admin = 1)';
   const orderBy = sort === 'likes' ? 'p.like_count DESC, p.id DESC'
     : sort === 'views' ? 'p.views DESC, p.id DESC'

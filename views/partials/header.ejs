@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= typeof title !== 'undefined' && title ? title + ' · ' : '' %>포인트라운지</title>
+  <title><%= typeof title !== 'undefined' && title ? title + ' · ' : '' %>밤알바커뮤니티</title>
   <%
     // 카카오톡·트위터 등에 링크를 붙였을 때 보이는 미리보기 정보.
     // 각 화면에서 share = { title, description, image } 를 넘기면 그 값을 쓴다.
     const s = typeof share !== 'undefined' && share ? share : {};
-    const ogTitle = s.title || (typeof title !== 'undefined' && title ? title : '포인트라운지');
+    const ogTitle = s.title || (typeof title !== 'undefined' && title ? title : '밤알바커뮤니티');
     const ogDesc = s.description
       || '활동할수록 포인트가 쌓이고, 포인트로 아바타가 성장하는 커뮤니티 게시판이에요.';
     const ogUrl = siteUrl + currentPath;
@@ -16,7 +16,7 @@
   <meta name="csrf-token" content="<%= csrfToken %>">
   <meta name="description" content="<%= ogDesc %>">
   <meta property="og:type" content="<%= s.type || 'website' %>">
-  <meta property="og:site_name" content="포인트라운지">
+  <meta property="og:site_name" content="밤알바커뮤니티">
   <meta property="og:title" content="<%= ogTitle %>">
   <meta property="og:description" content="<%= ogDesc %>">
   <meta property="og:url" content="<%= ogUrl %>">
@@ -43,10 +43,6 @@
   <a class="skip-link" href="#main">본문 바로가기</a>
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="logo" href="/board">
-        <span class="logo-mark" aria-hidden="true">P</span>
-        <span class="logo-text">포인트<span>라운지</span></span>
-      </a>
       <div class="topbar-user">
         <button class="theme-btn" id="themeBtn" type="button" aria-label="화면 테마 바꾸기" title="화면 테마 바꾸기">
           <span class="theme-ico theme-sun"><%- icon('sun', 20) %></span>

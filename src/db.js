@@ -165,6 +165,10 @@ if (addColumn('posts', 'like_count', 'INTEGER NOT NULL DEFAULT 0')) {
   db.exec('UPDATE posts SET like_count = (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id)');
 }
 
+// 없어진 말머리(알바후기·구인구직)로 저장된 옛 글을 '자유'로 옮긴다.
+// 그대로 두면 어느 탭에도 걸리지 않아 화면에서 사라진다.
+db.exec("UPDATE posts SET category = '자유' WHERE category IN ('알바후기', '구인구직')");
+
 // A사이트(커뮤니티를 삽입할 알바채용 사이트) 회원번호.
 // 연동 모드에서는 이 값이 사람을 가리키는 열쇠이고, users 행은 아이디 저장소가 아니라
 // 그 회원번호에 매달린 '커뮤니티 프로필'(포인트·아바타·활동)이 된다.
