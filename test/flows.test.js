@@ -1016,13 +1016,50 @@ test('상점 1단계에는 기본 캐릭터만, 2단계에 스타일 25종이 �
   const themes = avatarCatalog.themes('female');
   assert.ok(first.includes(themes[0].name), '1단계에 테마 이름이 보인다');
   assert.ok(first.includes(`theme=${themes[0].code}`), '눌러서 들어갈 링크가 있다');
-  assert.ok(!first.includes('헤어1·의상2'), '1단계에서는 개별 스타일을 펼치지 않는다');
+  assert.equal((first.match(/class="style-cell/g) || []).length, 0, '1단계에서는 개별 스타일을 펼치지 않는다');
+  assert.equal((first.match(/class="theme-cell/g) || []).length, themes.length, '기본 캐릭터 9칸');
 
   const t = themes.find((x) => x.code === 'redqueen') || themes[1];
   const second = await (await get(`/profile?tab=avatar&theme=${t.code}`, jar)).text();
-  const shown = (second.match(/헤어\d·의상\d/g) || []).length;
+  const shown = (second.match(/class="style-cell/g) || []).length;
   assert.equal(shown, 25, `2단계에 25칸이 나와야 하는데 ${shown}칸이다`);
-  assert.ok(second.includes('캐릭터 목록'), '되돌아갈 길이 있다');
+  assert.ok(second.includes(t.note), '고른 캐릭터 소개가 보인다');
+  assert.ok(second.includes('선택 스타일'), '아래 선택 바가 있다');
+});
+
+test('상점 2단계 칩으로 걸러 볼 수 있다', async () => {
+  const jar = makeJar();
+  await post('/signup', { username: 'shop4', nickname: '칩눌러보는이', password: 'password123',
+    member_type: 'female' }, jar);
+  const t = avatarCatalog.themes('female').find((x) => x.code === 'redqueen');
+  const count = async (q) => ((await (await get(`/profile?tab=avatar&theme=${t.code}${q}`, jar)).text())
+    .match(/class="style-cell/g) || []).length;
+
+  assert.equal(await count(''), 25, '전체는 25칸');
+  assert.equal(await count('&f=hair'), 25, '헤어별로 묶어도 총 25칸');
+  assert.equal(await count('&f=outfit'), 25, '의상별로 묶어도 총 25칸');
+  assert.equal(await count('&f=popular'), 25, '인기순도 25칸');
+  assert.equal(await count('&f=owned'), 0, '아직 산 게 없으면 보유중은 비어 있다');
+
+  const hair = await (await get(`/profile?tab=avatar&theme=${t.code}&f=hair`, jar)).text();
+  assert.ok(hair.includes('헤어 1') && hair.includes('헤어 5'), '헤어별 묶음 제목이 붙는다');
+});
+
+test('사면 바로 장착되고 보유중에도 잡힌다', async () => {
+  const jar = makeJar();
+  await post('/signup', { username: 'shop5', nickname: '바로장착러', password: 'password123',
+    member_type: 'female' }, jar);
+  const id = uid('shop5');
+  const t = avatarCatalog.themes('female').find((x) => x.code === 'chicblack');
+  const want = t.items[7];                       // 08번 (시안과 같은 자리)
+  db.prepare('UPDATE users SET points = ? WHERE id = ?').run(want.price, id);
+
+  await post('/profile/buy', { code: want.code, theme: t.code, f: 'all' }, jar);
+  assert.equal(db.prepare('SELECT avatar_id FROM users WHERE id = ?').get(id).avatar_id, want.code,
+    '구매 후 즉시 적용');
+
+  const owned = await (await get(`/profile?tab=avatar&theme=${t.code}&f=owned`, jar)).text();
+  assert.equal((owned.match(/class="style-cell/g) || []).length, 1, '보유중에 한 칸');
 });
 
 test('포인트가 모자라면 캐릭터를 살 수 없다', async () => {

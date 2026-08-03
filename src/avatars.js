@@ -60,6 +60,20 @@ const characters = (type) => ITEMS.filter((i) => i.kind === 'character' && (!typ
 const borders = () => ITEMS.filter((i) => i.kind === 'border');
 const get = (code) => byCode.get(code) || null;
 
+// 기본 캐릭터 한 줄 소개. 시안의 상세 화면 머리에 들어간다.
+// 이미지에서 뽑아낼 수 없는 값이라 여기에 적어 둔다 (테마가 늘면 한 줄씩 추가).
+const THEME_NOTES = {
+  purenatural: '꾸미지 않은 듯 단정한, 어디에나 어울리는 기본 스타일',
+  lovelypink:  '분홍빛 소품과 리본이 어우러진 사랑스러운 스타일',
+  freshmint:   '민트빛 옷차림이 시원하고 산뜻한 스타일',
+  dreamypurple: '별빛과 보랏빛이 감도는 몽환적인 스타일',
+  glamgold:    '금빛 드레스와 조명이 화려한 파티 스타일',
+  redqueen:    '붉은 왕관과 레이스가 강렬한 스타일',
+  chicblack:   '검정으로 맞춘 도시적이고 시크한 스타일',
+  hipstreet:   '캡모자와 그래피티가 어울리는 힙한 스트릿 스타일',
+  gray:        '흑백 톤으로 차분하게 정리한 스타일',
+};
+
 // 포인트샵 1차 목록: 캐릭터를 테마(기획서의 "기본 캐릭터 9종")로 묶는다.
 // 한 테마 안에 헤어 5종 × 의상 5종 = 25종이 들어 있어 2차 화면에서 고른다.
 // 테마 없이 낱장으로 온 유형(남성·업소)은 한 칸에 하나씩 그대로 놓는다.
@@ -73,7 +87,8 @@ function themes(type) {
     }
     let t = byTheme.get(it.themeCode);
     if (!t) {
-      t = { code: it.themeCode, name: it.theme, cover: it, items: [], single: false };
+      t = { code: it.themeCode, name: it.theme, cover: it, items: [], single: false,
+        note: THEME_NOTES[it.themeCode] || '' };
       byTheme.set(it.themeCode, t);
       out.push(t);
     }
@@ -129,6 +144,6 @@ function renderAvatar(avatarCode, borderCode, size = 44) {
 
 module.exports = {
   MEMBER_TYPES, FREE_PER_TYPE, CHARACTER_PRICE, BORDER_PRICE,
-  items: () => ITEMS, characters, borders, get, fallback, themes, theme,
+  items: () => ITEMS, characters, borders, get, fallback, themes, theme, THEME_NOTES,
   starterFor, canUse, renderAvatar, load,
 };

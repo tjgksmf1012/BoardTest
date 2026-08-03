@@ -250,7 +250,46 @@ router.get('/profile', requireLogin, (req, res) => {
     using: t.items.some((i) => i.code === me.avatar_id),
   }));
   const openTheme = req.query.theme ? avatars.theme(me.member_type, String(req.query.theme)) : null;
-  const themeItems = openTheme && !openTheme.single ? decorate(openTheme.items) : null;
+
+  // 2차 화면. 시안의 칩(전체·헤어·의상·인기·보유중)으로 걸러 본다.
+  // 25칸이라 한 화면에 들어가지만, 고르는 사람에게는 묶어 보는 편이 훨씬 편하다.
+  const SHOP_FILTERS = ['all', 'hair', 'outfit', 'popular', 'owned'];
+  const filter = SHOP_FILTERS.includes(String(req.query.f)) ? String(req.query.f) : 'all';
+  let themeItems = null;
+  let shopGroups = null;
+  let picked = null;
+  let themeHave = 0;
+  if (openTheme && !openTheme.single) {
+    // '인기'는 실제로 많이 산 순서다 (한 번에 세어 두고 메모리에서 붙인다)
+    const bought = new Map(db.prepare(
+      'SELECT item_code, COUNT(*) AS c FROM user_items GROUP BY item_code'
+    ).all().map((r) => [r.item_code, r.c]));
+    themeItems = decorate(openTheme.items).map((i) => ({
+      ...i,
+      no: (i.row - 1) * 5 + i.col,          // 시안의 01~25 번호
+      bought: bought.get(i.code) || 0,
+    }));
+
+    themeHave = themeItems.filter((i) => i.unlocked).length;
+
+    if (filter === 'hair' || filter === 'outfit') {
+      const key = filter === 'hair' ? 'row' : 'col';
+      const label = filter === 'hair' ? '헤어' : '의상';
+      shopGroups = [1, 2, 3, 4, 5]
+        .map((n) => ({ label: `${label} ${n}`, items: themeItems.filter((i) => i[key] === n) }))
+        .filter((g) => g.items.length > 0);
+    } else if (filter === 'popular') {
+      themeItems = [...themeItems].sort((a, b) => b.bought - a.bought || a.no - b.no);
+    } else if (filter === 'owned') {
+      themeItems = themeItems.filter((i) => i.unlocked);
+    }
+
+    // 화면 아래 선택 바에 띄울 스타일. 안 골랐으면 지금 쓰고 있는 것을 보여준다.
+    const all = decorate(openTheme.items).map((i) => ({ ...i, no: (i.row - 1) * 5 + i.col }));
+    // 시안처럼 늘 하나가 골라져 있게 한다 — 고른 것 → 쓰고 있는 것 → 첫 번째 순
+    picked = all.find((i) => i.code === req.query.style)
+      || all.find((i) => i.code === me.avatar_id) || all[0] || null;
+  }
   const myBorders = decorate(avatars.borders());
 
   const stats = {
@@ -281,7 +320,8 @@ router.get('/profile', requireLogin, (req, res) => {
     WHERE b.user_id = ? ORDER BY b.id DESC LIMIT 5`).all(me.id);
 
   res.render('profile', {
-    myThemes, openTheme, themeItems, myBorders, memberTypes: avatars.MEMBER_TYPES,
+    myThemes, openTheme, themeItems, shopGroups, picked, shopFilter: filter, themeHave,
+    myBorders, memberTypes: avatars.MEMBER_TYPES,
     characterPrice: avatars.CHARACTER_PRICE,
     // 자바스크립트가 꺼져 있어도 링크만으로 원하는 칸이 열리게 서버에서 정해 준다
     tab: ['info', 'attendance', 'avatar'].includes(String(req.query.tab)) ? String(req.query.tab)
@@ -313,9 +353,12 @@ const buyItem = db.transaction((userId, item) => {
 
 // 사고 나서 목록 맨 위로 튕기면 방금 산 걸 다시 찾아야 한다.
 // 보던 캐릭터의 스타일 목록으로 그대로 돌려보낸다.
-function backToShop(req) {
-  const theme = req.body.theme ? `&theme=${encodeURIComponent(String(req.body.theme))}` : '';
-  return `/profile?tab=avatar${theme}#avatar`;
+function backToShop(req, style) {
+  const q = new URLSearchParams({ tab: 'avatar' });
+  if (req.body.theme) q.set('theme', String(req.body.theme));
+  if (req.body.f && req.body.f !== 'all') q.set('f', String(req.body.f));
+  if (style) q.set('style', style);
+  return `/profile?${q}#avatar`;
 }
 
 router.post('/profile/buy', requireLogin, (req, res) => {
@@ -330,11 +373,15 @@ router.post('/profile/buy', requireLogin, (req, res) => {
     req.session.flash = '회원 유형에 맞지 않는 캐릭터예요.';
   } else {
     const r = buyItem(me.id, item);
+    if (r.ok && item.kind === 'character') {
+      // 시안의 '구매 후 즉시 적용'. 사고 나서 한 번 더 눌러야 바뀌면 산 보람이 없다.
+      db.prepare('UPDATE users SET avatar_id = ? WHERE id = ?').run(item.code, me.id);
+    }
     req.session.flash = r.ok
-      ? `${item.name}을(를) 구매했어요! (-${item.price.toLocaleString()}P)`
+      ? `${item.name}을(를) 구매하고 바로 장착했어요! (-${item.price.toLocaleString()}P)`
       : `포인트가 부족해요. (${item.price.toLocaleString()}P 필요)`;
   }
-  res.redirect(backToShop(req));
+  res.redirect(backToShop(req, item && item.code));
 });
 
 router.post('/profile/avatar', requireLogin, (req, res) => {
@@ -345,7 +392,7 @@ router.post('/profile/avatar', requireLogin, (req, res) => {
   } else {
     req.session.flash = '아직 가지고 있지 않은 캐릭터예요.';
   }
-  res.redirect(backToShop(req));
+  res.redirect(backToShop(req, code));
 });
 
 router.post('/profile/border', requireLogin, (req, res) => {

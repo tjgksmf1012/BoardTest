@@ -223,16 +223,17 @@ const CHAPTERS = [
     title: '캐릭터 고르기 (1단계)', url: '/profile?tab=avatar', as: 'gold',
     whatis: '캐릭터는 두 단계로 고릅니다. 먼저 기본 캐릭터 9종 중 하나를 고르고, 그 안에서 헤어·의상 조합 25종 중 하나를 고릅니다. 회원 유형(여성·남성·업소)에 맞는 캐릭터만 보입니다.',
     marks: [
-      ['#panel-avatar .shop-card', '기본 캐릭터 9종 — 눌러서 안으로 들어가요'],
-      ['#panel-avatar .shop-item .shop-count', '그 캐릭터에서 내가 가진 스타일 수'],
+      ['#panel-avatar .theme-grid', '기본 캐릭터 9종 — 눌러서 안으로 들어가요'],
+      ['#panel-avatar .theme-cell .shop-count', '그 캐릭터에서 내가 가진 스타일 수'],
     ],
   },
   {
-    title: '스타일 고르기 (2단계)', url: '/profile?tab=avatar&theme=redqueen', as: 'gold',
-    whatis: '한 캐릭터 안의 스타일 25종(헤어 5 × 의상 5)이에요. 이미 가진 것은 눌러서 바로 장착하고, 점선으로 표시된 것은 눌러서 2,000P에 삽니다.',
+    title: '스타일 고르기 (2단계)', url: '/profile?tab=avatar&theme=redqueen', as: 'gold', scrollTo: '.style-bar',
+    whatis: '한 캐릭터 안의 스타일 25종(헤어 5 × 의상 5)이에요. 칸을 누르면 아래 선택 바에 값이 뜨고, 거기서 사거나 장착합니다. 사면 곧바로 적용돼요.',
     marks: [
-      ['#panel-avatar .shop-grid', '헤어 5종 × 의상 5종 = 25종'],
-      ['#panel-avatar .shop-back', '기본 캐릭터 목록으로 돌아가기'],
+      ['#panel-avatar .shop-chips', '거르기 — 전체 · 헤어 · 의상 · 인기 · 보유중'],
+      ['#panel-avatar .style-grid', '헤어 5종 × 의상 5종 = 25종'],
+      ['#panel-avatar .style-bar', '고른 스타일 — 값을 확인하고 여기서 사요'],
     ],
   },
   {

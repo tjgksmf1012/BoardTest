@@ -180,84 +180,150 @@
 </p>
 
 <%#
-  캐릭터 상점은 2단계다.
-  1차 = 기본 캐릭터(테마) 목록, 2차 = 그 캐릭터의 스타일 25종.
-  ?theme=<코드> 가 붙으면 2차를 편다. 자바스크립트 없이 링크만으로 오간다.
+  캐릭터 상점은 시안대로 2단계다.
+  1차 = 기본 캐릭터 9종, 2차 = 그 캐릭터 안의 스타일 25종.
+  ?theme=<코드> 로 2차를 열고 ?f=... 로 거른다. 링크만으로 오가서 자바스크립트가 없어도 된다.
 %>
 <% if (themeItems) { %>
+  <% const shopUrl = (o) => '/profile?tab=avatar&theme=' + encodeURIComponent(openTheme.code)
+       + (o.f && o.f !== 'all' ? '&f=' + o.f : '')
+       + (o.style ? '&style=' + encodeURIComponent(o.style) : '') + '#avatar'; %>
+
+  <%# 고른 캐릭터 소개 %>
+  <div class="card shop-hero">
+    <a class="shop-back" href="/profile?tab=avatar#avatar" aria-label="캐릭터 목록으로">←</a>
+    <%- renderAvatar(openTheme.cover.code, null, 64) %>
+    <div class="hero-text">
+      <h3>
+        <%= openTheme.name %>
+        <% if (openTheme.items.some(function (i) { return i.price === 0; })) { %>
+          <span class="badge badge-free">기본 캐릭터</span>
+        <% } %>
+      </h3>
+      <p class="muted"><%= openTheme.note %></p>
+    </div>
+  </div>
+
   <div class="card shop-card">
     <div class="tier-head">
-      <h3><a class="shop-back" href="/profile?tab=avatar#avatar">← 캐릭터 목록</a> <%= openTheme.name %></h3>
-      <span class="muted"><%= themeItems.filter(function (c) { return c.unlocked; }).length %> / <%= themeItems.length %> 보유</span>
+      <h3>스타일 <%= openTheme.items.length %>종</h3>
+      <span class="muted"><%= themeHave %> / <%= openTheme.items.length %> 보유</span>
     </div>
-    <div class="shop-grid">
-      <% themeItems.forEach(function (a) { %>
-        <% if (a.unlocked) { %>
-          <form method="post" action="/profile/avatar" class="shop-item <%= me.avatar_id === a.code ? 'selected' : '' %>"><%- csrfField() %>
-            <input type="hidden" name="avatar_id" value="<%= a.code %>">
-            <input type="hidden" name="theme" value="<%= openTheme.code %>">
-            <button type="submit" title="<%= a.name %> 장착">
-              <%- renderAvatar(a.code, null, 72) %>
-              <span class="shop-name">헤어<%= a.row %>·의상<%= a.col %></span>
-              <% if (me.avatar_id === a.code) { %><span class="using">사용 중</span><% } %>
-            </button>
-          </form>
-        <% } else { %>
-          <form method="post" action="/profile/buy" class="shop-item locked"><%- csrfField() %>
-            <input type="hidden" name="code" value="<%= a.code %>">
-            <input type="hidden" name="theme" value="<%= openTheme.code %>">
-            <button type="submit" title="<%= a.name %> 구매">
-              <%- renderAvatar(a.code, null, 72) %>
-              <span class="shop-name">헤어<%= a.row %>·의상<%= a.col %></span>
-              <span class="shop-price <%= me.points >= a.price ? 'can' : '' %>"><%= a.price.toLocaleString() %>P</span>
-            </button>
-          </form>
-        <% } %>
+
+    <%# 시안의 칩 줄 %>
+    <nav class="shop-chips" aria-label="스타일 거르기">
+      <% [['all','전체'],['hair','헤어'],['outfit','의상'],['popular','인기'],['owned','보유중']].forEach(function (c) { %>
+        <a class="chip <%= shopFilter === c[0] ? 'on' : '' %>"
+           href="<%= shopUrl({ f: c[0], style: picked && picked.code }) %>"
+           <%= shopFilter === c[0] ? 'aria-current="true"' : '' %>><%= c[1] %></a>
       <% }) %>
-    </div>
+    </nav>
+
+    <% const cell = function (a) { %>
+      <a class="style-cell <%= me.avatar_id === a.code ? 'using' : '' %> <%= picked && picked.code === a.code ? 'sel' : '' %> <%= a.unlocked ? '' : 'locked' %>"
+         href="<%= shopUrl({ f: shopFilter, style: a.code }) %>"
+         title="<%= a.name %>">
+        <%- renderAvatar(a.code, null, 64) %>
+        <span class="style-no"><%= String(a.no).padStart(2, '0') %></span>
+        <% if (me.avatar_id === a.code) { %><span class="style-check" aria-label="사용 중">✓</span><% } %>
+      </a>
+    <% }; %>
+
+    <% if (shopGroups) { %>
+      <% shopGroups.forEach(function (g) { %>
+        <div class="style-group">
+          <h4 class="style-group-name"><%= g.label %></h4>
+          <div class="style-grid"><% g.items.forEach(cell) %></div>
+        </div>
+      <% }) %>
+    <% } else if (themeItems.length === 0) { %>
+      <div class="empty small">아직 가진 스타일이 없어요. ‘전체’에서 골라 보세요.</div>
+    <% } else { %>
+      <div class="style-grid"><% themeItems.forEach(cell) %></div>
+    <% } %>
+
+    <%# 아래 고정 선택 바 %>
+    <% if (picked) { %>
+      <div class="style-bar">
+        <%- renderAvatar(picked.code, null, 44) %>
+        <div class="sb-text">
+          <strong>선택 스타일 <%= String(picked.no).padStart(2, '0') %></strong>
+          <span class="muted"><%= openTheme.name %> · 헤어 <%= picked.row %> · 의상 <%= picked.col %></span>
+        </div>
+        <div class="sb-actions">
+          <button class="btn btn-ghost btn-sm sb-preview" type="button" hidden
+            data-name="<%= openTheme.name %> 스타일 <%= String(picked.no).padStart(2, '0') %>"
+            data-avatar="<%= picked.code %>">미리보기</button>
+          <% if (me.avatar_id === picked.code) { %>
+            <span class="sb-price accent">사용 중</span>
+            <span class="btn btn-ghost btn-sm sb-done">장착됨 ✓</span>
+          <% } else if (picked.unlocked) { %>
+            <span class="sb-price accent">보유</span>
+            <form method="post" action="/profile/avatar" class="inline"><%- csrfField() %>
+              <input type="hidden" name="avatar_id" value="<%= picked.code %>">
+              <input type="hidden" name="theme" value="<%= openTheme.code %>">
+              <input type="hidden" name="f" value="<%= shopFilter %>">
+              <button class="btn btn-primary btn-sm" type="submit">장착하기</button>
+            </form>
+          <% } else { %>
+            <span class="sb-price <%= me.points >= picked.price ? 'accent' : 'muted' %>"><%= picked.price.toLocaleString() %>P</span>
+            <form method="post" action="/profile/buy" class="inline"><%- csrfField() %>
+              <input type="hidden" name="code" value="<%= picked.code %>">
+              <input type="hidden" name="theme" value="<%= openTheme.code %>">
+              <input type="hidden" name="f" value="<%= shopFilter %>">
+              <button class="btn btn-primary btn-sm" type="submit">구매하기</button>
+            </form>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
   </div>
 <% } else { %>
   <div class="card shop-card">
     <div class="tier-head">
-      <h3>캐릭터</h3>
+      <h3>캐릭터 선택</h3>
       <span class="muted">
-        <% if (myThemes.length && !myThemes[0].single) { %>기본 <%= myThemes.length %>종 · 스타일 1개 <%= characterPrice.toLocaleString() %>P
+        <% if (myThemes.length && !myThemes[0].single) { %>스타일 1개 <%= characterPrice.toLocaleString() %>P
         <% } else { %><%= myThemes.filter(function (t) { return t.unlocked; }).length %> / <%= myThemes.length %> 보유<% } %>
       </span>
     </div>
+    <p class="muted shop-lead">원하는 기본 캐릭터를 선택해 주세요.</p>
     <% if (myThemes.length === 0) { %>
       <div class="empty small">아직 등록된 캐릭터가 없어요.</div>
     <% } %>
-    <div class="shop-grid">
+    <div class="theme-grid">
       <% myThemes.forEach(function (t) { %>
         <% if (!t.single) { %>
-          <a class="shop-item <%= t.using ? 'selected' : '' %>" href="/profile?tab=avatar&amp;theme=<%= encodeURIComponent(t.code) %>#avatar">
-            <%- renderAvatar(t.cover.code, null, 72) %>
-            <span class="shop-name"><%= t.name %></span>
+          <a class="theme-cell <%= t.using ? 'sel' : '' %>" href="/profile?tab=avatar&amp;theme=<%= encodeURIComponent(t.code) %>#avatar">
+            <%- renderAvatar(t.cover.code, null, 88) %>
+            <span class="theme-name"><%= t.name %></span>
             <span class="shop-count"><%= t.have %>/<%= t.total %></span>
-            <% if (t.using) { %><span class="using">사용 중</span><% } %>
+            <% if (t.using) { %><span class="style-check" aria-label="사용 중">✓</span><% } %>
           </a>
         <% } else if (t.unlocked) { %>
-          <form method="post" action="/profile/avatar" class="shop-item <%= me.avatar_id === t.code ? 'selected' : '' %>"><%- csrfField() %>
+          <form method="post" action="/profile/avatar" class="theme-cell-form"><%- csrfField() %>
             <input type="hidden" name="avatar_id" value="<%= t.code %>">
-            <button type="submit" title="<%= t.name %> 장착">
-              <%- renderAvatar(t.code, null, 72) %>
-              <span class="shop-name"><%= t.name %></span>
-              <% if (me.avatar_id === t.code) { %><span class="using">사용 중</span><% } %>
+            <button class="theme-cell <%= me.avatar_id === t.code ? 'sel' : '' %>" type="submit">
+              <%- renderAvatar(t.code, null, 88) %>
+              <span class="theme-name"><%= t.name %></span>
+              <% if (me.avatar_id === t.code) { %><span class="style-check" aria-label="사용 중">✓</span><% } %>
             </button>
           </form>
         <% } else { %>
-          <form method="post" action="/profile/buy" class="shop-item locked"><%- csrfField() %>
+          <form method="post" action="/profile/buy" class="theme-cell-form"><%- csrfField() %>
             <input type="hidden" name="code" value="<%= t.code %>">
-            <button type="submit" title="<%= t.name %> 구매">
-              <%- renderAvatar(t.code, null, 72) %>
-              <span class="shop-name"><%= t.name %></span>
+            <button class="theme-cell locked" type="submit">
+              <%- renderAvatar(t.code, null, 88) %>
+              <span class="theme-name"><%= t.name %></span>
               <span class="shop-price <%= me.points >= t.price ? 'can' : '' %>"><%= t.price.toLocaleString() %>P</span>
             </button>
           </form>
         <% } %>
       <% }) %>
     </div>
+    <% if (myThemes.length && !myThemes[0].single) { %>
+      <p class="muted shop-foot">✦ <%= myThemes.length %>개의 기본 캐릭터 중 하나를 골라 들어가 보세요</p>
+    <% } %>
   </div>
 <% } %>
 
@@ -300,6 +366,45 @@
 </div>
 
 </div>
+
+<%# 미리보기 창. 자바스크립트가 없으면 아예 열리지 않고 버튼도 숨어 있다 %>
+<div class="preview-back" id="previewBack" hidden>
+  <div class="preview-box" role="dialog" aria-modal="true" aria-labelledby="previewName">
+    <div id="previewFace"></div>
+    <p id="previewName"></p>
+    <button class="btn btn-ghost btn-sm" type="button" id="previewClose">닫기</button>
+  </div>
+</div>
+
+<script>
+// 미리보기: 목록의 작은 그림 대신 큰 그림을, 지금 낀 테두리까지 얹어 보여준다
+(function () {
+  var btn = document.querySelector('.sb-preview');
+  var back = document.getElementById('previewBack');
+  if (!btn || !back) return;
+  btn.hidden = false;
+  var face = document.getElementById('previewFace');
+  var name = document.getElementById('previewName');
+  var border = <%- JSON.stringify(me.border_id || '') %>;
+  var files = <%- JSON.stringify(Object.fromEntries(
+    (openTheme ? openTheme.items : []).concat(myBorders).map(function (i) { return [i.code, i.file]; })
+  )) %>;
+  function close() { back.hidden = true; btn.focus(); }
+  btn.addEventListener('click', function () {
+    var code = btn.dataset.avatar;
+    face.innerHTML = '<span class="avatar" style="width:200px;height:200px">'
+      + '<img src="/avatars/' + encodeURIComponent(files[code] || '') + '" alt="">'
+      + (border && files[border] ? '<img class="avatar-ring" src="/avatars/' + encodeURIComponent(files[border]) + '" alt="">' : '')
+      + '</span>';
+    name.textContent = btn.dataset.name;
+    back.hidden = false;
+    document.getElementById('previewClose').focus();
+  });
+  document.getElementById('previewClose').addEventListener('click', close);
+  back.addEventListener('click', function (e) { if (e.target === back) close(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !back.hidden) close(); });
+})();
+</script>
 
 <script>
 // 탭 전환. 자바스크립트가 없으면 js-tabs 가 안 붙어 세 칸이 그냥 위아래로 이어 보인다
