@@ -7,7 +7,11 @@
 :root, :root[data-theme="light"] {
   --primary: #0b8177;        /* 흰 글씨 대비 4.75:1 — WCAG AA 충족 (이전 #0d9488은 3.74) */
   --primary-dark: #0b7a70;
-  --primary-soft: #e2f2ef;
+  /* --brand 는 붙일 사이트(it'sALBA)의 민트를 그대로 뽑아 온 값이다.
+     흰 글씨 대비가 2.4:1 뿐이라 글자를 얹는 곳에는 못 쓰고, 밑줄·띠·진행바처럼
+     글자가 없는 곳에만 쓴다. --primary 와 색상(hue)이 거의 같아 한 식구로 보인다. */
+  --brand: #0ebaae;
+  --primary-soft: #e2f7f5;   /* 호스트의 민트 배경(#e2fafa)에 맞춤 */
   --primary-soft-2: #c9ece8;   /* 강조 배경 위 hover */
   --primary-muted: #b8ddd9;    /* 비활성 버튼 */
   --ink: #16231f;
@@ -41,6 +45,7 @@
   :root:not([data-theme="light"]) {
     --primary: #2dd4bf;
     --primary-dark: #5eead4;
+    --brand: #2dd4bf;
     --primary-soft: #17352f;
     --primary-soft-2: #1f463e;
     --primary-muted: #2c4a45;
@@ -73,6 +78,7 @@
 :root[data-theme="dark"] {
   --primary: #2dd4bf;
   --primary-dark: #5eead4;
+  --brand: #2dd4bf;
   --primary-soft: #17352f;
   --primary-soft-2: #1f463e;
   --primary-muted: #2c4a45;
@@ -235,7 +241,7 @@ body { overflow-x: clip; }
   padding: 10px 16px; font-weight: 600; color: var(--muted);
   border-bottom: 3px solid transparent; font-size: 15px;
 }
-.tab.on, .tab:hover { color: var(--primary-dark); border-bottom-color: var(--primary); }
+.tab.on, .tab:hover { color: var(--primary-dark); border-bottom-color: var(--brand); }
 
 /* ---- 공통 ---- */
 .container { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
@@ -336,7 +342,7 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 .progress { height: 10px; background: var(--primary-soft); border-radius: 999px; overflow: hidden; }
 .progress-fill {
   height: 100%; border-radius: 999px;
-  background: linear-gradient(90deg, var(--primary), #4fd1c5);
+  background: linear-gradient(90deg, var(--primary), var(--brand));
   transition: width .8s cubic-bezier(.2, .8, .2, 1);
 }
 .tier-progress { height: 8px; margin: 2px 0 6px; }
@@ -839,7 +845,7 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
   font-size: 14px; font-weight: 600; color: var(--muted); white-space: nowrap;
   font-family: inherit; cursor: pointer; transition: color .12s;
 }
-.ptab.on { color: var(--primary-dark); font-weight: 700; border-bottom-color: var(--primary); }
+.ptab.on { color: var(--primary-dark); font-weight: 700; border-bottom-color: var(--brand); }
 .ptab:not(.on):hover { color: var(--text); }
 .js-tabs .ptab-panel { display: none; }
 .js-tabs .ptab-panel.on { display: block; }
@@ -965,7 +971,7 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
   border-bottom: 2px solid transparent; transition: color .12s;
 }
 .cat-tab:hover { color: var(--text); }
-.cat-tab.on { color: var(--primary-dark); font-weight: 700; border-bottom-color: var(--primary); }
+.cat-tab.on { color: var(--primary-dark); font-weight: 700; border-bottom-color: var(--brand); }
 
 .list-tools { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 
