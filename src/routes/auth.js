@@ -33,45 +33,58 @@ function standaloneOnly(req, res, next) {
   return res.redirect('/login');
 }
 
+// 가입 화면에 필요한 값 한 벌. 오류로 다시 그릴 때도 같은 것을 쓴다.
+function signupView(extra) {
+  return {
+    error: null, form: {}, memberTypes: avatars.MEMBER_TYPES,
+    // 여성회원이 가입할 때 고르는 무료 캐릭터 (수정사항: 청순 내츄럴 맨 아랫줄 5종)
+    starterChoices: avatars.starterFor('female').choices,
+    ...extra,
+  };
+}
+
 router.get('/signup', standaloneOnly, (req, res) => {
   if (req.session.userId) return res.redirect('/board');
-  res.render('signup', { error: null, form: {}, memberTypes: avatars.MEMBER_TYPES });
+  res.render('signup', signupView());
 });
 
 router.post('/signup', standaloneOnly, (req, res) => {
   const username = (req.body.username || '').trim();
   const nickname = (req.body.nickname || '').trim();
   const password = req.body.password || '';
-  const form = { username, nickname, member_type: req.body.member_type };
+  const form = { username, nickname, member_type: req.body.member_type, avatar_id: req.body.avatar_id };
 
   if (!/^[a-zA-Z0-9_]{4,20}$/.test(username)) {
-    return res.render('signup', { error: '아이디는 영문/숫자 4~20자로 입력해주세요.', form, memberTypes: avatars.MEMBER_TYPES });
+    return res.render('signup', signupView({ error: '아이디는 영문/숫자 4~20자로 입력해주세요.', form }));
   }
   if (nickname.length < 2 || nickname.length > 10) {
-    return res.render('signup', { error: '닉네임은 2~10자로 입력해주세요.', form, memberTypes: avatars.MEMBER_TYPES });
+    return res.render('signup', signupView({ error: '닉네임은 2~10자로 입력해주세요.', form }));
   }
   if (password.length < 8) {
-    return res.render('signup', { error: '비밀번호는 8자 이상으로 입력해주세요.', form, memberTypes: avatars.MEMBER_TYPES });
+    return res.render('signup', signupView({ error: '비밀번호는 8자 이상으로 입력해주세요.', form }));
   }
   if (db.prepare('SELECT 1 FROM users WHERE username = ?').get(username)) {
-    return res.render('signup', { error: '이미 사용 중인 아이디예요.', form, memberTypes: avatars.MEMBER_TYPES });
+    return res.render('signup', signupView({ error: '이미 사용 중인 아이디예요.', form }));
   }
   if (db.prepare('SELECT 1 FROM users WHERE nickname = ?').get(nickname)) {
-    return res.render('signup', { error: '이미 사용 중인 닉네임이에요.', form, memberTypes: avatars.MEMBER_TYPES });
+    return res.render('signup', signupView({ error: '이미 사용 중인 닉네임이에요.', form }));
   }
 
   // 회원 유형에 따라 쓸 수 있는 캐릭터가 다르다.
   // 남성·업소회원은 무작위로 하나 배정하고, 여성회원은 나중에 골라 쓴다.
   const memberType = avatars.MEMBER_TYPES[req.body.member_type] ? req.body.member_type : 'female';
   const starter = avatars.starterFor(memberType);
+  // 고를 수 있는 유형이면 화면에서 고른 것을 쓴다. 목록에 없는 값이 오면 무시하고 기본값.
+  const picked = starter.choices.find((c) => c.code === req.body.avatar_id);
+  const startAvatar = (picked || starter.assigned || {}).code || '';
 
   const info = db.prepare(
     'INSERT INTO users (username, password_hash, nickname, member_type, avatar_id) VALUES (?, ?, ?, ?, ?)'
-  ).run(username, hashPassword(password), nickname, memberType, starter.assigned ? starter.assigned.code : '');
+  ).run(username, hashPassword(password), nickname, memberType, startAvatar);
 
   award(info.lastInsertRowid, 'signup'); // 회원가입 최초 1회 1,000P
   startSession(req, info.lastInsertRowid, (err) => {
-    if (err) return res.render('signup', { error: '가입 처리 중 문제가 생겼어요. 다시 시도해주세요.', form, memberTypes: avatars.MEMBER_TYPES });
+    if (err) return res.render('signup', signupView({ error: '가입 처리 중 문제가 생겼어요. 다시 시도해주세요.', form }));
     req.session.flash = '가입을 환영해요! 회원가입 포인트 +1,000P를 받았어요.';
     res.redirect('/board');
   });

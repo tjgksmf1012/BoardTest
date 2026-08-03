@@ -136,15 +136,22 @@ const CHAPTERS = [
     ],
   },
   {
+    title: '회원가입', url: '/signup',
+    whatis: '아이디·닉네임·비밀번호와 회원 유형을 고르면 끝이에요. 여성회원은 이 화면에서 무료 캐릭터 5종 중 하나를 직접 고릅니다. 남성·업소회원은 가입할 때 무작위로 하나 받아요.',
+    marks: [
+      ['select[name=member_type]', '회원 유형 (여성 · 남성 · 업소)'],
+      ['.pick-grid', '무료 캐릭터 5종 중 고르기'],
+    ],
+  },
+  {
     title: '커뮤니티 게시판', url: '/board', as: 'gold',
     whatis: '글을 읽고 쓰는 메인 화면이에요. 말머리 탭으로 분류하고, 정렬은 선택 상자로 바꿔요. 글을 쓰면 포인트가 쌓여요.',
     marks: [
       ['.board-head .btn-primary', '글쓰기 (+300P, 하루 3개까지)'],
-      ['.search', '제목·내용 검색'],
-      ['.trending', '지금 뜨는 글 (최근 7일 추천순)'],
       ['.cat-tabs', '말머리로 걸러보기'],
-      ['.seg', '전체글 / 인기글'],
-      ['.sort-form', '정렬 (최신 · 추천 · 조회)'],
+      ['#searchBtn', '검색 (누르면 아래로 검색창이 펼쳐져요)'],
+      ['.sort-form', '정렬 (최신 · 추천 · 조회 — 최근 일주일 기준)'],
+      ['.post-list', '글 목록'],
     ],
   },
   {
@@ -177,12 +184,13 @@ const CHAPTERS = [
     ],
   },
   {
-    title: '출석부 (그날 첫 접속)', url: '/board', as: 'street', keepPopup: true, freshAttendance: 'street',
-    whatis: '로그인하고 그날 처음 들어오면 묻지 않고 바로 출석 처리되면서 출석부가 뜹니다. 오늘 칸에 도장이 찍히고 연속 일수와 포인트가 올라가요. 3·7·30일 연속을 채우면 보너스와 함께 카드가 반짝입니다.',
+    title: '출석체크', url: '/attendance', as: 'street', freshAttendance: 'street',
+    whatis: '매일 한 번 버튼을 눌러 출석해요. 연속으로 출석하면 7·14·21·28일마다 보너스가 커지고, 30일을 채우면 특별 보너스를 받아요.',
     marks: [
-      ['.att-streak', '지금 며칠째 연속인지'],
-      ['.att-sheet', '최근 7일 출석부 — 오늘 칸에 도장이 찍혀요'],
-      ['.att-reward', '자동으로 적립된 포인트 (+100P)'],
+      ['.att-summary', '연속 출석 · 이번 달 · 보유 포인트'],
+      ['.att-challenge', '30일 연속 출석 챌린지'],
+      ['.att-week', '이번 주 출석 도전'],
+      ['.att-check-btn', '오늘 출석체크 하기'],
     ],
   },
   {
@@ -212,12 +220,25 @@ const CHAPTERS = [
     ],
   },
   {
-    title: '아바타 꾸미기', url: '/profile', as: 'gold',
-    whatis: '포인트로 해금한 아바타와 테두리를 골라 장착해요. 아직 못 연 것은 잠금 표시와 함께 얼마가 더 필요한지 보여줍니다.',
-    prep: async (pg) => { await pg.click('.ptab[data-target=avatar]'); await pg.waitForTimeout(250); },
+    title: '캐릭터 고르기 (1단계)', url: '/profile?tab=avatar', as: 'gold',
+    whatis: '캐릭터는 두 단계로 고릅니다. 먼저 기본 캐릭터 9종 중 하나를 고르고, 그 안에서 헤어·의상 조합 25종 중 하나를 고릅니다. 회원 유형(여성·남성·업소)에 맞는 캐릭터만 보입니다.',
     marks: [
-      ['#panel-avatar .tier-card', '단계별 아바타 (무료 → 헤어 → 의상 → 테두리)'],
+      ['#panel-avatar .shop-card', '기본 캐릭터 9종 — 눌러서 안으로 들어가요'],
+      ['#panel-avatar .shop-item .shop-count', '그 캐릭터에서 내가 가진 스타일 수'],
     ],
+  },
+  {
+    title: '스타일 고르기 (2단계)', url: '/profile?tab=avatar&theme=redqueen', as: 'gold',
+    whatis: '한 캐릭터 안의 스타일 25종(헤어 5 × 의상 5)이에요. 이미 가진 것은 눌러서 바로 장착하고, 점선으로 표시된 것은 눌러서 2,000P에 삽니다.',
+    marks: [
+      ['#panel-avatar .shop-grid', '헤어 5종 × 의상 5종 = 25종'],
+      ['#panel-avatar .shop-back', '기본 캐릭터 목록으로 돌아가기'],
+    ],
+  },
+  {
+    title: '테두리', url: '/profile?tab=avatar', as: 'gold', scrollTo: '.shop-card:last-of-type',
+    whatis: '캐릭터 위에 겹쳐 그리는 빛나는 고리예요. 9종이 있고 각 20,000P입니다. 언제든 해제할 수 있어요.',
+    marks: [['.shop-card:last-of-type .shop-grid', '테두리 9종 (각 20,000P)']],
   },
   {
     title: '랭킹', url: '/ranking', as: 'gold',
@@ -456,9 +477,9 @@ async function waitUp() {
     }).join('\n');
 
     const today = new Date().toISOString().slice(0, 10);
-    const manual = doc('포인트라운지 사용설명서', `<div class="page">
+    const manual = doc('밤알바커뮤니티 사용설명서', `<div class="page">
   <header class="hero">
-    <div class="brand"><span class="logo">P</span> 포인트라운지</div>
+    <div class="brand"><span class="logo">P</span> 밤알바커뮤니티</div>
     <h1>사용설명서</h1>
     <p class="lede">활동할수록 <strong>포인트</strong>가 쌓이고, 포인트로 <strong>아바타가 성장</strong>하는
       커뮤니티 게시판이에요. 기존 알바채용 사이트에 <strong>커뮤니티 기능으로 삽입</strong>하는 것을 전제로 만들었습니다.</p>
@@ -505,7 +526,7 @@ ${chapters}
     <tr><td>기존 사이트 계정으로 이용 (커뮤니티 별도 가입 없음)</td><td>완료 — 연동가이드 참고</td></tr>
   </table>
 
-  <footer class="foot">포인트라운지 · 활동할수록 포인트가 쌓이고 아바타가 성장하는 커뮤니티</footer>
+  <footer class="foot">밤알바커뮤니티 · 활동할수록 포인트가 쌓이고 캐릭터가 성장하는 커뮤니티</footer>
 </div>`);
 
     fs.writeFileSync(path.join(DOCS, 'manual.html'), manual);
@@ -516,7 +537,7 @@ ${chapters}
     const firstBreak = md.indexOf('\n');
     const guide = doc('A사이트 연동 가이드', `<div class="page">
   <header class="hero">
-    <div class="brand"><span class="logo">P</span> 포인트라운지</div>
+    <div class="brand"><span class="logo">P</span> 밤알바커뮤니티</div>
     <h1>A사이트 연동 가이드</h1>
     <p class="lede">기존 알바채용 사이트에 이 커뮤니티를 붙일 때, <strong>회원이 다시 가입하지 않도록</strong>
       계정을 잇는 방법입니다. 개발 담당자분께 전달해 주세요.</p>
@@ -528,11 +549,36 @@ ${mdToHtml(md.slice(firstBreak))}
     fs.writeFileSync(path.join(DOCS, '연동가이드.html'), guide);
     console.log('  → docs/연동가이드.html');
 
+    // ---- DB 명세서 (선배님 PHP 리팩토링용) ----------------------------------
+    const specPath = path.join(DOCS, 'DB명세.md');
+    if (fs.existsSync(specPath)) {
+      const spec = fs.readFileSync(specPath, 'utf8');
+      const sBreak = spec.indexOf('\n');
+      const specHtml = doc('DB 스키마 · 쿼리 명세서', `<div class="page">
+  <header class="hero">
+    <div class="brand"><span class="logo">P</span> 밤알바커뮤니티</div>
+    <h1>DB 스키마 · 쿼리 명세서</h1>
+    <p class="lede">커뮤니티 게시판을 <strong>PHP 로 옮기실 때</strong> 참고하시라고 만든 문서입니다.
+      동작 중인 스키마를 그대로 읽어 MySQL 문법으로 옮긴 것이라 실제 코드와 어긋나지 않습니다.</p>
+    <p class="meta">작성일 ${today}</p>
+  </header>
+${mdToHtml(spec.slice(sBreak))}
+  <footer class="foot">문의 · <code>node scripts/make-db-spec.js</code> 로 언제든 다시 만들 수 있습니다</footer>
+</div>`);
+      fs.writeFileSync(path.join(DOCS, 'DB명세.html'), specHtml);
+      console.log('  → docs/DB명세.html');
+    }
+
     // ---- PDF ----------------------------------------------------------------
     if (WANT_PDF) {
       const b = await chromium.launch({ executablePath: EXE });
       const ctx = await b.newContext();
-      for (const [file, out] of [['manual.html', '포인트라운지_사용설명서.pdf'], ['연동가이드.html', '포인트라운지_연동가이드.pdf']]) {
+      const pdfs = [
+        ['manual.html', '밤알바커뮤니티_사용설명서.pdf'],
+        ['연동가이드.html', '밤알바커뮤니티_연동가이드.pdf'],
+        ['DB명세.html', '밤알바커뮤니티_DB명세서.pdf'],
+      ].filter(([f]) => fs.existsSync(path.join(DOCS, f)));
+      for (const [file, out] of pdfs) {
         const pg = await ctx.newPage();
         await pg.goto('file://' + path.join(DOCS, file), { waitUntil: 'load' });
         await pg.emulateMedia({ media: 'print' });

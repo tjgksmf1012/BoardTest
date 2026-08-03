@@ -37,14 +37,19 @@ function load() {
   } catch {
     ITEMS = []; // 이미지를 아직 안 넣은 상태
   }
-  // 유형 안에서의 순번을 매겨 앞 FREE_PER_TYPE개는 무료로 둔다
+  // 값 매기기.
+  //  - manifest 에 free 가 적혀 있으면 그 말을 따른다
+  //    (여성회원은 "청순 내츄럴 맨 아랫줄 5종"이 무료라 순번으로는 못 고른다)
+  //  - 안 적혀 있으면 유형 안에서 앞 FREE_PER_TYPE개를 무료로 둔다
   const seen = new Map();
+  const marked = new Set(ITEMS.filter((i) => i.free).map((i) => i.memberType));
   for (const it of ITEMS) {
     const n = (seen.get(it.memberType) || 0) + 1;
     seen.set(it.memberType, n);
     it.index = n;
     if (it.kind === 'border') it.price = BORDER_PRICE;
     else if (it.memberType === 'anon' || it.memberType === 'admin') it.price = 0;
+    else if (marked.has(it.memberType)) it.price = it.free ? 0 : CHARACTER_PRICE;
     else it.price = n <= FREE_PER_TYPE ? 0 : CHARACTER_PRICE;
   }
   byCode = new Map(ITEMS.map((i) => [i.code, i]));
@@ -54,6 +59,30 @@ load();
 const characters = (type) => ITEMS.filter((i) => i.kind === 'character' && (!type || i.memberType === type));
 const borders = () => ITEMS.filter((i) => i.kind === 'border');
 const get = (code) => byCode.get(code) || null;
+
+// 포인트샵 1차 목록: 캐릭터를 테마(기획서의 "기본 캐릭터 9종")로 묶는다.
+// 한 테마 안에 헤어 5종 × 의상 5종 = 25종이 들어 있어 2차 화면에서 고른다.
+// 테마 없이 낱장으로 온 유형(남성·업소)은 한 칸에 하나씩 그대로 놓는다.
+function themes(type) {
+  const out = [];
+  const byTheme = new Map();
+  for (const it of characters(type)) {
+    if (!it.themeCode) {
+      out.push({ code: it.code, name: it.name, cover: it, items: [it], single: true });
+      continue;
+    }
+    let t = byTheme.get(it.themeCode);
+    if (!t) {
+      t = { code: it.themeCode, name: it.theme, cover: it, items: [], single: false };
+      byTheme.set(it.themeCode, t);
+      out.push(t);
+    }
+    t.items.push(it);
+  }
+  return out;
+}
+
+const theme = (type, code) => themes(type).find((t) => t.code === code) || null;
 
 // 익명 글·기본값에 쓸 캐릭터 (이미지가 하나도 없으면 null)
 function fallback(type) {
@@ -100,6 +129,6 @@ function renderAvatar(avatarCode, borderCode, size = 44) {
 
 module.exports = {
   MEMBER_TYPES, FREE_PER_TYPE, CHARACTER_PRICE, BORDER_PRICE,
-  items: () => ITEMS, characters, borders, get, fallback,
+  items: () => ITEMS, characters, borders, get, fallback, themes, theme,
   starterFor, canUse, renderAvatar, load,
 };

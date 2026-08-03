@@ -1274,8 +1274,38 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 .shop-price { font-size: 11.5px; font-weight: 800; color: var(--muted); }
 .shop-price.can { color: var(--primary-dark); }
 .shop-item.locked button { border-style: dashed; }
-.shop-item.locked .avatar { opacity: .45; filter: grayscale(.5); }
+/* 아직 못 산 것도 무엇인지는 보여야 산다. 흐리게만 하고 색은 빼지 않는다.
+   '잠김'은 점선 테두리와 가격표로 알린다. */
+.shop-item.locked .avatar { opacity: .72; }
 .shop-item .using {
   font-size: 10.5px; font-weight: 800; color: var(--on-primary);
   background: var(--primary); border-radius: 999px; padding: 1px 8px;
 }
+
+/* 1차 목록(기본 캐릭터 9종)은 버튼이 아니라 링크다 — 칸 모양은 같게 맞춘다 */
+a.shop-item {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  border: 1.5px solid var(--line); border-radius: 14px;
+  padding: 12px 6px 10px; text-decoration: none; color: var(--text);
+  transition: border-color .12s, background .12s;
+}
+a.shop-item:hover { border-color: var(--primary); }
+a.shop-item.selected { border-color: var(--primary); background: var(--primary-soft); }
+.shop-count { font-size: 11.5px; font-weight: 700; color: var(--muted); }
+.shop-back { font-size: 13px; font-weight: 700; color: var(--primary-dark); text-decoration: none; margin-right: 4px; }
+.shop-back:hover { text-decoration: underline; }
+
+/* 가입 화면의 캐릭터 고르기 */
+.pick-wrap { display: flex; flex-direction: column; gap: 6px; }
+.pick-wrap[hidden] { display: none; }
+.pick-label { font-size: 13px; font-weight: 700; }
+.pick-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.pick-item { cursor: pointer; }
+.pick-item input { position: absolute; opacity: 0; width: 0; height: 0; }
+.pick-face {
+  display: block; padding: 5px; border: 2px solid var(--line); border-radius: 50%;
+  transition: border-color .12s;
+}
+.pick-item:hover .pick-face { border-color: var(--primary); }
+.pick-item input:checked + .pick-face { border-color: var(--primary); background: var(--primary-soft); }
+.pick-item input:focus-visible + .pick-face { outline: 2px solid var(--primary); outline-offset: 2px; }

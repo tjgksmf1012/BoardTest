@@ -22,6 +22,44 @@ test('임시로 넣었던 캐릭터 코드는 남아 있지 않다', () => {
   assert.deepEqual(old, [], '옛 임시 이미지가 카탈로그에 남아 있다');
 });
 
+test('여성회원 캐릭터는 기본 9종 × 스타일 25종으로 들어와 있다', () => {
+  const themes = avatars.themes('female');
+  assert.equal(themes.length, 9, `기본 캐릭터가 9종이어야 하는데 ${themes.length}종이다`);
+  for (const t of themes) {
+    assert.equal(t.items.length, 25, `${t.name} 의 스타일이 25종이 아니다: ${t.items.length}`);
+    assert.equal(t.single, false);
+  }
+  assert.equal(avatars.characters('female').length, 225);
+});
+
+test('여성 캐릭터 코드에서 테마·헤어·의상을 읽을 수 있다', () => {
+  for (const it of avatars.characters('female')) {
+    assert.match(it.code, /^female-[a-z]+-[1-5]-[1-5]$/, `코드 모양이 다르다: ${it.code}`);
+    const [, , row, col] = it.code.split('-');
+    assert.equal(it.row, Number(row));
+    assert.equal(it.col, Number(col));
+  }
+});
+
+test('가입 때 고르는 무료 5종은 청순 내츄럴 맨 아랫줄이다', () => {
+  const free = avatars.characters('female').filter((i) => i.price === 0);
+  assert.equal(free.length, 5);
+  for (const it of free) {
+    assert.equal(it.theme, '청순 내츄럴');
+    assert.equal(it.row, 5);
+  }
+  // 가입 화면에는 이 다섯이 고를 거리로 나온다
+  const starter = avatars.starterFor('female');
+  assert.deepEqual(starter.choices.map((c) => c.code).sort(), free.map((c) => c.code).sort());
+  assert.ok(starter.assigned);
+});
+
+test('나머지 여성 캐릭터는 모두 값이 붙어 있다', () => {
+  const paid = avatars.characters('female').filter((i) => i.price > 0);
+  assert.equal(paid.length, 220);
+  assert.ok(paid.every((i) => i.price === avatars.CHARACTER_PRICE));
+});
+
 test('회원 유형별로 캐릭터가 갈린다', () => {
   for (const t of ['male', 'venue']) {
     const list = avatars.characters(t);

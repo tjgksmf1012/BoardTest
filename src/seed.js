@@ -7,8 +7,19 @@ function seed() {
   if (db.prepare('SELECT COUNT(*) AS c FROM users').get().c > 0) return;
 
   const insertUser = db.prepare(`
-    INSERT INTO users (username, password_hash, nickname, points, avatar_id, border_id, is_admin)
-    VALUES (?, ?, ?, ?, ?, ?, ?)`);
+    INSERT INTO users (username, password_hash, nickname, points, avatar_id, border_id, is_admin, member_type)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+  // 데모 회원이 무료가 아닌 캐릭터·테두리를 달고 있으면 산 기록도 같이 남긴다.
+  // 그래야 상점 화면에서 '보유'로 보이고, 장착을 다시 눌러도 통과한다.
+  const avatars = require('./avatars');
+  const insertItem = db.prepare(
+    'INSERT OR IGNORE INTO user_items (user_id, item_code, price) VALUES (?, ?, ?)');
+  const own = (userId, ...codes) => {
+    for (const code of codes) {
+      const item = code && avatars.get(code);
+      if (item && item.price > 0) insertItem.run(userId, item.code, item.price);
+    }
+  };
   const insertPost = db.prepare(`
     INSERT INTO posts (user_id, title, content, is_anonymous, is_notice, views, created_at)
     VALUES (?, ?, ?, ?, ?, ?, datetime('now', 'localtime', ?))`);
@@ -18,65 +29,80 @@ function seed() {
   const insertLog = db.prepare(
     "INSERT INTO point_logs (user_id, amount, reason, detail) VALUES (?, ?, 'signup', '회원가입')");
 
-  // 운영자: admin / admin1234
-  // 데모 계정은 이미지가 준비된 기본 아바타를 장착 (실제 사진으로 통일)
+  // 운영자: admin / admin1234 — 운영자 전용 캐릭터(검정고양이)를 단다
   const admin = insertUser.run('admin', hashPassword('admin1234'), '운영자',
-    25000, '', null, 1).lastInsertRowid;
+    25000, 'admin', null, 1, 'female').lastInsertRowid;
 
   // 샘플 회원 (비밀번호는 모두 test1234)
+  // 닉네임에 맞는 캐릭터를 달아 둔다 — 화면마다 다른 얼굴이 보여야 목록이 읽힌다.
   const pw = hashPassword('test1234');
-  const cherry = insertUser.run('cherry', pw, '체리블라썸', 1800, '', null, 0).lastInsertRowid;
-  const mint = insertUser.run('mint', pw, '민트소다', 6200, '', null, 0).lastInsertRowid;
-  const street = insertUser.run('street', pw, '스트릿캡', 3400, '', null, 0).lastInsertRowid;
-  const gold = insertUser.run('gold', pw, '골드웨이브', 12500, '', null, 0).lastInsertRowid;
+  const member = (id, nick, points, type, avatar, border) => {
+    const uid = insertUser.run(id, pw, nick, points, avatar, border, 0, type).lastInsertRowid;
+    own(uid, avatar, border);
+    return uid;
+  };
+  const cherry = member('cherry', '체리블라썸', 1800, 'female', 'female-lovelypink-1-1');
+  const mint = member('mint', '민트소다', 6200, 'female', 'female-freshmint-3-3');
+  const street = member('street', '스트릿캡', 3400, 'female', 'female-hipstreet-5-1');
+  const gold = member('gold', '골드웨이브', 12500, 'female', 'female-glamgold-2-2', 'border-gold');
+  // 남성회원·업소회원도 한 명씩 둬서 세 유형이 모두 보이게 한다
+  member('nightcat', '나이트캣', 1900, 'male', 'male-01');
+  member('luno', '루노라운지', 2100, 'venue', 'venue-01');
 
   // 각 회원의 포인트 총액과 적립 내역이 일치하도록 로그를 채워 넣는다
   const logRow = db.prepare(
     "INSERT INTO point_logs (user_id, amount, reason, detail, created_at) VALUES (?, ?, ?, ?, datetime('now','localtime',?))");
-  // 포인트 총액과 정확히 일치하면서, 최근 내역이 단조롭지 않도록 다양한 활동으로 채운다.
-  // 금액과 사유가 항상 맞도록(예: 3일 연속=500P) 100P 배수 denomination만 사용.
+  // 포인트 총액과 내역의 합이 정확히 맞아야 화면이 앞뒤가 맞는다.
+  // 금액은 손으로 적지 않고 src/points.js 의 RULES 에서 가져온다 — 규칙이 바뀌면 같이 바뀐다.
+  const { RULES } = require('./points');
   function fillLogs(userId, target) {
-    const seq = [[1000, 'signup', '회원가입']];
-    let sum = 1000;
-    const big = [
-      [500, 'streak3', '3일 연속 출석'], [300, 'post', '일반 게시글 작성'],
-      [1000, 'streak7', '7일 연속 출석'], [300, 'post', '일반 게시글 작성'],
-      [3000, 'streak30', '30일 연속 출석'], [300, 'post', '일반 게시글 작성'],
-    ];
-    const small = [
-      [100, 'attendance', '출석체크'], [300, 'post', '일반 게시글 작성'],
-      [100, 'comment', '댓글·대댓글 작성'], [100, 'attendance', '출석체크'],
-    ];
-    // 큰 보너스로 대략 채우기
-    let bi = 0;
-    while (bi < big.length && sum + big[bi][0] <= target - 300) {
-      seq.push(big[bi]); sum += big[bi][0]; bi++;
+    const of = (reason, detail) => [RULES[reason].amount, reason, detail || RULES[reason].label];
+    const seq = [of('signup')];
+    let sum = seq[0][0];
+    const big = ['streak7', 'post', 'streak14', 'post', 'streak21', 'post', 'streak28', 'streak30']
+      .map((r) => of(r));
+    const small = ['post', 'comment', 'like_received', 'comment', 'post'].map((r) => of(r));
+    // 굵직한 보상으로 대충 채우고
+    for (const e of big) {
+      if (sum + e[0] > target - RULES.post.amount) break;
+      seq.push(e); sum += e[0];
     }
-    // 나머지는 100/300 단위로 정확히 채우기 (사유·금액 일치 유지)
+    // 일상 활동으로 더 채운 뒤
     let si = 0;
-    while (sum < target) {
-      const [a, r, d] = small[si % small.length];
-      if (sum + a <= target) { seq.push([a, r, d]); sum += a; }
-      else { seq.push([100, 'comment', '댓글·대댓글 작성']); sum += 100; }
-      si++;
-      if (seq.length > 500) break;
+    while (si < 400) {
+      const e = small[si % small.length];
+      if (sum + e[0] > target) break;
+      seq.push(e); sum += e[0]; si++;
+    }
+    // 남는 자투리는 출석(10P)으로 정확히 맞춘다
+    while (sum + RULES.attendance.amount <= target) { seq.push(of('attendance')); sum += RULES.attendance.amount; }
+    if (sum !== target) {
+      throw new Error(`데모 포인트 합계가 안 맞아요: ${sum} ≠ ${target}`
+        + ` (가입 ${RULES.signup.amount}P 보다 적거나 10P 배수가 아닌 값은 못 맞춰요)`);
     }
     // 오래된 항목(큰 day offset)부터 삽입 → 최근 항목이 마지막에 삽입되어 목록 상단에 다양하게 노출
     const n = seq.length;
     seq.forEach((e, idx) => logRow.run(userId, e[0], e[1], e[2], `-${Math.max(0, n - 1 - idx)} days`));
   }
-  fillLogs(admin, 25000);
-  fillLogs(cherry, 1800);
-  fillLogs(mint, 6200);
-  fillLogs(street, 3400);
-  fillLogs(gold, 12500);
+  // 캐릭터를 산 사람은 '벌어서 썼다'가 되어야 한다.
+  // 쓴 만큼 더 벌어둔 뒤 구매 기록으로 빼면, 남은 잔액이 users.points 와 정확히 맞는다.
+  function fillFor(userId, points) {
+    const bought = db.prepare('SELECT item_code, price FROM user_items WHERE user_id = ?').all(userId);
+    fillLogs(userId, points + bought.reduce((s, r) => s + r.price, 0));
+    for (const r of bought) {
+      const item = avatars.get(r.item_code);
+      db.prepare("INSERT INTO point_logs (user_id, amount, reason, detail) VALUES (?, ?, 'purchase', ?)")
+        .run(userId, -r.price, `${item ? item.name : r.item_code} 구매`);
+    }
+  }
+  for (const u of db.prepare('SELECT id, points FROM users').all()) fillFor(u.id, u.points);
 
   // 공지 2건
   insertPost.run(admin, '커뮤니티 이용 규칙 안내 (필독)',
     `안녕하세요, 운영자입니다.\n\n모두가 즐거운 커뮤니티를 위해 아래 규칙을 지켜주세요.\n\n1. 서로 존중하는 말투를 사용해주세요.\n2. 광고성 게시글은 사전 안내 없이 숨김 처리될 수 있어요.\n3. 다른 회원의 개인정보를 요구하거나 공개하지 마세요.\n4. 신고가 누적된 글은 운영자가 확인 후 조치합니다.\n\n감사합니다!`,
     0, 1, 1254, '-30 days');
-  insertPost.run(admin, '포인트 적립 및 아바타 해금 안내',
-    `활동할수록 포인트가 쌓이고, 포인트로 아바타가 업그레이드돼요!\n\n[기본 포인트]\n- 회원가입 1,000P (최초 1회)\n- 출석체크 하루 100P\n- 일반 게시글 300P (하루 3개까지)\n- 익명 게시글 100P (하루 3개까지)\n- 댓글·대댓글 100P (하루 10개까지)\n- 게시글 추천받기 1개당 10P\n\n[추가 보상]\n- 인기글 선정 1,000P / 운영자 추천 1,500P\n- 연속 출석 3일 500P · 7일 1,000P · 30일 3,000P\n\n[아바타 해금]\n- 기본 12종: 무료\n- 스페셜 헤어: 5,000P\n- 프리미엄 의상: 10,000P\n- 움직이는 테두리: 20,000P\n- 이벤트 한정: 시즌마다 오픈\n\n자세한 내용은 마이페이지에서 확인하세요!`,
+  insertPost.run(admin, '포인트 적립 및 캐릭터 구매 안내',
+    `활동할수록 포인트가 쌓이고, 포인트로 캐릭터와 테두리를 살 수 있어요!\n\n[기본 포인트]\n- 회원가입 1,000P (최초 1회)\n- 출석체크 하루 10P\n- 일반 게시글 300P (하루 3개까지)\n- 익명 게시글 100P (하루 3개까지)\n- 댓글·대댓글 100P (하루 10개까지)\n- 게시글 추천받기 1개당 10P\n\n[추가 보상]\n- 인기글 선정 1,000P / 운영자 추천 1,500P\n- 연속 출석 7일 50P · 14일 100P · 21일 150P · 28일 200P\n- 30일 연속 출석 달성 시 100P 추가\n\n[캐릭터·테두리]\n- 가입할 때 받는 캐릭터: 무료\n- 그 외 스타일 1종: 2,000P\n- 테두리: 각 20,000P\n\n자세한 내용은 마이페이지 > 아바타 꾸미기에서 확인하세요!`,
     0, 1, 832, '-30 days');
 
   // 샘플 게시글

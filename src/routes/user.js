@@ -238,7 +238,19 @@ router.get('/profile', requireLogin, (req, res) => {
     owned: owned.has(i.code),
   }));
   // 내 유형의 캐릭터만 보여준다 (남성회원에게 여성 캐릭터를 팔 이유가 없다)
-  const myCharacters = decorate(avatars.characters(me.member_type));
+  //
+  // 여성회원 캐릭터는 225종이라 한 화면에 다 깔면 못 쓴다.
+  // 기획서대로 2단계로 나눈다: 1차 = 기본 캐릭터(테마) 9종, 2차 = 그 안의 25종.
+  // 낱장으로 온 남성·업소회원은 테마가 없어 1차가 곧 캐릭터 목록이 된다.
+  const myThemes = avatars.themes(me.member_type).map((t) => ({
+    ...t,
+    ...(t.single ? decorate([t.cover])[0] : {}),
+    have: t.items.filter((i) => avatars.canUse(me, i.code, owned)).length,
+    total: t.items.length,
+    using: t.items.some((i) => i.code === me.avatar_id),
+  }));
+  const openTheme = req.query.theme ? avatars.theme(me.member_type, String(req.query.theme)) : null;
+  const themeItems = openTheme && !openTheme.single ? decorate(openTheme.items) : null;
   const myBorders = decorate(avatars.borders());
 
   const stats = {
@@ -269,7 +281,11 @@ router.get('/profile', requireLogin, (req, res) => {
     WHERE b.user_id = ? ORDER BY b.id DESC LIMIT 5`).all(me.id);
 
   res.render('profile', {
-    myCharacters, myBorders, memberTypes: avatars.MEMBER_TYPES,
+    myThemes, openTheme, themeItems, myBorders, memberTypes: avatars.MEMBER_TYPES,
+    characterPrice: avatars.CHARACTER_PRICE,
+    // 자바스크립트가 꺼져 있어도 링크만으로 원하는 칸이 열리게 서버에서 정해 준다
+    tab: ['info', 'attendance', 'avatar'].includes(String(req.query.tab)) ? String(req.query.tab)
+      : (req.query.theme ? 'avatar' : 'info'),
     stats, badges, myPosts, myComments, myBookmarks,
     next: nextUnlock(me.points), level: getLevel(me.points),
     att: attendanceView(me.id), milestones: MILESTONES, attendPoint: RULES.attendance.amount,
@@ -295,6 +311,13 @@ const buyItem = db.transaction((userId, item) => {
   return { ok: true };
 });
 
+// 사고 나서 목록 맨 위로 튕기면 방금 산 걸 다시 찾아야 한다.
+// 보던 캐릭터의 스타일 목록으로 그대로 돌려보낸다.
+function backToShop(req) {
+  const theme = req.body.theme ? `&theme=${encodeURIComponent(String(req.body.theme))}` : '';
+  return `/profile?tab=avatar${theme}#avatar`;
+}
+
 router.post('/profile/buy', requireLogin, (req, res) => {
   const me = res.locals.me;
   const item = avatars.get(req.body.code);
@@ -311,7 +334,7 @@ router.post('/profile/buy', requireLogin, (req, res) => {
       ? `${item.name}을(를) 구매했어요! (-${item.price.toLocaleString()}P)`
       : `포인트가 부족해요. (${item.price.toLocaleString()}P 필요)`;
   }
-  res.redirect('/profile#avatar');
+  res.redirect(backToShop(req));
 });
 
 router.post('/profile/avatar', requireLogin, (req, res) => {
@@ -322,7 +345,7 @@ router.post('/profile/avatar', requireLogin, (req, res) => {
   } else {
     req.session.flash = '아직 가지고 있지 않은 캐릭터예요.';
   }
-  res.redirect('/profile#avatar');
+  res.redirect(backToShop(req));
 });
 
 router.post('/profile/border', requireLogin, (req, res) => {
@@ -336,7 +359,7 @@ router.post('/profile/border', requireLogin, (req, res) => {
   } else {
     req.session.flash = `테두리는 ${avatars.BORDER_PRICE.toLocaleString()}P에 구매할 수 있어요.`;
   }
-  res.redirect('/profile#avatar');
+  res.redirect(backToShop(req));
 });
 
 module.exports = router;

@@ -970,3 +970,77 @@ test('로그인하지 않으면 점 3개 메뉴가 아예 없다', async () => {
   assert.ok(!html.includes('<button class="menu-btn"'), '할 수 있는 게 없으면 버튼도 두지 않는다');
   assert.ok(!html.includes('<div class="menu-pop"'), '메뉴 내용도 없어야 한다');
 });
+
+// ---- 캐릭터 상점 (2단계) -------------------------------------------------------
+const avatarCatalog = require('../src/avatars');
+
+test('여성회원은 가입할 때 무료 캐릭터를 직접 고른다', async () => {
+  const choices = avatarCatalog.starterFor('female').choices;
+  const want = choices[2];                       // 첫 번째가 아닌 것을 골라야 의미가 있다
+  const jar = makeJar();
+  await post('/signup', { username: 'pick1', nickname: '고른사람', password: 'password123',
+    member_type: 'female', avatar_id: want.code }, jar);
+  assert.equal(db.prepare("SELECT avatar_id FROM users WHERE username='pick1'").get().avatar_id, want.code);
+});
+
+test('고를 수 없는 캐릭터를 보내면 무시하고 기본값을 준다', async () => {
+  const paid = avatarCatalog.characters('female').find((i) => i.price > 0);
+  const jar = makeJar();
+  await post('/signup', { username: 'pick2', nickname: '몰래산사람', password: 'password123',
+    member_type: 'female', avatar_id: paid.code }, jar);
+  const got = db.prepare("SELECT avatar_id FROM users WHERE username='pick2'").get().avatar_id;
+  assert.notEqual(got, paid.code, '돈 내지 않은 캐릭터가 붙으면 안 된다');
+  assert.equal(avatarCatalog.get(got).price, 0);
+});
+
+test('상점 1단계에는 기본 캐릭터만, 2단계에 스타일 25종이 나온다', async () => {
+  const jar = makeJar();
+  await post('/signup', { username: 'shop1', nickname: '상점구경', password: 'password123',
+    member_type: 'female' }, jar);
+
+  const first = await (await get('/profile?tab=avatar', jar)).text();
+  const themes = avatarCatalog.themes('female');
+  assert.ok(first.includes(themes[0].name), '1단계에 테마 이름이 보인다');
+  assert.ok(first.includes(`theme=${themes[0].code}`), '눌러서 들어갈 링크가 있다');
+  assert.ok(!first.includes('헤어1·의상2'), '1단계에서는 개별 스타일을 펼치지 않는다');
+
+  const t = themes.find((x) => x.code === 'redqueen') || themes[1];
+  const second = await (await get(`/profile?tab=avatar&theme=${t.code}`, jar)).text();
+  const shown = (second.match(/헤어\d·의상\d/g) || []).length;
+  assert.equal(shown, 25, `2단계에 25칸이 나와야 하는데 ${shown}칸이다`);
+  assert.ok(second.includes('캐릭터 목록'), '되돌아갈 길이 있다');
+});
+
+test('포인트가 모자라면 캐릭터를 살 수 없다', async () => {
+  const jar = makeJar();
+  await post('/signup', { username: 'shop2', nickname: '가난한사람', password: 'password123',
+    member_type: 'female' }, jar);
+  const id = uid('shop2');
+  db.prepare('UPDATE users SET points = 100 WHERE id = ?').run(id);
+  const paid = avatarCatalog.characters('female').find((i) => i.price > 0);
+
+  await post('/profile/buy', { code: paid.code, theme: paid.themeCode }, jar);
+  assert.equal(db.prepare('SELECT COUNT(*) AS c FROM user_items WHERE user_id = ?').get(id).c, 0);
+  assert.equal(db.prepare('SELECT points FROM users WHERE id = ?').get(id).points, 100, '포인트도 그대로');
+
+  // 살 수 있게 되면 사지고, 보던 스타일 목록으로 돌아온다
+  db.prepare('UPDATE users SET points = ? WHERE id = ?').run(paid.price, id);
+  const res = await post('/profile/buy', { code: paid.code, theme: paid.themeCode }, jar);
+  assert.match(res.headers.get('location'), new RegExp(`theme=${paid.themeCode}`));
+  assert.equal(db.prepare('SELECT COUNT(*) AS c FROM user_items WHERE user_id = ?').get(id).c, 1);
+  assert.equal(db.prepare('SELECT points FROM users WHERE id = ?').get(id).points, 0);
+  // 쓴 포인트도 내역에 남는다
+  const log = db.prepare("SELECT amount FROM point_logs WHERE user_id = ? AND reason = 'purchase'").get(id);
+  assert.equal(log.amount, -paid.price);
+});
+
+test('다른 유형의 캐릭터는 사지지 않는다', async () => {
+  const jar = makeJar();
+  await post('/signup', { username: 'shop3', nickname: '남성회원A', password: 'password123',
+    member_type: 'male' }, jar);
+  const id = uid('shop3');
+  db.prepare('UPDATE users SET points = 999999 WHERE id = ?').run(id);
+  const female = avatarCatalog.characters('female').find((i) => i.price > 0);
+  await post('/profile/buy', { code: female.code }, jar);
+  assert.equal(db.prepare('SELECT COUNT(*) AS c FROM user_items WHERE user_id = ?').get(id).c, 0);
+});

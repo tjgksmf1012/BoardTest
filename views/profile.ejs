@@ -22,12 +22,12 @@
 </div>
 
 <div class="ptab-bar">
-  <button class="ptab on" type="button" data-target="info">내 정보</button>
-  <button class="ptab" type="button" data-target="attendance">출석</button>
-  <button class="ptab" type="button" data-target="avatar">아바타 꾸미기</button>
+  <button class="ptab <%= tab === 'info' ? 'on' : '' %>" type="button" data-target="info">내 정보</button>
+  <button class="ptab <%= tab === 'attendance' ? 'on' : '' %>" type="button" data-target="attendance">출석</button>
+  <button class="ptab <%= tab === 'avatar' ? 'on' : '' %>" type="button" data-target="avatar">캐릭터</button>
 </div>
 
-<div class="ptab-panel on" id="panel-info">
+<div class="ptab-panel <%= tab === 'info' ? 'on' : '' %>" id="panel-info">
 
 <div class="card next-unlock">
   <% if (next) { %>
@@ -115,7 +115,7 @@
 
 </div><%# /panel-info %>
 
-<div class="ptab-panel" id="panel-attendance">
+<div class="ptab-panel <%= tab === 'attendance' ? 'on' : '' %>" id="panel-attendance">
 
 <div class="att-grid">
   <div class="card att-card">
@@ -171,7 +171,7 @@
 
 </div><%# /panel-attendance %>
 
-<div class="ptab-panel" id="panel-avatar">
+<div class="ptab-panel <%= tab === 'avatar' ? 'on' : '' %>" id="panel-avatar">
 
 <h2 class="section-title">캐릭터 꾸미기</h2>
 <p class="muted">
@@ -179,38 +179,87 @@
   가입할 때 받은 캐릭터는 바로 쓸 수 있고, 나머지는 포인트로 살 수 있어요.
 </p>
 
-<div class="card shop-card">
-  <div class="tier-head">
-    <h3>캐릭터</h3>
-    <span class="muted"><%= myCharacters.filter(function (c) { return c.unlocked; }).length %> / <%= myCharacters.length %> 보유</span>
+<%#
+  캐릭터 상점은 2단계다.
+  1차 = 기본 캐릭터(테마) 목록, 2차 = 그 캐릭터의 스타일 25종.
+  ?theme=<코드> 가 붙으면 2차를 편다. 자바스크립트 없이 링크만으로 오간다.
+%>
+<% if (themeItems) { %>
+  <div class="card shop-card">
+    <div class="tier-head">
+      <h3><a class="shop-back" href="/profile?tab=avatar#avatar">← 캐릭터 목록</a> <%= openTheme.name %></h3>
+      <span class="muted"><%= themeItems.filter(function (c) { return c.unlocked; }).length %> / <%= themeItems.length %> 보유</span>
+    </div>
+    <div class="shop-grid">
+      <% themeItems.forEach(function (a) { %>
+        <% if (a.unlocked) { %>
+          <form method="post" action="/profile/avatar" class="shop-item <%= me.avatar_id === a.code ? 'selected' : '' %>"><%- csrfField() %>
+            <input type="hidden" name="avatar_id" value="<%= a.code %>">
+            <input type="hidden" name="theme" value="<%= openTheme.code %>">
+            <button type="submit" title="<%= a.name %> 장착">
+              <%- renderAvatar(a.code, null, 72) %>
+              <span class="shop-name">헤어<%= a.row %>·의상<%= a.col %></span>
+              <% if (me.avatar_id === a.code) { %><span class="using">사용 중</span><% } %>
+            </button>
+          </form>
+        <% } else { %>
+          <form method="post" action="/profile/buy" class="shop-item locked"><%- csrfField() %>
+            <input type="hidden" name="code" value="<%= a.code %>">
+            <input type="hidden" name="theme" value="<%= openTheme.code %>">
+            <button type="submit" title="<%= a.name %> 구매">
+              <%- renderAvatar(a.code, null, 72) %>
+              <span class="shop-name">헤어<%= a.row %>·의상<%= a.col %></span>
+              <span class="shop-price <%= me.points >= a.price ? 'can' : '' %>"><%= a.price.toLocaleString() %>P</span>
+            </button>
+          </form>
+        <% } %>
+      <% }) %>
+    </div>
   </div>
-  <% if (myCharacters.length === 0) { %>
-    <div class="empty small">아직 등록된 캐릭터가 없어요.</div>
-  <% } %>
-  <div class="shop-grid">
-    <% myCharacters.forEach(function (a) { %>
-      <% if (a.unlocked) { %>
-        <form method="post" action="/profile/avatar" class="shop-item <%= me.avatar_id === a.code ? 'selected' : '' %>"><%- csrfField() %>
-          <input type="hidden" name="avatar_id" value="<%= a.code %>">
-          <button type="submit" title="<%= a.name %> 장착">
-            <%- renderAvatar(a.code, null, 72) %>
-            <span class="shop-name"><%= a.name %></span>
-            <% if (me.avatar_id === a.code) { %><span class="using">사용 중</span><% } %>
-          </button>
-        </form>
-      <% } else { %>
-        <form method="post" action="/profile/buy" class="shop-item locked"><%- csrfField() %>
-          <input type="hidden" name="code" value="<%= a.code %>">
-          <button type="submit" title="<%= a.name %> 구매">
-            <%- renderAvatar(a.code, null, 72) %>
-            <span class="shop-name"><%= a.name %></span>
-            <span class="shop-price <%= me.points >= a.price ? 'can' : '' %>"><%= a.price.toLocaleString() %>P</span>
-          </button>
-        </form>
-      <% } %>
-    <% }) %>
+<% } else { %>
+  <div class="card shop-card">
+    <div class="tier-head">
+      <h3>캐릭터</h3>
+      <span class="muted">
+        <% if (myThemes.length && !myThemes[0].single) { %>기본 <%= myThemes.length %>종 · 스타일 1개 <%= characterPrice.toLocaleString() %>P
+        <% } else { %><%= myThemes.filter(function (t) { return t.unlocked; }).length %> / <%= myThemes.length %> 보유<% } %>
+      </span>
+    </div>
+    <% if (myThemes.length === 0) { %>
+      <div class="empty small">아직 등록된 캐릭터가 없어요.</div>
+    <% } %>
+    <div class="shop-grid">
+      <% myThemes.forEach(function (t) { %>
+        <% if (!t.single) { %>
+          <a class="shop-item <%= t.using ? 'selected' : '' %>" href="/profile?tab=avatar&amp;theme=<%= encodeURIComponent(t.code) %>#avatar">
+            <%- renderAvatar(t.cover.code, null, 72) %>
+            <span class="shop-name"><%= t.name %></span>
+            <span class="shop-count"><%= t.have %>/<%= t.total %></span>
+            <% if (t.using) { %><span class="using">사용 중</span><% } %>
+          </a>
+        <% } else if (t.unlocked) { %>
+          <form method="post" action="/profile/avatar" class="shop-item <%= me.avatar_id === t.code ? 'selected' : '' %>"><%- csrfField() %>
+            <input type="hidden" name="avatar_id" value="<%= t.code %>">
+            <button type="submit" title="<%= t.name %> 장착">
+              <%- renderAvatar(t.code, null, 72) %>
+              <span class="shop-name"><%= t.name %></span>
+              <% if (me.avatar_id === t.code) { %><span class="using">사용 중</span><% } %>
+            </button>
+          </form>
+        <% } else { %>
+          <form method="post" action="/profile/buy" class="shop-item locked"><%- csrfField() %>
+            <input type="hidden" name="code" value="<%= t.code %>">
+            <button type="submit" title="<%= t.name %> 구매">
+              <%- renderAvatar(t.code, null, 72) %>
+              <span class="shop-name"><%= t.name %></span>
+              <span class="shop-price <%= me.points >= t.price ? 'can' : '' %>"><%= t.price.toLocaleString() %>P</span>
+            </button>
+          </form>
+        <% } %>
+      <% }) %>
+    </div>
   </div>
-</div>
+<% } %>
 
 <div class="card shop-card">
   <div class="tier-head">
@@ -251,5 +300,26 @@
 </div>
 
 </div>
+
+<script>
+// 탭 전환. 자바스크립트가 없으면 js-tabs 가 안 붙어 세 칸이 그냥 위아래로 이어 보인다
+// (내용을 못 보는 일은 없다). 켜져 있으면 한 칸씩 보여준다.
+(function () {
+  var bar = document.querySelector('.ptab-bar');
+  if (!bar) return;
+  document.body.classList.add('js-tabs');
+  bar.addEventListener('click', function (e) {
+    var btn = e.target.closest('.ptab');
+    if (!btn) return;
+    var name = btn.dataset.target;
+    bar.querySelectorAll('.ptab').forEach(function (b) { b.classList.toggle('on', b === btn); });
+    document.querySelectorAll('.ptab-panel').forEach(function (p) {
+      p.classList.toggle('on', p.id === 'panel-' + name);
+    });
+    // 새로고침해도 보던 칸으로 돌아오게 주소에 남긴다
+    history.replaceState(null, '', name === 'info' ? location.pathname : location.pathname + '?tab=' + name);
+  });
+})();
+</script>
 
 <%- include('partials/footer') %>
