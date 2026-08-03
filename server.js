@@ -12,7 +12,7 @@ const { unreadCount } = require('./src/notify');
 const { startUploadsGc } = require('./src/uploads-gc');
 const { rebuildMissing } = require('./src/search');
 const { csrfToken, csrfVerify } = require('./src/csrf');
-const { award, checkedToday, streakBeforeToday, todayStr, recentWeek } = require('./src/points');
+const { award, checkedToday } = require('./src/points');
 const identity = require('./src/identity');
 const { levelBadge, getLevel } = require('./src/levels');
 const { catTag } = require('./src/categories');
@@ -169,11 +169,8 @@ app.use((req, res, next) => {
   res.locals.flash = req.session.flash || null;
   delete req.session.flash;
 
-  // 오늘 아직 출석 전이면 그날 첫 화면에 출석부를 띄운다 (하루 한 번, 묻지 않고 바로 도장)
+  // 출석은 전용 화면에서 버튼으로 한다. 아직 안 했으면 메뉴에 점을 찍어 알려준다.
   res.locals.attendanceDue = res.locals.me ? !checkedToday(res.locals.me.id) : false;
-  res.locals.attendanceStreak = res.locals.attendanceDue ? streakBeforeToday(res.locals.me.id) : 0;
-  res.locals.attendanceWeek = res.locals.attendanceDue ? recentWeek(res.locals.me.id) : [];
-  res.locals.todayKey = todayStr();
   res.locals.currentPath = req.path; // 출석 후 보던 화면으로 돌아가기 위한 경로
   res.locals.authMode = identity.MODE;  // 'standalone' | 'host' — 화면의 로그인 안내가 달라진다
   res.locals.assetVersion = ASSET_VERSION;

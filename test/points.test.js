@@ -78,28 +78,40 @@ test('추천받기는 한도 없이 10P씩 적립', () => {
   assert.equal(points(u), 150);
 });
 
-test('출석체크: 첫 출석 100P, 같은 날 중복 출석 불가', () => {
+test('출석체크: 첫 출석 10P, 같은 날 중복 출석 불가', () => {
   const u = makeUser();
   const first = checkAttendance(u);
   assert.equal(first.already, false);
-  assert.equal(first.results[0].awarded, 100);
+  assert.equal(first.results[0].awarded, 10);
   assert.equal(first.streak, 1);
 
   const second = checkAttendance(u);
   assert.equal(second.already, true);
-  assert.equal(points(u), 100);
+  assert.equal(points(u), 10);
 });
 
-test('3일 연속 출석 시 500P 보너스', () => {
+test('7일 연속 출석 시 50P 보너스', () => {
   const u = makeUser();
-  // 이틀 전, 어제 출석을 미리 기록해두고 오늘 출석
-  db.prepare('INSERT INTO attendance (user_id, day) VALUES (?, ?)').run(u, dayOffset(-2));
-  db.prepare('INSERT INTO attendance (user_id, day) VALUES (?, ?)').run(u, dayOffset(-1));
-
+  // 엿새 전부터 어제까지 출석을 미리 기록해두고 오늘 출석 → 7일째
+  for (let i = 6; i >= 1; i--) {
+    db.prepare('INSERT INTO attendance (user_id, day) VALUES (?, ?)').run(u, dayOffset(-i));
+  }
   const r = checkAttendance(u);
-  assert.equal(r.streak, 3);
+  assert.equal(r.streak, 7);
   const total = r.results.reduce((s, x) => s + x.awarded, 0);
-  assert.equal(total, 600); // 출석 100 + 3일 연속 500
+  assert.equal(total, 60, '출석 10 + 7일 연속 50');
+});
+
+test('보너스는 딱 그 날짜에 닿았을 때만 준다', () => {
+  const u = makeUser();
+  // 이레 전부터 어제까지(7일) → 오늘은 8일째라 보너스가 없다
+  for (let i = 7; i >= 1; i--) {
+    db.prepare('INSERT INTO attendance (user_id, day) VALUES (?, ?)').run(u, dayOffset(-i));
+  }
+  const r = checkAttendance(u);
+  assert.equal(r.streak, 8);
+  assert.equal(r.results.length, 1, '출석 포인트만');
+  assert.equal(r.results.reduce((s, x) => s + x.awarded, 0), 10);
 });
 
 test('연속 출석이 끊기면 스트릭이 다시 시작됨', () => {

@@ -3,16 +3,18 @@ const db = require('./db');
 
 const RULES = {
   signup:        { amount: 1000, label: '회원가입' },
-  attendance:    { amount: 100,  label: '출석체크' },
+  attendance:    { amount: 10,   label: '출석체크' },
   post:          { amount: 300,  label: '일반 게시글 작성', dailyLimit: 3 },
   anon_post:     { amount: 100,  label: '익명 게시글 작성', dailyLimit: 3 },
   comment:       { amount: 100,  label: '댓글·대댓글 작성', dailyLimit: 10 },
   like_received: { amount: 10,   label: '일반 게시글 추천받기' },
   popular:       { amount: 1000, label: '인기글 선정' },
   admin_pick:    { amount: 1500, label: '운영자 추천글 선정' },
-  streak3:       { amount: 500,  label: '3일 연속 출석' },
-  streak7:       { amount: 1000, label: '7일 연속 출석' },
-  streak30:      { amount: 3000, label: '30일 연속 출석' },
+  streak7:       { amount: 50,   label: '7일 연속 출석' },
+  streak14:      { amount: 100,  label: '14일 연속 출석' },
+  streak21:      { amount: 150,  label: '21일 연속 출석' },
+  streak28:      { amount: 200,  label: '28일 연속 출석' },
+  streak30:      { amount: 100,  label: '30일 연속 출석 달성' },
 };
 
 function todayStr() {
@@ -96,11 +98,16 @@ function streakBeforeToday(userId) {
 }
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+// 연속 출석 보너스. 지급 규칙(RULES)과 한 곳에서 나오게 해서 둘이 어긋나지 않도록 한다.
 const MILESTONES = [
-  { days: 3, points: 500 },
-  { days: 7, points: 1000 },
-  { days: 30, points: 3000 },
-];
+  { days: 7,  reason: 'streak7' },
+  { days: 14, reason: 'streak14' },
+  { days: 21, reason: 'streak21' },
+  { days: 28, reason: 'streak28' },
+  { days: 30, reason: 'streak30', special: true },
+].map((m) => ({ ...m, points: RULES[m.reason].amount }));
+
+const CHALLENGE_DAYS = 30; // 30일 연속 출석 챌린지
 
 // 다음 연속 출석 보너스까지 얼마나 남았는지 (다 채웠으면 null)
 function nextMilestone(streak) {
@@ -151,7 +158,7 @@ function attendanceView(userId) {
   };
 }
 
-// 출석 처리: 오늘 출석 기록 + 100P, 연속 출석 3/7/30일 보너스
+// 출석 처리: 오늘 출석 기록 + 출석 포인트, 연속 출석 보너스(7·14·21·28·30일)
 function checkAttendance(userId) {
   const day = todayStr();
   const exists = db.prepare('SELECT 1 FROM attendance WHERE user_id = ? AND day = ?').get(userId, day);
@@ -160,13 +167,46 @@ function checkAttendance(userId) {
   db.prepare('INSERT INTO attendance (user_id, day) VALUES (?, ?)').run(userId, day);
   const results = [award(userId, 'attendance')];
 
-  // 오늘을 포함해 연속으로 며칠 출석했는지 계산
+  // 오늘을 포함해 연속으로 며칠 출석했는지 계산.
+  // 딱 그날짜에 닿았을 때만 보너스를 준다 (31일째에 또 주면 안 된다)
   const streak = currentStreak(userId);
-  if (streak === 3) results.push(award(userId, 'streak3'));
-  if (streak === 7) results.push(award(userId, 'streak7'));
-  if (streak === 30) results.push(award(userId, 'streak30'));
+  for (const m of MILESTONES) {
+    if (streak === m.days) results.push(award(userId, m.reason));
+  }
 
   return { already: false, streak, results };
+}
+
+// 이번 달 출석 횟수 (시안 상단 요약의 '이번 달 출석')
+function monthlyCount(userId) {
+  return db.prepare(
+    "SELECT COUNT(*) AS c FROM attendance WHERE user_id = ? AND day LIKE strftime('%Y-%m-', 'now', 'localtime') || '%'"
+  ).get(userId).c;
+}
+
+// 30일 챌린지 진행 상황 — 진행바와 구간 표시에 쓴다
+function challengeView(streak) {
+  const done = Math.min(streak, CHALLENGE_DAYS);
+  return {
+    days: CHALLENGE_DAYS,
+    done,
+    remain: Math.max(0, CHALLENGE_DAYS - streak),
+    percent: Math.round((done / CHALLENGE_DAYS) * 100),
+    marks: MILESTONES.map((m) => ({ ...m, reached: streak >= m.days })),
+  };
+}
+
+// 지금이 몇 주차인지와, 그 주(7일 묶음)의 각 날짜 상태.
+// 시안의 "2주차 출석 도전 — 8일차 … 14일차" 를 그대로 만든다.
+function weekChallenge(streak) {
+  const week = Math.floor(Math.max(0, streak - (streak > 0 ? 1 : 0)) / 7) + 1;
+  const first = (week - 1) * 7 + 1;
+  const days = [];
+  for (let d = first; d < first + 7; d++) {
+    days.push({ day: d, points: RULES.attendance.amount, done: d <= streak, today: d === streak });
+  }
+  const goal = MILESTONES.find((m) => m.days >= first + 6) || null;
+  return { week, days, goal };
 }
 
 // 플래시 메시지에 붙일 해금 축하 문구
@@ -180,6 +220,7 @@ module.exports = {
   RULES, UNLOCK_THRESHOLDS,
   award, checkAttendance, countToday, todayStr,
   checkedToday, currentStreak, streakBeforeToday, attendanceView,
-  recentWeek, nextMilestone, MILESTONES,
+  recentWeek, nextMilestone, MILESTONES, CHALLENGE_DAYS,
+  challengeView, weekChallenge, monthlyCount,
   crossedUnlocks, nextUnlock, unlockMessage,
 };

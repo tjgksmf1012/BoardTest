@@ -1153,3 +1153,92 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 .page-info { margin-left: 8px; font-size: 12.5px; align-self: center; }
 
 .comment-pager { margin: 18px 0 6px; justify-content: center; }
+
+/* ---- 출석체크 전용 화면 ----
+   시안대로 '상단 요약 → 30일 챌린지 → 이번 주 도전 → 안내' 순서. */
+.att-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.att-head h1 { font-size: 24px; }
+.att-head-ico { color: var(--primary); flex-shrink: 0; opacity: .85; }
+
+.att-summary { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.asum { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; text-align: center; }
+.asum-ico { color: var(--primary); display: flex; }
+.asum-ico.warm { color: var(--danger); }
+.asum-ico.gold { color: var(--amber); }
+.asum-label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.asum-value { font-size: 18px; font-weight: 800; color: var(--primary-dark); }
+.asum-value.warm { color: var(--danger); }
+.asum-link {
+  flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: var(--primary-soft); color: var(--primary-dark);
+  border-radius: 11px; padding: 10px 12px; font-size: 12px; font-weight: 700; white-space: nowrap;
+}
+
+.att-sec-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.att-sec-head h2 { display: flex; align-items: center; gap: 7px; margin-bottom: 0; font-size: 16px; }
+.att-sec-head .ico { color: var(--primary); }
+.att-sec-desc { font-size: 13px; margin: 6px 0 14px; }
+.att-challenge, .att-week, .att-guide { margin-bottom: 14px; }
+
+.att-progress-top { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+.att-big { font-size: 30px; font-weight: 800; color: var(--primary-dark); line-height: 1; }
+.att-of { font-size: 15px; font-weight: 700; color: var(--text); }
+.att-remain { margin-left: auto; font-size: 12.5px; }
+
+/* 30칸 진행바 — 하루 한 칸 */
+.att-blocks { display: flex; gap: 3px; margin-bottom: 14px; }
+.att-block { flex: 1; height: 16px; border-radius: 3px; background: var(--lock-bg); }
+.att-block.on { background: var(--primary); }
+
+.att-marks { list-style: none; display: flex; justify-content: space-between; gap: 4px; margin: 0; }
+.att-marks li { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.am-day { font-size: 12px; font-weight: 700; color: var(--muted); }
+.am-point { font-size: 11.5px; color: var(--muted); }
+.att-marks li.on .am-day, .att-marks li.on .am-point { color: var(--primary-dark); }
+.am-dot {
+  width: 15px; height: 15px; border-radius: 50%; background: var(--lock-bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: #fff; margin-top: 3px;
+}
+.att-marks li.on .am-dot { background: var(--primary); }
+
+.att-gift { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; font-weight: 700; color: var(--amber); }
+.att-days { list-style: none; display: flex; gap: 4px; margin: 0 0 16px; }
+.att-day-item { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.adi-circle {
+  width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  border: 1.5px solid var(--line-strong); background: var(--card);
+  font-size: 13px; font-weight: 800; color: var(--muted);
+}
+.att-day-item.done .adi-circle { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.att-day-item.today .adi-circle { background: var(--card); border-color: var(--primary); border-width: 2px; color: var(--primary-dark); }
+.adi-label { font-size: 10.5px; color: var(--muted); white-space: nowrap; }
+.att-day-item.today .adi-label { color: var(--primary-dark); font-weight: 700; }
+.adi-point { font-size: 10.5px; color: var(--muted); }
+
+.att-check-btn { font-size: 15px; padding: 14px; }
+.att-done-box {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  background: var(--primary-soft); color: var(--primary-dark);
+  border-radius: 12px; padding: 14px; font-weight: 700; font-size: 14.5px;
+}
+.att-note { font-size: 12px; text-align: center; margin-top: 10px; }
+
+.att-guide-head { display: flex; align-items: center; gap: 7px; font-size: 15px; color: var(--primary-dark); }
+.att-guide ul { margin: 10px 0 0 18px; }
+.att-guide li { font-size: 13.5px; color: var(--text); margin: 5px 0; }
+.att-record {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--line);
+  font-size: 14px; font-weight: 700; color: var(--text);
+}
+.att-record:hover { color: var(--primary-dark); }
+
+@media (max-width: 420px) {
+  .asum-label { font-size: 11px; }
+  .asum-value { font-size: 16px; }
+  .asum-link { padding: 8px 9px; font-size: 11px; }
+  .att-blocks { gap: 2px; }
+  .att-block { height: 13px; }
+  .adi-circle { width: 30px; height: 30px; }
+}

@@ -36,14 +36,16 @@
     <h2>적립 기준</h2>
     <table class="rules">
       <tr><td><%= authMode === 'host' ? '커뮤니티 첫 방문' : '회원가입' %> <span class="muted">(최초 1회)</span></td><td>1,000P</td></tr>
-      <tr><td>출석체크 <span class="muted">(하루 1회)</span></td><td>100P</td></tr>
+      <tr><td>출석체크 <span class="muted">(하루 1회)</span></td><td><%= RULES.attendance.amount %>P</td></tr>
       <tr><td>일반 게시글 작성 <span class="muted">(하루 3개까지)</span></td><td>300P</td></tr>
       <tr><td>익명 게시글 작성 <span class="muted">(하루 3개까지)</span></td><td>100P</td></tr>
       <tr><td>댓글·대댓글 작성 <span class="muted">(하루 10개까지)</span></td><td>100P</td></tr>
       <tr><td>일반 게시글 추천받기 <span class="muted">(추천 1개당)</span></td><td>10P</td></tr>
       <tr><td>인기글 선정 <span class="muted">(추천 10개 이상)</span></td><td>1,000P</td></tr>
       <tr><td>운영자 추천글 선정</td><td>1,500P</td></tr>
-      <tr><td>연속 출석 3일 / 7일 / 30일</td><td>500P / 1,000P / 3,000P</td></tr>
+      <% milestones.forEach(function (m) { %>
+        <tr><td>연속 출석 <%= m.days %>일<%= m.special ? ' 달성' : '' %></td><td><%= m.points.toLocaleString() %>P</td></tr>
+      <% }) %>
     </table>
     <div class="note">
       <strong>익명글 규칙</strong> · 익명글 작성 시 100P 지급 · 익명글은 추천 버튼 비활성화 · 추천 포인트 적립 불가

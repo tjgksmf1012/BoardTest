@@ -65,28 +65,32 @@ async function newPost(jar, title, extra = {}) {
 }
 const uid = (username) => db.prepare('SELECT id FROM users WHERE username = ?').get(username).id;
 
-test('출석체크는 첫 회 +100P, 같은 날 재출석은 차단된다', async () => {
+test('출석체크는 첫 회 +10P, 같은 날 재출석은 차단된다', async () => {
   const jar = makeJar();
   await signup(jar, 'att1', '출석이');
   const before = db.prepare("SELECT points FROM users WHERE username='att1'").get().points;
   await post('/attendance/check', {}, jar);
   const mid = db.prepare("SELECT points FROM users WHERE username='att1'").get().points;
-  assert.equal(mid - before, 100);
+  assert.equal(mid - before, 10);
   await post('/attendance/check', {}, jar); // 재출석
   const after = db.prepare("SELECT points FROM users WHERE username='att1'").get().points;
   assert.equal(after, mid); // 변화 없음
 });
 
-test('출석 팝업은 출석 전에만 뜨고, 출석하면 그날은 뜨지 않는다', async () => {
+test('출석은 접속만으로 처리되지 않고 버튼을 눌러야 한다', async () => {
   const jar = makeJar();
-  await signup(jar, 'attpop', '팝업이');
-  // 출석 전: 어느 화면에서든 팝업이 나온다
-  const before = await (await get('/board', jar)).text();
-  assert.ok(before.includes('id="attPop"'), '출석 전에는 팝업이 있어야 한다');
+  await signup(jar, 'attpop', '버튼이');
+  // 게시판을 아무리 열어도 출석되지 않는다
+  await get('/board', jar);
+  await get('/board', jar);
+  assert.equal(db.prepare("SELECT COUNT(*) c FROM attendance WHERE user_id = ?").get(uid('attpop')).c, 0);
+
+  const page = await (await get('/attendance', jar)).text();
+  assert.ok(page.includes('오늘 출석체크 하기'), '출석 전에는 버튼이 보인다');
   await post('/attendance/check', {}, jar);
-  // 출석 후: 서버가 판단하므로 브라우저 저장소와 무관하게 사라진다
-  const after = await (await get('/board', jar)).text();
-  assert.ok(!after.includes('id="attPop"'), '출석 후에는 팝업이 없어야 한다');
+  const after = await (await get('/attendance', jar)).text();
+  assert.ok(!after.includes('오늘 출석체크 하기'), '출석 후에는 버튼이 사라진다');
+  assert.ok(after.includes('오늘 출석을 완료했어요'));
 });
 
 test('출석부는 JSON으로 도장판·연속일수·다음 보너스를 함께 돌려준다', async () => {
@@ -100,12 +104,12 @@ test('출석부는 JSON으로 도장판·연속일수·다음 보너스를 함�
   assert.equal(res.status, 200);
   const d = await res.json();
   assert.equal(d.already, false);
-  assert.equal(d.awarded, 100);
+  assert.equal(d.awarded, 10);
   assert.equal(d.streak, 1);
   assert.equal(d.week.length, 7, '최근 7일 도장판');
   assert.equal(d.week[6].today, true, '마지막 칸이 오늘');
   assert.equal(d.week[6].checked, true, '오늘 칸에 도장이 찍혀 있어야 한다');
-  assert.deepEqual({ days: d.next.days, remain: d.next.remain }, { days: 3, remain: 2 });
+  assert.deepEqual({ days: d.next.days, remain: d.next.remain }, { days: 7, remain: 6 });
   assert.equal(typeof d.points, 'number');
 });
 
@@ -119,7 +123,7 @@ test('같은 날 두 번 요청해도 포인트는 한 번만 지급된다', asy
   })).json();
   const first = await call();
   const second = await call();
-  assert.equal(first.awarded, 100);
+  assert.equal(first.awarded, 10);
   assert.equal(second.already, true);
   assert.equal(second.awarded, 0, '두 번째는 지급되지 않아야 한다');
   assert.equal(second.streak, 1, '이미 출석해도 연속일수는 그대로 알려준다');
@@ -129,30 +133,31 @@ test('같은 날 두 번 요청해도 포인트는 한 번만 지급된다', asy
   assert.equal(logs, 1);
 });
 
-test('3일 연속이면 보너스가 함께 지급된다', async () => {
+test('7일 연속이면 보너스가 함께 지급된다', async () => {
   const jar = makeJar();
   await signup(jar, 'attmile', '연속이');
   const id = uid('attmile');
   const p = (n) => String(n).padStart(2, '0');
   const dayAgo = (o) => { const d = new Date(); d.setDate(d.getDate() - o);
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
-  [1, 2].forEach((o) => db.prepare('INSERT INTO attendance (user_id, day) VALUES (?, ?)').run(id, dayAgo(o)));
+  [1, 2, 3, 4, 5, 6].forEach((o) => db.prepare('INSERT INTO attendance (user_id, day) VALUES (?, ?)').run(id, dayAgo(o)));
 
   const d = await (await fetch(base + '/attendance/check', {
     method: 'POST',
     headers: { Accept: 'application/json', 'X-CSRF-Token': await csrfToken(jar), ...jar.header() },
     redirect: 'manual',
   })).json();
-  assert.equal(d.streak, 3);
-  assert.equal(d.base, 100);
-  assert.equal(d.bonus, 500, '3일 연속 보너스');
-  assert.equal(d.awarded, 600);
-  assert.equal(d.next.days, 7, '다음 목표는 7일');
+  assert.equal(d.streak, 7);
+  assert.equal(d.base, 10);
+  assert.equal(d.bonus, 50, '7일 연속 보너스');
+  assert.equal(d.awarded, 60);
+  assert.equal(d.next.days, 14, '다음 목표는 14일');
 });
 
-test('비로그인 상태에는 출석 팝업이 뜨지 않는다', async () => {
-  const html = await (await get('/board')).text();
-  assert.ok(!html.includes('id="attPop"'));
+test('비로그인 상태에서 출석 화면은 로그인으로 넘어간다', async () => {
+  const res = await get('/attendance');
+  assert.equal(res.status, 302);
+  assert.match(res.headers.get('location'), /^\/login/);
 });
 
 test('출석 후에는 폼에 담긴 원래 화면으로 돌아간다', async () => {
@@ -167,16 +172,20 @@ test('출석 복귀 주소로 외부 주소를 넣어도 따라가지 않는다'
   await signup(jar, 'attevil', '침입자');
   for (const bad of ['https://evil.example.com', '//evil.example.com', 'javascript:alert(1)']) {
     const res = await post('/attendance/check', { next: bad }, jar);
-    assert.equal(res.headers.get('location'), '/profile#attendance', `막아야 함: ${bad}`);
+    assert.equal(res.headers.get('location'), '/attendance', `막아야 함: ${bad}`);
   }
 });
 
-test('옛 출석 주소는 마이페이지 출석 탭으로 넘어간다', async () => {
+test('출석 화면은 연속일수·이번 달 횟수·30일 챌린지를 함께 보여준다', async () => {
   const jar = makeJar();
-  await signup(jar, 'attold', '옛주소');
-  const res = await get('/attendance', jar);
-  assert.equal(res.status, 302);
-  assert.equal(res.headers.get('location'), '/profile#attendance');
+  await signup(jar, 'attold', '현황이');
+  await post('/attendance/check', {}, jar);
+  const html = await (await get('/attendance', jar)).text();
+  assert.ok(html.includes('연속 출석'), '연속 출석 요약');
+  assert.ok(html.includes('이번 달 출석'), '이번 달 요약');
+  assert.ok(html.includes('30일 연속 출석 챌린지'), '30일 챌린지');
+  assert.ok(html.includes('주차 출석 도전'), '주차별 도전');
+  assert.ok(html.includes('출석 기록 보기'), '달력으로 가는 링크');
 });
 
 test('출석 기록은 마이페이지 출석 탭에서 확인된다', async () => {

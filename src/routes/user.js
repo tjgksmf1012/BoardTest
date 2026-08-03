@@ -2,7 +2,8 @@
 const express = require('express');
 const db = require('../db');
 const { RULES, checkAttendance, unlockMessage, nextUnlock, attendanceView,
-  currentStreak, recentWeek, nextMilestone } = require('../points');
+  currentStreak, streakBeforeToday, checkedToday, recentWeek, nextMilestone,
+  MILESTONES, monthlyCount, challengeView, weekChallenge } = require('../points');
 const { AVATARS, BORDERS, TIER_INFO, canUseAvatar, canUseBorder, eventOpen } = require('../avatars');
 const { getLevel, achievements } = require('../levels');
 const { unreadCount } = require('../notify');
@@ -24,9 +25,24 @@ function requireLogin(req, res, next) {
 }
 
 // ---- 출석체크 --------------------------------------------------------------
-// 출석은 하루 한 번뿐이라 별도 메뉴 대신 그날 첫 접속 시 안내 팝업으로 처리하고,
-// 달력·연속출석 기록은 마이페이지 '출석' 탭에서 본다. (옛 주소는 그쪽으로 넘긴다)
-router.get('/attendance', requireLogin, (req, res) => res.redirect('/profile#attendance'));
+// 출석 전용 화면. 접속하자마자 자동으로 처리하지 않고, 직접 버튼을 눌러 출석한다.
+// 달력 기록은 그대로 마이페이지 '출석' 탭에서 본다.
+router.get('/attendance', requireLogin, (req, res) => {
+  const me = res.locals.me;
+  const done = checkedToday(me.id);
+  // 출석 전이면 '어제까지' 이어온 일수를 보여준다 — 그래야 0일 연속으로 보이지 않는다
+  const streak = done ? currentStreak(me.id) : streakBeforeToday(me.id);
+  res.render('attendance', {
+    done,
+    streak,
+    monthly: monthlyCount(me.id),
+    challenge: challengeView(streak),
+    week: weekChallenge(done ? streak : streak + 1),
+    next: nextMilestone(streak),
+    attendPoint: RULES.attendance.amount,
+    milestones: MILESTONES,
+  });
+});
 
 // 폼에서 넘어온 복귀 주소가 우리 사이트 내부 경로일 때만 사용한다 (오픈 리다이렉트 방지)
 function safeNext(value, fallback) {
@@ -62,7 +78,7 @@ router.post('/attendance/check', requireLogin, (req, res) => {
     req.session.flash = `출석 완료! +${total}P 적립됐어요.${bonus}` + unlockMessage(result.results);
   }
   // 마이페이지 출석 탭 등 일반 폼 전송은 기존처럼 화면을 되돌린다
-  res.redirect(safeNext(req.body.next, '/profile#attendance'));
+  res.redirect(safeNext(req.body.next, '/attendance'));
 });
 
 // ---- 포인트 내역 -------------------------------------------------------------
@@ -74,7 +90,7 @@ router.get('/points', requireLogin, (req, res) => {
     `SELECT COALESCE(SUM(amount), 0) AS s FROM point_logs
      WHERE user_id = ? AND date(created_at) = date('now', 'localtime')`
   ).get(req.session.userId).s;
-  res.render('points', { logs, todayTotal, RULES, next: nextUnlock(res.locals.me.points) });
+  res.render('points', { logs, todayTotal, RULES, milestones: MILESTONES, next: nextUnlock(res.locals.me.points) });
 });
 
 // ---- 알림 ------------------------------------------------------------------
