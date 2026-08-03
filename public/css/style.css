@@ -1,4 +1,4 @@
-/* 포인트라운지 - 딥 틸(deep teal) + 쿨 뉴트럴 테마
+/* 밤알바커뮤니티 - 딥 틸(deep teal) + 쿨 뉴트럴 테마
    기획안(참고 시안)이 '흰 바탕 + 얇은 구분선 + 틸 포인트'라서, 배경을 따뜻한 베이지에서
    차분한 회백색으로 옮기고 카드 테두리도 한 겹만 남겼다. 요소마다 상자를 두르면
    화면이 금세 조잡해져서, 구분은 되도록 선 하나로 끝낸다.
@@ -468,22 +468,32 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 .clike.on { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-dark); }
 .clike:active { transform: scale(.92); }
 .clike-static { font-size: 12.5px; color: var(--muted); }
-.best-block { margin-bottom: 8px; }
-.comment.best {
-  background: linear-gradient(0deg, var(--card), var(--card)) padding-box,
-              var(--trending-bg); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;
-  border: 1px solid var(--trending-line);
-}
-.comment.best:last-child { margin-bottom: 0; }
+/* 댓글 머리줄: 왼쪽에 '댓글 N', 오른쪽에 정렬 선택 (시안) */
+.comments-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.comments-head h2 { margin: 0; }
+.csort-form { display: flex; align-items: center; gap: 6px; }
 .reply-form, .comment-form { display: flex; gap: 8px; margin-top: 10px; }
 .reply-form[hidden] { display: none; }
 .reply-form input, .comment-form input {
   flex: 1; border: 1px solid var(--line); border-radius: 10px; padding: 9px 14px; font-size: 14px;
 }
-.prev-next { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; }
-.pn { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px; font-size: 14px; font-weight: 600; }
-.pn .muted { margin-right: 8px; }
+.prev-next { margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pn {
+  display: flex; flex-direction: column; gap: 3px; min-width: 0;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  padding: 10px 16px; font-size: 14px; font-weight: 600;
+}
+.pn-label { font-size: 12.5px; font-weight: 700; }
+.pn-next { text-align: right; }
+/* 제목이 길어도 칸을 밀지 않게 한 줄로 자른다 */
+.pn-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pn:hover { border-color: var(--primary); }
+.pn-empty { border-color: transparent; background: none; }
+@media (max-width: 560px) {
+  .prev-next { grid-template-columns: 1fr; }
+  .pn-empty { display: none; }
+  .pn-next { text-align: left; }
+}
 
 /* ---- 글쓰기 ---- */
 .write-card { max-width: 720px; margin: 0 auto; }
@@ -519,6 +529,17 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
   display: flex; align-items: center; gap: 6px;
   padding: 8px; background: var(--bg); border-bottom: 1px solid var(--line);
   overflow-x: auto; -webkit-overflow-scrolling: touch;
+  /* 좁은 화면에서는 버튼이 다 안 들어간다. 스크롤바를 숨겨 뒀으므로
+     오른쪽 끝을 흐리게 덮어 '더 있다'는 것을 알린다.
+     두 겹이다 — 그림자(scroll)는 칸에 붙어 늘 그 자리에 있고,
+     덮개(local)는 내용과 함께 움직여 끝까지 밀면 그림자를 가린다. */
+  background-image:
+    linear-gradient(to left, var(--bg), var(--bg)),
+    linear-gradient(to left, var(--bg), transparent);
+  background-repeat: no-repeat, no-repeat;
+  background-position: right center, right center;
+  background-size: 18px 100%, 30px 100%;
+  background-attachment: local, scroll;
 }
 .tb-group { display: flex; gap: 4px; flex-shrink: 0; padding-right: 6px; border-right: 1px solid var(--line); }
 .tb-group:last-child { border-right: none; padding-right: 0; }

@@ -1,16 +1,12 @@
-<%# 댓글 한 개 렌더링. locals: c(댓글), post, me, isBest(옵션) %>
-<%
-  // 베스트댓글은 같은 댓글이 위아래 두 번 그려진다.
-  // id가 겹치면 아래쪽 '답글'을 눌러도 위쪽 입력칸이 열리므로 앞에 b를 붙여 구분한다.
-  const eid = (isBest ? 'b' : '') + c.id;
-%>
+<%# 댓글 한 개 렌더링. locals: c(댓글), post, me %>
+<% const eid = c.id; %>
 <% if (c.is_deleted) { %>
   <%# 답글이 달려 있어 자리만 남긴 댓글 — 아래 답글들이 고아가 되지 않도록 %>
   <div class="comment deleted <%= c.parent_id ? 'reply' : '' %>" id="comment-<%= eid %>">
     <div class="comment-body"><p class="deleted-note">삭제된 댓글이에요.</p></div>
   </div>
 <% } else { %>
-<div class="comment <%= c.parent_id ? 'reply' : '' %> <%= isBest ? 'best' : '' %>" id="comment-<%= eid %>">
+<div class="comment <%= c.parent_id ? 'reply' : '' %>" id="comment-<%= eid %>">
   <a class="comment-avatar" href="/users/<%= c.user_id %>" aria-label="<%= c.nickname %>님 프로필">
     <%- renderAvatar(c.avatar_id, c.border_id, c.parent_id ? 32 : 38) %>
   </a>

@@ -354,7 +354,14 @@ async function waitUp() {
   const dbPath = path.join(tmp, 'docs.db');
   const src = path.join(ROOT, 'data', 'board.db');
   if (!fs.existsSync(src)) throw new Error('data/board.db 가 없어요. 먼저 npm start 로 한 번 띄워 주세요.');
-  fs.copyFileSync(src, dbPath);
+  // 파일만 복사하면 안 된다 — WAL 모드라 최근에 쓴 내용이 아직 board.db-wal 에만 있어서,
+  // 어제 상태의 DB가 복사돼 있지도 않은 글 번호를 찍으려다 404 가 난다.
+  // backup() 은 WAL 까지 합쳐 한 파일로 일관되게 떠 준다.
+  {
+    const source = require('better-sqlite3')(src, { readonly: true });
+    await source.backup(dbPath);
+    source.close();
+  }
 
   // 출석부 화면을 찍으려면 오늘 아직 출석하지 않은 사람이 있어야 한다
   const sqlite = require('better-sqlite3')(dbPath);

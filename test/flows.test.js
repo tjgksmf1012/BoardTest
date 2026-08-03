@@ -675,7 +675,7 @@ test('익명글은 공유 미리보기에 본문이 실리지 않는다', async 
   const p = await newPost(jar, '익명 공유 글', { is_anonymous: '1', content: '비밀스러운 본문 내용' });
   const html = await (await get(`/board/${p.id}`, jar)).text();
   assert.ok(!html.includes('content="비밀스러운 본문 내용'), '익명글 본문이 미리보기로 새면 안 된다');
-  assert.ok(html.includes('포인트라운지의 게시글이에요'));
+  assert.ok(html.includes('밤알바커뮤니티의 게시글이에요'));
 });
 
 test('테스트끼리 아이디·닉네임이 겹치지 않는다 (겹치면 가입이 조용히 실패한다)', () => {
@@ -792,9 +792,11 @@ test('없는 쪽을 요청해도 마지막 쪽을 보여준다', async () => {
   assert.ok(!html.includes('comment-pager'), '한 쪽뿐이면 이동 링크가 없다');
 });
 
-test('베스트댓글이 위아래로 겹쳐도 입력칸 id는 겹치지 않는다', async () => {
+test('추천 많은 댓글을 위에 복사해 두지 않는다', async () => {
+  // 수정사항에서 베스트 뱃지를 빼라고 해, 사본만 남으면 같은 댓글이
+  // 아무 표시 없이 두 번 나온다. 사본을 없애고 정렬로 대신한다.
   const jar = makeJar(); await signup(jar, 'cbest1', '베스트글쓴이');
-  const p = await newPost(jar, '베스트댓글 있는 글');
+  const p = await newPost(jar, '추천 많은 댓글이 있는 글');
   await post(`/board/${p.id}/comments`, { content: '추천 많은 댓글' }, jar);
   const c = db.prepare('SELECT id FROM comments WHERE post_id = ?').get(p.id);
   for (const [u, n] of [['cbest2', '추천이1'], ['cbest3', '추천이2'], ['cbest4', '추천이3']]) {
@@ -802,11 +804,23 @@ test('베스트댓글이 위아래로 겹쳐도 입력칸 id는 겹치지 않는
     await post(`/board/comments/${c.id}/like`, {}, j);
   }
   const html = await (await get(`/board/${p.id}`, jar)).text();
-  // BEST 뱃지는 지웠지만, 베스트댓글 자리는 그대로라 같은 댓글이 위아래 두 번 그려진다
-  assert.ok(html.includes('best-block'), '베스트댓글로 뽑혀야 한다');
-  const ids = [...html.matchAll(/id="reply-([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(ids, [`b${c.id}`, `${c.id}`], '위쪽 베스트 사본은 b를 붙여 구분한다');
-  assert.equal(new Set(ids).size, ids.length, 'id가 겹치면 안 된다');
+  assert.ok(!html.includes('best-block'), '베스트 자리는 없앴다');
+  const ids = [...html.matchAll(/id="comment-([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(ids, [`${c.id}`], '댓글은 한 번만 그려진다');
+});
+
+test('댓글을 추천순으로 볼 수 있다', async () => {
+  const jar = makeJar(); await signup(jar, 'csort1', '정렬글쓴이');
+  const p = await newPost(jar, '댓글 정렬 확인 글');
+  await post(`/board/${p.id}/comments`, { content: '먼저 쓴 댓글' }, jar);
+  await post(`/board/${p.id}/comments`, { content: '나중에 쓴 댓글' }, jar);
+  const [first, second] = db.prepare('SELECT id FROM comments WHERE post_id = ? ORDER BY id').all(p.id);
+  const j = makeJar(); await signup(j, 'csort2', '추천누른이');
+  await post(`/board/comments/${second.id}/like`, {}, j);
+
+  const order = (html) => [...html.matchAll(/id="comment-(\d+)"/g)].map((m) => Number(m[1]));
+  assert.deepEqual(order(await (await get(`/board/${p.id}`, jar)).text()), [first.id, second.id], '기본은 최신순(쓴 순서)');
+  assert.deepEqual(order(await (await get(`/board/${p.id}?csort=like`, jar)).text()), [second.id, first.id], '추천순은 추천 많은 것이 위로');
 });
 
 // ---- 실시간 알림 (SSE) -------------------------------------------------------

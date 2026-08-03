@@ -101,24 +101,28 @@
 </article>
 
 <section class="card comments" id="comments">
-  <h2>댓글 <span class="accent"><%= commentCount %></span></h2>
+  <div class="comments-head">
+    <h2>댓글 <span class="accent"><%= commentCount %></span></h2>
+    <% if (commentCount > 1 && !post.block_comments) { %>
+      <%# 시안의 '최신순 ∨'. 선택하면 바로 보내고, 자바스크립트가 없으면 옆 버튼으로 보낸다 %>
+      <form class="csort-form" method="get" action="/board/<%= post.id %>">
+        <select class="sort-select" name="csort" onchange="this.form.submit()" aria-label="댓글 정렬">
+          <option value="new" <%= csort === 'new' ? 'selected' : '' %>>최신순</option>
+          <option value="like" <%= csort === 'like' ? 'selected' : '' %>>추천순</option>
+        </select>
+        <noscript><button class="btn btn-ghost btn-sm" type="submit">적용</button></noscript>
+      </form>
+    <% } %>
+  </div>
 
   <% if (post.block_comments) { %>
     <div class="empty">작성자가 댓글을 차단한 게시글이에요.</div>
   <% } else { %>
-    <% if (best && best.length > 0) { %>
-      <div class="best-block">
-        <% best.forEach(function (c) { %>
-          <%- include('partials/comment', { c: c, post: post, me: me, isBest: true }) %>
-        <% }) %>
-      </div>
-    <% } %>
-
     <% const REPLY_HEAD = 2; // 답글이 많으면 앞 2개만 보이고 나머지는 접어둔다 %>
     <% comments.forEach(function (c) { %>
-      <%- include('partials/comment', { c: c, post: post, me: me, isBest: false }) %>
+      <%- include('partials/comment', { c: c, post: post, me: me }) %>
       <% c.replies.slice(0, REPLY_HEAD).forEach(function (r) { %>
-        <%- include('partials/comment', { c: r, post: post, me: me, isBest: false }) %>
+        <%- include('partials/comment', { c: r, post: post, me: me }) %>
       <% }) %>
       <% if (c.replies.length > REPLY_HEAD) { %>
         <div class="reply-more-wrap" id="more-<%= c.id %>">
@@ -128,7 +132,7 @@
         </div>
         <div class="reply-rest" id="rest-<%= c.id %>" hidden>
           <% c.replies.slice(REPLY_HEAD).forEach(function (r) { %>
-            <%- include('partials/comment', { c: r, post: post, me: me, isBest: false }) %>
+            <%- include('partials/comment', { c: r, post: post, me: me }) %>
           <% }) %>
         </div>
       <% } %>
@@ -140,7 +144,9 @@
         let cf = Math.max(1, cPage - cw), ct = Math.min(cTotalPages, cPage + cw);
         if (cPage <= cw + 1) ct = Math.min(cTotalPages, cw * 2 + 1);
         if (cPage >= cTotalPages - cw) cf = Math.max(1, cTotalPages - cw * 2);
-        const chref = (n) => `/board/${post.id}` + (n > 1 ? `?cpage=${n}` : '') + '#comments';
+        const cq = (o) => { const p = new URLSearchParams(o); return p.toString() ? '?' + p : ''; };
+        const chref = (n) => `/board/${post.id}`
+          + cq({ ...(n > 1 ? { cpage: n } : {}), ...(csort !== 'new' ? { csort } : {}) }) + '#comments';
       %>
       <nav class="pager comment-pager" aria-label="댓글 페이지 이동">
         <% if (cPage > 1) { %>
@@ -170,14 +176,21 @@
   <% } %>
 </section>
 
-<div class="prev-next">
-  <% if (next) { %>
-    <a class="pn" href="/board/<%= next.id %>"><span class="muted">다음글</span> <%= next.title %></a>
-  <% } %>
+<%# 시안대로 이전글이 왼쪽, 다음글이 오른쪽. 한쪽만 있으면 그 자리를 지킨다 %>
+<nav class="prev-next" aria-label="글 이동">
   <% if (prev) { %>
-    <a class="pn" href="/board/<%= prev.id %>"><span class="muted">이전글</span> <%= prev.title %></a>
-  <% } %>
-</div>
+    <a class="pn pn-prev" href="/board/<%= prev.id %>" rel="prev">
+      <span class="pn-label muted">‹ 이전글</span>
+      <span class="pn-title"><%= prev.title %></span>
+    </a>
+  <% } else { %><span class="pn pn-empty" aria-hidden="true"></span><% } %>
+  <% if (next) { %>
+    <a class="pn pn-next" href="/board/<%= next.id %>" rel="next">
+      <span class="pn-label muted">다음글 ›</span>
+      <span class="pn-title"><%= next.title %></span>
+    </a>
+  <% } else { %><span class="pn pn-empty" aria-hidden="true"></span><% } %>
+</nav>
 
 <script>
   function toggleReply(id) {

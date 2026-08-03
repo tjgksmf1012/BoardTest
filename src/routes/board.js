@@ -285,17 +285,18 @@ router.get('/:id(\\d+)', (req, res) => {
     WHERE c.post_id = ? ORDER BY c.id`).all(uid, post.id);
   // 댓글이 수백 개가 되면 한 화면에 다 그리는 게 부담이라 최상위 댓글 기준으로 나눈다.
   // 답글은 부모를 따라다녀야 흐름이 끊기지 않으므로 같은 쪽에 함께 싣는다.
+  // 댓글 정렬. 시안에 '최신순 ∨' 선택 상자가 있다.
+  // 예전에는 좋아요 많은 댓글을 맨 위에 복사해 보여줬는데(베스트댓글),
+  // 수정사항에서 베스트 표시를 빼라고 해 같은 댓글이 이유 없이 두 번 나오게 됐다.
+  // 복사본을 없애고, 대신 추천순으로 정렬할 수 있게 했다.
+  const csort = req.query.csort === 'like' ? 'like' : 'new';
   const roots = rows.filter((c) => !c.parent_id);
+  if (csort === 'like') roots.sort((a, b) => b.like_count - a.like_count || a.id - b.id);
   const cTotalPages = Math.max(1, Math.ceil(roots.length / COMMENT_PAGE_SIZE));
   const cPage = Math.min(cTotalPages, Math.max(1, parseInt(req.query.cpage, 10) || 1));
   const comments = roots
     .slice((cPage - 1) * COMMENT_PAGE_SIZE, cPage * COMMENT_PAGE_SIZE)
     .map((c) => ({ ...c, replies: rows.filter((r) => r.parent_id === c.id) }));
-
-  // 베스트댓글: 좋아요 3개 이상인 최상위 댓글 중 상위 2개 (에브리타임식)
-  const best = rows.filter((c) => !c.parent_id && !c.is_deleted && c.like_count >= 3)
-    .sort((a, b) => b.like_count - a.like_count || a.id - b.id)
-    .slice(0, 2);
 
   const myLike = req.session.userId
     ? db.prepare('SELECT 1 FROM likes WHERE post_id = ? AND user_id = ?').get(post.id, req.session.userId)
@@ -315,15 +316,15 @@ router.get('/:id(\\d+)', (req, res) => {
     : (images[0] && images[0].filename) || null;
   const share = {
     type: 'article',
-    title: post.is_hidden ? '포인트라운지' : post.title,
+    title: post.is_hidden ? '밤알바커뮤니티' : post.title,
     description: post.is_anonymous || post.is_hidden
-      ? '포인트라운지의 게시글이에요.'
+      ? '밤알바커뮤니티의 게시글이에요.'
       : (post.content_text || htmlToText(post.content) || '').slice(0, 120),
     image: firstImage && !post.is_hidden ? `/uploads/${firstImage}` : null,
   };
 
   res.render('post', {
-    post, images, comments, best, share,
+    post, images, comments, csort, share,
     cPage, cTotalPages,
     commentCount: rows.filter((c) => !c.is_deleted).length,
     liked: !!myLike, bookmarked: !!myBookmark, prev, next,
