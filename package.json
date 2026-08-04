@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "test": "node --test",
-    "persona": "node scripts/persona-test.js"
+    "persona": "node scripts/persona-test.js",
+    "sweep": "node scripts/sweep.js"
   },
   "engines": {
     "node": ">=20.19 <21 || >=22.12 <23"

@@ -170,9 +170,11 @@
 
     <% if (me) { %>
       <form action="/board/<%= post.id %>/comments" method="post" class="comment-form"><%- csrfField() %>
-        <input type="text" name="content" placeholder="댓글을 입력해주세요 (+100P)" required maxlength="1000">
+        <input type="text" name="content" placeholder="댓글을 입력해주세요" required maxlength="1000">
         <button class="btn btn-primary" type="submit">등록</button>
       </form>
+      <%# 포인트 안내는 입력칸 밖에 둔다. 안에 넣으면 좁은 화면에서 안내문이 잘린다 %>
+      <p class="comment-hint muted">댓글을 남기면 100P · 하루 10개까지 적립돼요.</p>
     <% } else { %>
       <div class="empty"><a href="/login">로그인</a>하고 댓글을 남겨보세요.</div>
     <% } %>
