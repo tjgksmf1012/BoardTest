@@ -134,22 +134,45 @@ const url = (file) => `${AVATAR_BASE_URL}/${encodeURIComponent(file)}`;
 // 캐릭터 25칸짜리 상점에서만 1MB 가까이 나간다 (썸네일이면 200KB 남짓).
 const THUMB_UP_TO = 96;
 
+// 테두리(고리)를 낀 아바타의 크기 규칙.
+//
+// 받은 테두리 그림 9종은 모두 가운데가 뚫린 고리이고, 그 구멍이 그림 폭의 약 59% 다
+// (RING_HOLE — test/avatar-ring.test.js 가 실제 PNG 를 재서 확인한다).
+// 그래서 고리를 칸보다 키워야(RING) 구멍이 얼굴을 감싸고, 얼굴은 그 구멍 안에 들어가야(FACE) 한다.
+//   구멍 = RING × RING_HOLE = 1.32 × 0.586 ≒ 0.77  ≥  얼굴 0.76  ✅
+// 이 값을 지키지 않으면 고리가 얼굴 위로 올라와 얼굴을 가로지른다.
+//
+// 크기를 CSS 가 아니라 여기서 붙이는 이유:
+// 예전에는 style.css 에 `.avatar-ring { width: 132% }` 로 뒀는데, 위쪽에 있던
+// `.avatar img { width: 100% }` 가 우선순위에서 이겨 132% 가 통째로 무시됐다.
+// 화면에는 오류 없이 잘 그려지고, 고리도 제자리에 있어서 아무도 알아채지 못했다.
+// 요소에 직접 붙이면 어떤 선택자도 이길 수 없어서 같은 일이 다시 생기지 않는다.
+const RING = 1.32;   // 고리를 칸의 몇 배로 그릴지
+const FACE = 0.76;   // 얼굴을 칸의 몇 배로 그릴지 (= 고리 구멍 안)
+const RING_HOLE = 0.586; // 고리 그림에서 구멍이 차지하는 비율 (실측 최솟값 — border-blue)
+
 function renderAvatar(avatarCode, borderCode, size = 44) {
   const a = get(avatarCode) || fallback();
   const b = borderCode ? get(borderCode) : null;
+  const ringed = !!(b && b.kind === 'border');
+  const faceStyle = ringed
+    ? ` style="width:${FACE * 100}%;height:${FACE * 100}%;margin:${((1 - FACE) / 2) * 100}%"`
+    : '';
   const img = a
-    ? `<img class="avatar-face" src="${url(size <= THUMB_UP_TO ? a.thumb : a.file)}" alt="" loading="lazy">`
+    ? `<img class="avatar-face" src="${url(size <= THUMB_UP_TO ? a.thumb : a.file)}"${faceStyle} alt="" loading="lazy">`
     : '';
   // 고리도 마찬가지다. 테두리 목록(9칸)에서만 원본이 281KB, 썸네일이면 53KB.
-  const ring = b && b.kind === 'border'
-    ? `<img class="avatar-ring" src="${url(size <= THUMB_UP_TO ? b.thumb : b.file)}" alt="" loading="lazy">`
+  const ring = ringed
+    ? `<img class="avatar-ring" src="${url(size <= THUMB_UP_TO ? b.thumb : b.file)}"`
+      + ` style="width:${RING * 100}%;height:${RING * 100}%" alt="" loading="lazy">`
     : '';
-  // 고리를 낀 아바타는 그리는 방식이 달라서 표시를 남긴다 (자세한 건 style.css 의 .has-ring)
-  return `<span class="avatar${ring ? ' has-ring' : ''}" style="width:${size}px;height:${size}px">${img}${ring}</span>`;
+  // 고리를 끼면 잘라내기를 풀어야 한다 (style.css 의 .has-ring)
+  return `<span class="avatar${ringed ? ' has-ring' : ''}" style="width:${size}px;height:${size}px">${img}${ring}</span>`;
 }
 
 module.exports = {
   MEMBER_TYPES, FREE_PER_TYPE, CHARACTER_PRICE, BORDER_PRICE,
+  RING, FACE, RING_HOLE,
   items: () => ITEMS, characters, borders, get, fallback, themes, theme, THEME_NOTES,
   starterFor, canUse, renderAvatar, load,
 };

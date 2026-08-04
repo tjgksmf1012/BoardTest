@@ -64,11 +64,70 @@ async function waitUp(base = BASE) {
 }
 
 // ---- 브라우저 도우미 -----------------------------------------------------------
+// 화면에 보이는 그림이 다 뜰 때까지 기다린다.
+// 이걸 안 하면 스크린샷에 아바타 자리가 빈 동그라미로 찍힌다 — 증거로 남기는 사진인데
+// 정작 봐야 할 것이 안 찍혀 있으면 나중에 아무도 잘못을 알아볼 수 없다.
+// (화면 밖의 lazy 이미지는 영영 안 뜨므로 기다리지 않는다)
+async function settle(pg, timeout = 3000) {
+  await pg.waitForFunction(() => [...document.images]
+    .filter((i) => {
+      const r = i.getBoundingClientRect();
+      return r.width > 0 && r.top < innerHeight * 1.2 && r.bottom > -innerHeight * 0.2;
+    })
+    .every((i) => i.complete), null, { timeout }).catch(() => {});
+}
+
 async function shot(pg, name) {
   fs.mkdirSync(SHOT_DIR, { recursive: true });
+  await settle(pg);
   const file = `${current.id}-${name}.png`;
   await pg.screenshot({ path: path.join(SHOT_DIR, file) });
+  await checkClipped(pg, name);
   return file;
+}
+
+// 그림이 잘려 나가는 곳 찾기
+//
+// 테두리(고리) 그림이 아바타보다 커서 바깥쪽이 통째로 잘려 나가고, 안쪽 줄만 얼굴 위에
+// 남아 있던 적이 있다. 화면은 오류 없이 잘 그려지고 요소도 제자리에 있어서
+// 흐름 검사·대비 검사로는 전혀 걸리지 않았다. 눈으로 봐야만 보이는 결함이었다.
+// 그래서 '자르는 상자(overflow:hidden) 밖으로 삐져나간 그림'을 직접 재서 찾는다.
+const clipSeen = new Set();
+async function checkClipped(pg, where) {
+  const cut = await pg.evaluate(() => {
+    const out = [];
+    for (const img of document.images) {
+      const r = img.getBoundingClientRect();
+      if (r.width < 4 || r.height < 4) continue;
+      for (let el = img.parentElement; el; el = el.parentElement) {
+        const st = getComputedStyle(el);
+        // 스크롤로 볼 수 있는 상자는 잘린 게 아니다 — 아예 잘라 버리는 것만 본다
+        if (!/^(hidden|clip)$/.test(st.overflowX) && !/^(hidden|clip)$/.test(st.overflowY)) {
+          if (st.position === 'fixed') break;
+          continue;
+        }
+        const b = el.getBoundingClientRect();
+        const over = Math.max(b.left - r.left, r.right - b.right, b.top - r.top, r.bottom - b.bottom);
+        // 반올림 오차 한 픽셀과, 일부러 조금 넘겨 깔끔하게 맞추는 경우는 넘어간다
+        if (over > 2 && over / Math.max(r.width, r.height) > 0.06) {
+          out.push({
+            what: (img.className || img.alt || img.src.split('/').pop()).slice(0, 40),
+            box: (el.className || el.tagName).toString().slice(0, 40),
+            pct: Math.round((over / Math.max(r.width, r.height)) * 100),
+          });
+        }
+        break; // 가장 가까운 자르는 상자 하나만 본다
+      }
+    }
+    return out;
+  }).catch(() => []);
+
+  for (const c of cut) {
+    const key = `${c.what}|${c.box}`;
+    if (clipSeen.has(key)) continue; // 같은 것을 화면마다 다시 적지 않는다
+    clipSeen.add(key);
+    note('BUG', '그림이 잘려 나간다', `${where}: "${c.what}" 이(가) "${c.box}" 밖으로 ${c.pct}% 잘림`);
+  }
 }
 
 // 페이지가 오류 화면인지 (우리 error.ejs 는 .auth-card.center 를 쓴다)
