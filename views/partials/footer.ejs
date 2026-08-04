@@ -95,6 +95,73 @@
     })();
   </script>
 
+<% if (me) { %>
+  <script>
+  // 새 알림을 실시간으로 받아 종에 숫자를 올린다.
+  //
+  // 서버(/notifications/stream)는 진작 있었는데 브라우저에서 붙는 코드가 없어,
+  // 새로고침해야만 알림이 보이고 있었다.
+  //
+  // EventSource 를 못 쓰는 환경(구형 브라우저, 중간 서버가 스트림을 모아두는 경우)도
+  // 있어서, 몇 번 끊기면 60초마다 개수만 물어보는 쪽으로 갈아탄다.
+  (function () {
+    var badge = document.getElementById('bellBadge');
+    if (!badge) return;
+
+    function setCount(n) {
+      n = Number(n) || 0;
+      badge.textContent = n > 99 ? '99+' : String(n);
+      badge.hidden = n <= 0;
+    }
+    function say(text, link) {
+      var t = document.createElement('a');
+      t.className = 'toast toast-notify';
+      t.href = link || '/notifications';
+      t.textContent = text;
+      document.body.appendChild(t);
+      setTimeout(function () { t.classList.add('hide'); }, 4000);
+      setTimeout(function () { t.remove(); }, 4600);
+    }
+
+    var polling = null;
+    function startPolling() {
+      if (polling) return;
+      polling = setInterval(function () {
+        fetch('/notifications/count', { credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) { if (d) setCount(d.unread); })
+          .catch(function () {});
+      }, 60000);
+    }
+
+    if (!window.EventSource) { startPolling(); return; }
+
+    var fails = 0;
+    var es = new EventSource('/notifications/stream');
+    es.addEventListener('ready', function (e) {
+      fails = 0;
+      try { setCount(JSON.parse(e.data).unread); } catch (err) {}
+    });
+    // 서버는 이름 붙은 이벤트(event: notify)로 보낸다.
+    // onmessage 는 이름 없는 것만 받으므로 이름으로 듣는다.
+    function onNotify(e) {
+      try {
+        var d = JSON.parse(e.data);
+        setCount(d.unread);
+        if (d.message) say(d.message, d.link);
+      } catch (err) {}
+    }
+    es.addEventListener('notify', onNotify);
+    es.onmessage = onNotify;   // 이름 없이 보내도 놓치지 않게
+    es.onerror = function () {
+      // 브라우저가 알아서 다시 붙지만, 계속 실패하면 물어보는 쪽으로 바꾼다
+      if (++fails >= 4) { es.close(); startPolling(); }
+    };
+    window.addEventListener('pagehide', function () { es.close(); });
+  })();
+  </script>
+<% } %>
+
   <!-- 모바일 하단 탭바 -->
   <nav class="bottom-nav">
     <a href="/board" class="bn-item <%= (typeof active !== 'undefined' && active === 'board') ? 'on' : '' %>">

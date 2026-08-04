@@ -44,9 +44,9 @@ function want(ok, kind, what, detail) {
 }
 
 // ---- 서버 ---------------------------------------------------------------------
-function startServer(dbPath) {
+function startServer(dbPath, extraEnv = {}, port = PORT) {
   const p = spawn(process.execPath, [path.join(ROOT, 'server.js')], {
-    env: { ...process.env, PORT: String(PORT), DB_PATH: dbPath, NODE_ENV: 'test' },
+    env: { ...process.env, PORT: String(port), DB_PATH: dbPath, NODE_ENV: 'test', ...extraEnv },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   p.stderr.on('data', (d) => {
@@ -55,12 +55,12 @@ function startServer(dbPath) {
   });
   return p;
 }
-async function waitUp() {
+async function waitUp(base = BASE) {
   for (let i = 0; i < 80; i++) {
-    try { if ((await fetch(BASE + '/board')).ok) return; } catch {}
+    try { if ((await fetch(base + '/board')).ok) return; } catch {}
     await new Promise((r) => setTimeout(r, 300));
   }
-  throw new Error('테스트 서버가 뜨지 않았어요');
+  throw new Error(`테스트 서버가 뜨지 않았어요 (${base})`);
 }
 
 // ---- 브라우저 도우미 -----------------------------------------------------------
@@ -666,6 +666,351 @@ persona('P8', '새벽 이용자 · 다크모드', '모바일 다크 · 저속 �
   await ctx.close();
 });
 
+
+// ---- 2회차: 1회차에서 안 밟은 축들 -------------------------------------------
+// Interfaces(연동) · Data(경계값) · Time/Operations(동시성·되돌아가기) ·
+// 실시간 알림 · Structure(없는 주소)
+
+// P9 — A사이트에 얹혔을 때 (연동 모드)
+persona('P9', 'A사이트에서 넘어온 회원', 'AUTH_MODE=host · 서명 토큰', async (browser, db, extra) => {
+  const HOST = extra.hostBase;
+  const ctx = await browser.newContext({ viewport: { width: 412, height: 915 }, isMobile: true, hasTouch: true });
+  const pg = await ctx.newPage();
+
+  // 연동 모드에서는 자체 가입·로그인 창구가 닫혀 있어야 한다
+  step('자체 가입 막혔나');
+  await pg.goto(HOST + '/signup');
+  want(!/\/signup/.test(pg.url()), 'BUG', '연동 모드인데 자체 회원가입 화면이 열린다', pg.url());
+
+  // 제대로 서명된 토큰으로 들어오기
+  step('서명 토큰으로 입장');
+  const token = extra.signToken({ uid: 'A-77001', nick: '에이사이트회원', iat: Math.floor(Date.now() / 1000) });
+  await pg.goto(`${HOST}/board?sso=${encodeURIComponent(token)}`);
+  const body = await pg.textContent('body');
+  want(/에이사이트회원/.test(body), 'BLOCK', 'A사이트 회원번호로 들어왔는데 로그인이 안 된다');
+  want(!/sso=/.test(pg.url()), 'BUG', '주소에 토큰이 그대로 남아 있다', pg.url());
+  const made = db.prepare("SELECT nickname, member_type FROM users WHERE external_id = 'A-77001'").get();
+  want(made, 'BLOCK', 'A사이트 회원이 우리 표에 안 만들어졌다');
+  await shot(pg, '1-연동입장');
+
+  // 글도 쓸 수 있어야 한다
+  step('연동 회원이 글쓰기');
+  await pg.goto(HOST + '/board/new');
+  want(!/\/login/.test(pg.url()), 'BLOCK', '연동으로 들어온 회원이 글쓰기에서 튕긴다', pg.url());
+
+  // 서명이 틀린 토큰은 안 통해야 한다
+  step('위조 토큰');
+  const ctx2 = await browser.newContext();
+  const pg2 = await ctx2.newPage();
+  const forged = token.slice(0, token.indexOf('.')) + '.' + 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+  await pg2.goto(`${HOST}/board?sso=${encodeURIComponent(forged)}`);
+  want(!/에이사이트회원/.test(await pg2.textContent('body')),
+    'BLOCK', '서명이 틀린 토큰으로 남의 계정에 들어가진다');
+
+  // 다른 회원번호를 적어 넣어도, 서명이 없으면 안 통해야 한다
+  const rawBody = Buffer.from(JSON.stringify({ uid: 'A-99999', nick: '침입자', iat: Math.floor(Date.now() / 1000) })).toString('base64url');
+  await pg2.goto(`${HOST}/board?sso=${encodeURIComponent(rawBody + '.x')}`);
+  want(!db.prepare("SELECT 1 FROM users WHERE external_id='A-99999'").get(),
+    'BLOCK', '서명 없이 아무 회원번호로나 계정이 만들어진다');
+
+  // 오래된 토큰
+  step('오래된 토큰');
+  const old = extra.signToken({ uid: 'A-77002', nick: '옛날토큰', iat: Math.floor(Date.now() / 1000) - 60 * 60 });
+  await pg2.goto(`${HOST}/board?sso=${encodeURIComponent(old)}`);
+  want(!/옛날토큰/.test(await pg2.textContent('body')), 'BUG', '시간이 지난 토큰이 아직 통한다');
+  await ctx2.close();
+  await ctx.close();
+});
+
+// P10 — 경계까지 밀어 보는 사람
+persona('P10', '개복치 · 경계값을 밟는 사람', '데스크톱 · 긴 글과 이상한 글자', async (browser, db) => {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const pg = await ctx.newPage();
+
+  step('닉네임 경계');
+  await pg.goto(BASE + '/signup');
+  await pg.fill('input[name=username]', 'edge01');
+  await pg.fill('input[name=nickname]', '가'.repeat(11));      // 10자 넘김
+  await pg.fill('input[name=password]', 'edgeedge12');
+  await pg.click('form[action="/signup"] button[type=submit]');
+  await pg.waitForLoadState('load');
+  want(!db.prepare("SELECT 1 FROM users WHERE username='edge01'").get(),
+    'BUG', '닉네임 11자로 가입이 됐다 (2~10자여야 함)');
+
+  await pg.goto(BASE + '/signup');
+  await pg.fill('input[name=username]', 'edge02');
+  await pg.fill('input[name=nickname]', '이모지🌙별⭐');
+  await pg.fill('input[name=password]', 'short');              // 8자 미만
+  await pg.click('form[action="/signup"] button[type=submit]');
+  await pg.waitForLoadState('load');
+  want(!db.prepare("SELECT 1 FROM users WHERE username='edge02'").get(),
+    'BUG', '비밀번호 5자로 가입이 됐다 (8자 이상이어야 함)');
+
+  await pg.goto(BASE + '/signup');
+  await pg.fill('input[name=username]', 'edge03');
+  await pg.fill('input[name=nickname]', '이모지🌙별');
+  await pg.fill('input[name=password]', 'edgeedge12');
+  await pg.click('form[action="/signup"] button[type=submit]');
+  await pg.waitForLoadState('load');
+  const emo = db.prepare("SELECT nickname FROM users WHERE username='edge03'").get();
+  want(emo, 'BUG', '이모지가 든 닉네임으로 가입이 안 된다');
+  if (emo) want(emo.nickname === '이모지🌙별', 'BUG', '이모지 닉네임이 깨져 저장됐다', emo.nickname);
+
+  step('제목·본문 경계');
+  const write = async (title, content) => {
+    await pg.goto(BASE + '/board/new');
+    await pg.selectOption('select[name=category]', '자유').catch(() => {});
+    await pg.fill('input[name=title]', title);
+    await pg.click('.editor');
+    await pg.keyboard.insertText(content);
+    await pg.click('form[action="/board"] button[type=submit]');
+    await pg.waitForLoadState('load');
+  };
+
+  // 제목 50자 딱 / 51자
+  await write('제'.repeat(50), '딱 50자 제목');
+  want(db.prepare("SELECT 1 FROM posts WHERE title = ?").get('제'.repeat(50)),
+    'BUG', '제목 50자가 안 올라간다');
+  await write('넘'.repeat(60), '51자 넘는 제목');
+  const over = db.prepare("SELECT title FROM posts WHERE title LIKE '넘넘%'").get();
+  want(!over || over.title.length <= 50, 'BUG', '제목이 50자를 넘겨 저장됐다', over ? `${over.title.length}자` : '');
+
+  // 본문 5,000자 넘게
+  await write('아주 긴 본문 시험', '길'.repeat(5200));
+  const long = db.prepare("SELECT content FROM posts WHERE title='아주 긴 본문 시험'").get();
+  if (long) {
+    const plain = long.content.replace(/<[^>]*>/g, '');
+    want(plain.length <= 5200, 'NIT', '본문 길이 제한이 서버에서는 안 걸린다', `${plain.length}자`);
+  }
+
+  // 빈 제목
+  await pg.goto(BASE + '/board/new');
+  await pg.selectOption('select[name=category]', '자유').catch(() => {});
+  await pg.click('.editor');
+  await pg.keyboard.insertText('제목 없이 보내기');
+  await pg.click('form[action="/board"] button[type=submit]');
+  await pg.waitForTimeout(400);
+  want(/\/board\/new/.test(pg.url()), 'BUG', '제목 없이도 글이 올라간다', pg.url());
+
+  // 제목만 공백
+  await write('   ', '공백 제목');
+  want(!db.prepare("SELECT 1 FROM posts WHERE title='   '").get(), 'BUG', '공백만 있는 제목이 올라간다');
+
+  step('검색 경계');
+  for (const q of ['%', '_', "' OR 1=1 --", '<script>', '가'.repeat(200)]) {
+    const r = await pg.goto(BASE + '/board?q=' + encodeURIComponent(q));
+    want(r.status() === 200, 'BUG', '이상한 검색어에 오류가 난다', `"${q.slice(0, 12)}" → ${r.status()}`);
+  }
+  await shot(pg, '1-경계값');
+  await ctx.close();
+});
+
+// P11 — 두 번 누르고, 뒤로 갔다가, 두 탭을 켜 두는 사람
+persona('P11', '산만한 사람 · 동시성', '탭 두 개 · 뒤로가기 · 더블클릭', async (browser, db) => {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const pg = await ctx.newPage();
+  await pg.goto(BASE + '/signup');
+  await pg.fill('input[name=username]', 'busy01');
+  await pg.fill('input[name=nickname]', '산만이');
+  await pg.fill('input[name=password]', 'busybusy12');
+  await pg.click('form[action="/signup"] button[type=submit]');
+  await pg.waitForLoadState('load');
+  const uid = db.prepare("SELECT id FROM users WHERE username='busy01'").get().id;
+
+  step('출석을 두 탭에서 동시에');
+  const pg2 = await ctx.newPage();
+  await pg.goto(BASE + '/attendance');
+  await pg2.goto(BASE + '/attendance');
+  await Promise.all([
+    pg.click('button:has-text("출석체크 하기")').catch(() => {}),
+    pg2.click('button:has-text("출석체크 하기")').catch(() => {}),
+  ]);
+  await pg.waitForTimeout(600);
+  const attLogs = db.prepare("SELECT COUNT(*) c FROM point_logs WHERE user_id=? AND reason='attendance'").get(uid).c;
+  want(attLogs === 1, 'BUG', '동시에 눌러 출석 포인트가 두 번 붙었다', `${attLogs}건`);
+  const attRows = db.prepare('SELECT COUNT(*) c FROM attendance WHERE user_id=?').get(uid).c;
+  want(attRows === 1, 'BUG', '출석 기록이 두 줄 생겼다', `${attRows}줄`);
+  await pg2.close();
+
+  step('추천을 연달아 두 번');
+  await pg.goto(BASE + '/board/4');
+  const like = await pg.$('form[action*="/like"] button');
+  if (like) {
+    await like.click(); await pg.waitForLoadState('load');
+    const l2 = await pg.$('form[action*="/like"] button');
+    if (l2) { await l2.click(); await pg.waitForLoadState('load'); }
+    const n = db.prepare('SELECT COUNT(*) c FROM likes WHERE post_id=4 AND user_id=?').get(uid).c;
+    want(n <= 1, 'BUG', '같은 사람이 같은 글을 두 번 추천했다', `${n}건`);
+  }
+
+  step('글 올린 뒤 뒤로가기 → 다시 보내기');
+  await pg.goto(BASE + '/board/new');
+  await pg.selectOption('select[name=category]', '자유').catch(() => {});
+  await pg.fill('input[name=title]', '뒤로가기 시험용 글');
+  await pg.click('.editor');
+  await pg.keyboard.insertText('본문');
+  await pg.click('form[action="/board"] button[type=submit]');
+  await pg.waitForLoadState('load');
+  await pg.goBack();
+  await pg.waitForTimeout(400);
+  await pg.goForward().catch(() => {});
+  await pg.waitForTimeout(400);
+  const dup = db.prepare("SELECT COUNT(*) c FROM posts WHERE title='뒤로가기 시험용 글'").get().c;
+  want(dup === 1, 'BUG', '뒤로/앞으로 하다 같은 글이 두 번 올라갔다', `${dup}개`);
+
+  step('로그아웃한 뒤 옛 화면에서 보내기');
+  const stale = await ctx.newPage();
+  await stale.goto(BASE + '/board/new');                    // 폼을 열어 둔 채
+  await pg.goto(BASE + '/board');
+  await pg.click('form[action="/logout"] button').catch(() => {});
+  await pg.waitForLoadState('load');
+  await stale.fill('input[name=title]', '로그아웃 뒤에 보낸 글');
+  await stale.click('.editor');
+  await stale.keyboard.insertText('본문');
+  await stale.click('form[action="/board"] button[type=submit]').catch(() => {});
+  await stale.waitForTimeout(600);
+  want(!db.prepare("SELECT 1 FROM posts WHERE title='로그아웃 뒤에 보낸 글'").get(),
+    'BUG', '로그아웃했는데 열어둔 폼으로 글이 써졌다');
+  const url = stale.url();
+  want(/\/login/.test(url) || await isErrorPage(stale), 'NIT',
+    '세션이 끊긴 뒤 보내면 어디로 가는지 안내가 없다', url);
+  await shot(stale, '1-세션끊김');
+  await ctx.close();
+});
+
+// P12 — 알림이 실시간으로 오는가
+persona('P12', '알림 기다리는 사람', '두 사람이 동시 접속 · SSE', async (browser, db) => {
+  const a = await browser.newContext({ viewport: { width: 1100, height: 800 } });
+  const b = await browser.newContext({ viewport: { width: 1100, height: 800 } });
+  const pgA = await a.newPage();
+  const pgB = await b.newPage();
+
+  await pgA.goto(BASE + '/signup');
+  await pgA.fill('input[name=username]', 'noti01');
+  await pgA.fill('input[name=nickname]', '글쓴이');
+  await pgA.fill('input[name=password]', 'notinoti12');
+  await pgA.click('form[action="/signup"] button[type=submit]');
+  await pgA.waitForLoadState('load');
+
+  step('A가 글을 쓴다');
+  await pgA.goto(BASE + '/board/new');
+  await pgA.selectOption('select[name=category]', '자유').catch(() => {});
+  await pgA.fill('input[name=title]', '알림 시험용 글입니다');
+  await pgA.click('.editor');
+  await pgA.keyboard.insertText('댓글 달아 주세요');
+  await pgA.click('form[action="/board"] button[type=submit]');
+  await pgA.waitForLoadState('load');
+  const postUrl = pgA.url();
+
+  // A는 게시판을 보며 기다린다 (여기서 SSE 가 붙는다)
+  await pgA.goto(BASE + '/board');
+  const before = await pgA.textContent('.bell').catch(() => '');
+  await pgA.waitForTimeout(1200);
+
+  step('B가 댓글을 단다');
+  await pgB.goto(BASE + '/signup');
+  await pgB.fill('input[name=username]', 'noti02');
+  await pgB.fill('input[name=nickname]', '댓글러');
+  await pgB.fill('input[name=password]', 'notinoti12');
+  await pgB.click('form[action="/signup"] button[type=submit]');
+  await pgB.waitForLoadState('load');
+  await pgB.goto(postUrl);
+  await pgB.fill('.comment-form input[name=content]', '좋은 글이네요!');
+  await pgB.click('.comment-form button[type=submit]');
+  await pgB.waitForLoadState('load');
+
+  step('A 화면이 저절로 바뀌나');
+  let live = false;
+  for (let i = 0; i < 20 && !live; i++) {           // 최대 6초 기다린다
+    await pgA.waitForTimeout(300);
+    const now = await pgA.textContent('.bell').catch(() => '');
+    if (now !== before && /[1-9]/.test(now || '')) live = true;
+  }
+  want(live, 'BUG', '댓글이 달렸는데 종 숫자가 저절로 안 바뀐다 (실시간 알림)',
+    '새로고침해야 보이면 SSE 가 안 붙은 것');
+  await shot(pgA, '1-실시간알림');
+
+  // 새로고침하면 어쨌든 보여야 한다
+  await pgA.goto(BASE + '/notifications');
+  want(/좋은 글이네요|댓글/.test(await pgA.textContent('body')),
+    'BLOCK', '알림 목록에 댓글 알림이 없다');
+
+  // 내가 내 글에 댓글 달면 알림이 오면 안 된다
+  const aid = db.prepare("SELECT id FROM users WHERE username='noti01'").get().id;
+  await pgA.goto(postUrl);
+  await pgA.fill('.comment-form input[name=content]', '제가 다는 댓글');
+  await pgA.click('.comment-form button[type=submit]');
+  await pgA.waitForLoadState('load');
+  const selfNoti = db.prepare(
+    "SELECT COUNT(*) c FROM notifications WHERE user_id=? AND message LIKE '%글쓴이%'").get(aid).c;
+  want(selfNoti === 0, 'NIT', '내가 내 글에 단 댓글로 나에게 알림이 온다', `${selfNoti}건`);
+  await a.close(); await b.close();
+});
+
+// P13 — 없는 주소, 지워진 글, 이상한 값
+persona('P13', '길 잃은 사람', '없는 주소 · 지워진 글 · 이상한 값', async (browser, db) => {
+  const ctx = await browser.newContext({ viewport: { width: 1100, height: 800 } });
+  const pg = await ctx.newPage();
+  await login(pg, 'gold', 'test1234');
+
+  step('없는 주소들');
+  const cases = [
+    ['/board/999999', '없는 글'],
+    ['/users/999999', '없는 회원'],
+    ['/board/abc', '숫자가 아닌 글 번호'],
+    ['/없는페이지', '없는 주소'],
+    ['/board?page=99999', '없는 쪽'],
+    ['/board?page=-5', '음수 쪽'],
+    ['/board?sort=이상한값', '없는 정렬'],
+    ['/board?category=없는말머리', '없는 말머리'],
+    ['/profile?tab=avatar&theme=없는테마', '없는 캐릭터 테마'],
+    ['/profile?tab=avatar&theme=redqueen&f=이상한필터', '없는 거르기'],
+  ];
+  for (const [url, what] of cases) {
+    const r = await pg.goto(BASE + url).catch(() => null);
+    const code = r ? r.status() : 0;
+    const broken = await pg.evaluate(() => /Cannot read|undefined is not|TypeError|ReferenceError/.test(document.body.innerText));
+    want(code === 200 || code === 404 || code === 302, 'BUG', `${what}에서 이상한 응답`, `${url} → ${code}`);
+    want(!broken, 'BUG', `${what}에서 오류 내용이 화면에 그대로 나온다`, url);
+  }
+  await shot(pg, '1-없는글');
+
+  step('지워진 글에 댓글 달기');
+  await pg.goto(BASE + '/board/new');
+  await pg.selectOption('select[name=category]', '자유').catch(() => {});
+  await pg.fill('input[name=title]', '곧 지울 글');
+  await pg.click('.editor');
+  await pg.keyboard.insertText('본문');
+  await pg.click('form[action="/board"] button[type=submit]');
+  await pg.waitForLoadState('load');
+  const pid = Number(pg.url().split('/').pop().split('?')[0]);
+  const token = await pg.evaluate(() => document.querySelector('meta[name=csrf-token]')?.content || '');
+  db.prepare('DELETE FROM posts WHERE id = ?').run(pid);      // 다른 사람이 지운 셈
+  const status = await pg.evaluate(async ([url, t]) => {
+    const r = await fetch(url, {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': t },
+      body: 'content=지워진 글에 다는 댓글', redirect: 'manual',
+    });
+    return r.status;
+  }, [`${BASE}/board/${pid}/comments`, token]);
+  want(status !== 500, 'BUG', '지워진 글에 댓글을 달면 서버 오류가 난다', `HTTP ${status}`);
+  const orphan = db.prepare('SELECT COUNT(*) c FROM comments WHERE post_id=?').get(pid).c;
+  want(orphan === 0, 'BUG', '없는 글에 댓글이 달렸다', `${orphan}건`);
+
+  step('숨긴 글은 남에게 안 보여야 한다');
+  db.prepare('UPDATE posts SET is_hidden = 1 WHERE id = 4').run();
+  const ctx2 = await browser.newContext();
+  const pg2 = await ctx2.newPage();
+  const r2 = await pg2.goto(BASE + '/board/4');
+  want(r2.status() === 404 || /삭제|숨김|찾을 수 없/.test(await pg2.textContent('body')),
+    'BUG', '숨긴 글이 비회원에게 그대로 보인다', `HTTP ${r2.status()}`);
+  const list = await (await pg2.goto(BASE + '/board')).text();
+  want(!/강남 쪽 카페/.test(list), 'BUG', '숨긴 글이 목록에 남아 있다');
+  db.prepare('UPDATE posts SET is_hidden = 0 WHERE id = 4').run();
+  await ctx2.close();
+  await ctx.close();
+});
+
 // ---- 실행 ---------------------------------------------------------------------
 (async () => {
   const only = process.argv.slice(2).filter((a) => /^P\d+$/i.test(a)).map((s) => s.toUpperCase());
@@ -685,19 +1030,41 @@ persona('P8', '새벽 이용자 · 다크모드', '모바일 다크 · 저속 �
   const db = require('better-sqlite3')(dbPath);
 
   const server = startServer(dbPath);
-  const stop = () => { try { server.kill(); } catch {} };
+
+  // 연동 모드는 환경변수가 달라 같은 서버로 못 본다. 필요할 때만 하나 더 띄운다.
+  const HOST_PORT = PORT + 1;
+  const HOST_SECRET = 'persona-test-secret-0123456789';
+  const needHost = list.some((p) => p.id === 'P9');
+  const hostServer = needHost ? startServer(dbPath, {
+    AUTH_MODE: 'host', HOST_SSO_SECRET: HOST_SECRET, HOST_SSO_TTL_SEC: '300',
+  }, HOST_PORT) : null;
+  const extra = {
+    hostBase: `http://127.0.0.1:${HOST_PORT}`,
+    // A사이트가 하는 일과 똑같이 서명한다 (src/identity.js 의 sign 과 같은 방식)
+    signToken: (payload) => {
+      const body = Buffer.from(JSON.stringify(payload)).toString('base64url');
+      const mac = require('crypto').createHmac('sha256', HOST_SECRET).update(body).digest('base64url');
+      return `${body}.${mac}`;
+    },
+  };
+
+  const stop = () => {
+    try { server.kill(); } catch {}
+    try { if (hostServer) hostServer.kill(); } catch {}
+  };
   process.on('exit', stop);
 
   const started = Date.now();
   try {
     await waitUp();
+    if (hostServer) await waitUp(extra.hostBase);
     const browser = await chromium.launch({ executablePath: EXE });
     for (const p of list) {
       current = p;
       console.log(`\n▶ ${p.id} ${p.name} — ${p.who}`);
       const t = Date.now();
       try {
-        await p.run(browser, db);
+        await p.run(browser, db, extra);
       } catch (e) {
         note('BLOCK', '테스트 도중 멈췄다', `${lastStep} 에서 — ` + String(e.message).split('\n')[0]);
       }

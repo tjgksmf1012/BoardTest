@@ -824,6 +824,24 @@ test('댓글을 추천순으로 볼 수 있다', async () => {
 });
 
 // ---- 실시간 알림 (SSE) -------------------------------------------------------
+
+// 서버 쪽만 시험하다 보니, 브라우저에서 스트림에 붙는 코드가 아예 없는데도
+// 아래 시험들이 전부 통과하고 있었다. 화면에 그 코드가 실려 나가는지도 본다.
+test('로그인한 화면에는 알림 스트림에 붙는 코드가 실려 나간다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'sseclient', '실시간이');
+  const html = await (await get('/board', jar)).text();
+  assert.match(html, /new EventSource\('\/notifications\/stream'\)/, '스트림에 붙는 코드가 없다');
+  assert.match(html, /addEventListener\('notify'/,
+    "서버는 event: notify 로 보낸다 — onmessage 만 걸면 아무것도 안 온다");
+  assert.match(html, /\/notifications\/count/, '스트림을 못 쓸 때 대신 물어볼 곳이 없다');
+});
+
+test('로그인하지 않았으면 스트림에 붙지 않는다', async () => {
+  const html = await (await get('/board')).text();
+  assert.ok(!html.includes('new EventSource'), '비회원이 알림 스트림을 열 이유가 없다');
+});
+
 const realtime = require('../src/realtime');
 test.after(() => realtime.closeAll());
 
