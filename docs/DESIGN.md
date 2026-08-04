@@ -14,7 +14,7 @@
 | 서버 | Express 4 |
 | DB | SQLite (better-sqlite3), 파일 1개로 동작 + 인덱스 |
 | 뷰 | EJS(SSR) + 순수 CSS |
-| 세션 | express-session (scrypt 비밀번호 해시) |
+| 세션 | express-session + SQLite 저장소 (재기동해도 로그인 유지) |
 | 업로드 | multer (형식·용량·개수 검증) |
 | 테스트 | node --test (단위 + HTTP 통합, 49개) |
 | CI | GitHub Actions (Node 20·22) |

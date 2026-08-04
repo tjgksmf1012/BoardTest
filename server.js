@@ -102,7 +102,13 @@ if (process.env.VERCEL) {
     next();
   }));
 } else {
+  // 세션은 SQLite 에 담는다. 기본값(메모리)으로 두면 배포할 때마다·서버가 쉬었다
+  // 깨어날 때마다 모두 로그아웃되고, 만료된 세션이 메모리에 쌓인다. (src/session-store.js)
+  const { SqliteStore } = require('./src/session-store');
+  const store = new SqliteStore();
+  store.startGc();
   app.use(session({
+    store,
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,

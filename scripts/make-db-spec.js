@@ -255,8 +255,10 @@ function runQuery(q) {
 
 // ---- 문서 만들기 --------------------------------------------------------------
 const TABLES = db.prepare(
+  // sessions 는 로그인 상태를 담아 두는 살림용 표라 옮기실 필요가 없다.
+  // PHP 는 세션을 언어가 알아서 관리한다($_SESSION).
   "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' "
-  + "AND name NOT LIKE 'posts_fts%' ORDER BY name"
+  + "AND name NOT LIKE 'posts_fts%' AND name <> 'sessions' ORDER BY name"
 ).all().map((r) => r.name);
 
 const TABLE_DESC = {

@@ -292,6 +292,7 @@ A사이트 회원에게 커뮤니티 계정을 하나 더 만들게 하면 비�
 ## 기술 스택
 
 - **백엔드**: Node.js + Express, 세션 로그인(scrypt 해시)
+  - 세션은 SQLite 에 저장 — 서버를 다시 띄워도 로그인이 풀리지 않음 (`src/session-store.js`)
 - **DB**: SQLite (better-sqlite3) — 별도 DB 서버 없이 파일 하나로 동작, 주요 컬럼 인덱스
 - **뷰**: EJS 서버 사이드 렌더링 + 순수 CSS
 - **업로드**: multer (파일 형식·용량·개수 검증)
