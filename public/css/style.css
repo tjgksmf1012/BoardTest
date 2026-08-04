@@ -259,6 +259,8 @@ body { overflow-x: clip; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
 .muted { color: var(--muted); font-size: 13.5px; font-weight: 400; }
 .accent { color: var(--primary-dark); }
+/* 포인트가 빠져나간 줄(캐릭터 구매 등). 적립과 한눈에 구분되게 색을 달리 준다. */
+.minus { color: var(--muted); }
 .center { text-align: center; }
 .inline { display: inline; }
 .spacer { flex: 1; }
@@ -805,7 +807,7 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 .log-list { list-style: none; display: flex; flex-direction: column; max-height: 480px; overflow-y: auto; }
 .log-list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 2px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
 .log-list li .muted { display: block; font-size: 12px; }
-.log-list li .accent { font-weight: 800; white-space: nowrap; }
+.log-list li .accent, .log-list li .minus { font-weight: 800; white-space: nowrap; }
 
 /* ---- 마이페이지 ---- */
 .profile-top { display: flex; gap: 20px; align-items: center; margin-bottom: 22px; }
@@ -1311,6 +1313,9 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
    우선순위로 져서 통째로 무시된 적이 있다 (그래서 고리가 얼굴을 덮었다).
    여기서는 자리와 잘라내기만 정한다. */
 .avatar.has-ring { overflow: visible; border: none; background: none; }
+/* 고리 낀 칸들과 나란히 놓이는 '테두리 없음' 칸.
+   회색 테두리선이 남아 있으면 그만큼 얼굴이 작아져(52px 대 55px) 혼자 크기가 어긋난다. */
+.avatar.ring-slot { border: none; }
 .avatar-ring {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
   pointer-events: none;

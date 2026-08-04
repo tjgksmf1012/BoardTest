@@ -86,9 +86,12 @@ router.get('/points', requireLogin, (req, res) => {
   const logs = db.prepare(
     'SELECT * FROM point_logs WHERE user_id = ? ORDER BY id DESC LIMIT 100'
   ).all(req.session.userId);
+  // '오늘 적립' 은 말 그대로 오늘 번 것만 센다.
+  // 예전에는 그날 기록을 통째로 더해서, 캐릭터를 하나 사면 그날 적립이 음수로 찍혔다
+  // ("오늘 적립 −21,990P"). 쓴 돈은 아래 내역에서 따로 보인다.
   const todayTotal = db.prepare(
     `SELECT COALESCE(SUM(amount), 0) AS s FROM point_logs
-     WHERE user_id = ? AND date(created_at) = date('now', 'localtime')`
+     WHERE user_id = ? AND amount > 0 AND date(created_at) = date('now', 'localtime')`
   ).get(req.session.userId).s;
   // 시안의 '이벤트·포인트게시판'. 회원이 글을 쓰는 게시판을 따로 파지 않고,
   // 이벤트 말머리가 붙은 글을 여기에 모아 포인트 안내와 함께 보여준다.

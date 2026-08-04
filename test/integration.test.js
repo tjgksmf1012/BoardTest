@@ -216,3 +216,38 @@ test('목록 상태는 아무 값이나 받지 않는다 (이상한 값은 버�
   const m = html.match(/href="([^"]*)"[^>]*>목록</);
   assert.equal(m[1], '/board', '걸러지고 나면 남는 게 없다');
 });
+
+// ---- 포인트 부호 ---------------------------------------------------------------
+// 화면에서 '+' 를 먼저 붙이고 그 뒤에 금액을 찍고 있어서, 캐릭터를 사면
+// "+-20,000P" 처럼 부호가 두 개 나왔다.
+
+test('포인트가 빠져나간 내역은 − 하나로만 표시된다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'sign9', '부호');
+  const uid = db.prepare('SELECT id FROM users WHERE username = ?').get('sign9').id;
+  db.prepare("INSERT INTO point_logs (user_id, amount, reason, detail) VALUES (?, -2000, 'purchase', '글램 골드 구매')").run(uid);
+
+  const html = await (await get('/points', jar)).text();
+  assert.ok(!html.includes('+-'), '부호가 두 개 붙어 있다');
+  assert.ok(html.includes('−2,000P'), '빼기 기호로 한 번만 붙어야 한다');
+});
+
+test('포인트가 들어온 내역은 + 로 표시된다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'sign10', '부호둘');
+  const html = await (await get('/points', jar)).text();
+  assert.ok(html.includes('+1,000P'), '가입 1,000P 가 + 로 보여야 한다');
+});
+
+test("'오늘 적립'은 오늘 번 것만 센다 (구매로 쓴 돈에 깎이지 않는다)", async () => {
+  const jar = makeJar();
+  await signup(jar, 'today9', '오늘');
+  const uid = db.prepare('SELECT id FROM users WHERE username = ?').get('today9').id;
+  // 가입 1,000P 를 받은 당일에 2,000P 짜리 캐릭터를 샀다고 치면
+  db.prepare("INSERT INTO point_logs (user_id, amount, reason, detail) VALUES (?, -2000, 'purchase', '캐릭터 구매')").run(uid);
+
+  const html = await (await get('/points', jar)).text();
+  const m = html.match(/오늘 적립[\s\S]{0,120}?>([−+][\d,]+P)</);
+  assert.ok(m, "'오늘 적립' 값을 찾지 못했다");
+  assert.equal(m[1], '+1,000P', `적립만 세야 하는데 ${m[1]} 이 나왔다`);
+});

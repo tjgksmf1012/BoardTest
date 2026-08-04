@@ -50,6 +50,14 @@ function timeAgo(dateStr) {
   return dateStr.slice(0, 10);                                  // YYYY-MM-DD
 }
 
+// 포인트 증감 표기. 캐릭터를 사면 음수가 들어오는데, 화면에서 '+' 를 앞에 붙이고
+// 있어서 "+-20,000P" 처럼 부호가 두 개 찍혔다. 부호는 여기서 한 번만 붙인다.
+// 빼기 기호는 하이픈(-)이 아니라 −(U+2212)를 쓴다 — 숫자 옆에서 훨씬 잘 보인다.
+function signedPoints(amount) {
+  const n = Number(amount) || 0;
+  return (n < 0 ? '−' : '+') + Math.abs(n).toLocaleString() + 'P';
+}
+
 const app = express();
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -171,6 +179,7 @@ app.use((req, res, next) => {
   res.locals.catTag = catTag;
   res.locals.icon = icon;
   res.locals.timeAgo = timeAgo;
+  res.locals.signedPoints = signedPoints;
   res.locals.unread = res.locals.me ? unreadCount(res.locals.me.id) : 0;
   res.locals.flash = req.session.flash || null;
   delete req.session.flash;

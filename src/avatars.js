@@ -151,11 +151,15 @@ const RING = 1.32;   // 고리를 칸의 몇 배로 그릴지
 const FACE = 0.76;   // 얼굴을 칸의 몇 배로 그릴지 (= 고리 구멍 안)
 const RING_HOLE = 0.586; // 고리 그림에서 구멍이 차지하는 비율 (실측 최솟값 — border-blue)
 
-function renderAvatar(avatarCode, borderCode, size = 44) {
+// opts.ringSlot — 테두리를 낀 칸들과 나란히 놓이는 자리.
+//   테두리를 끼면 얼굴이 고리 구멍만큼 작아지는데, 상점의 '사용 안 함' 칸만 테두리가 없어서
+//   혼자 얼굴이 크게 나왔다(72px 대 55px). 크기가 들쭉날쭉해 보여서, 고리가 없어도
+//   같은 자리에서는 얼굴을 같은 크기로 그린다.
+function renderAvatar(avatarCode, borderCode, size = 44, opts = {}) {
   const a = get(avatarCode) || fallback();
   const b = borderCode ? get(borderCode) : null;
   const ringed = !!(b && b.kind === 'border');
-  const faceStyle = ringed
+  const faceStyle = ringed || opts.ringSlot
     ? ` style="width:${FACE * 100}%;height:${FACE * 100}%;margin:${((1 - FACE) / 2) * 100}%"`
     : '';
   const img = a
@@ -167,7 +171,9 @@ function renderAvatar(avatarCode, borderCode, size = 44) {
       + ` style="width:${RING * 100}%;height:${RING * 100}%" alt="" loading="lazy">`
     : '';
   // 고리를 끼면 잘라내기를 풀어야 한다 (style.css 의 .has-ring)
-  return `<span class="avatar${ringed ? ' has-ring' : ''}" style="width:${size}px;height:${size}px">${img}${ring}</span>`;
+  // ring-slot 은 고리는 없지만 회색 테두리선(2px)만큼 얼굴이 작아지지 않게 하는 표시다.
+  const cls = 'avatar' + (ringed ? ' has-ring' : opts.ringSlot ? ' ring-slot' : '');
+  return `<span class="${cls}" style="width:${size}px;height:${size}px">${img}${ring}</span>`;
 }
 
 module.exports = {

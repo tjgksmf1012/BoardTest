@@ -170,7 +170,7 @@
 
     <% if (me) { %>
       <form action="/board/<%= post.id %>/comments" method="post" class="comment-form"><%- csrfField() %>
-        <input type="text" name="content" placeholder="댓글을 입력해주세요 (+100P, 하루 10개까지)" required maxlength="1000">
+        <input type="text" name="content" placeholder="댓글을 입력해주세요 (+100P)" required maxlength="1000">
         <button class="btn btn-primary" type="submit">등록</button>
       </form>
     <% } else { %>

@@ -80,3 +80,12 @@ test('크기는 CSS 가 아니라 요소에 직접 붙는다 (우선순위에 �
   const plain = avatars.renderAvatar(chars[0].code, null, 44);
   assert.ok(!plain.includes('style="width:76%'), '고리가 없으면 얼굴을 줄이지 않는다');
 });
+
+test('테두리 칸에 나란히 놓을 때는 고리가 없어도 얼굴 크기를 맞춘다', () => {
+  const chars = avatars.characters ? avatars.characters() : avatars.items().filter((i) => i.kind !== 'border');
+  // 상점의 '사용 안 함' 칸만 테두리가 없어서 혼자 얼굴이 크게 나왔다 (72px 대 55px)
+  const slot = avatars.renderAvatar(chars[0].code, null, 72, { ringSlot: true });
+  assert.match(slot, /class="avatar-face"[^>]*style="width:76%/);
+  assert.ok(!slot.includes('avatar-ring'), '고리를 넣으라는 뜻은 아니다');
+  assert.ok(!slot.includes('has-ring'), '고리가 없으니 잘라내기는 그대로 둔다');
+});

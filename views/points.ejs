@@ -39,7 +39,7 @@
   </div>
   <div class="card stat">
     <span class="muted">오늘 적립</span>
-    <strong>+<%= todayTotal.toLocaleString() %>P</strong>
+    <strong class="<%= todayTotal < 0 ? 'minus' : '' %>"><%= signedPoints(todayTotal) %></strong>
   </div>
 </div>
 
@@ -89,7 +89,7 @@
               <strong><%= l.detail %></strong>
               <span class="muted"><%= l.created_at.slice(0, 16) %></span>
             </div>
-            <span class="accent">+<%= l.amount.toLocaleString() %>P</span>
+            <span class="<%= l.amount < 0 ? 'minus' : 'accent' %>"><%= signedPoints(l.amount) %></span>
           </li>
         <% }) %>
       </ul>

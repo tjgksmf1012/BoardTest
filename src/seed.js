@@ -97,6 +97,28 @@ function seed() {
   }
   for (const u of db.prepare('SELECT id, points FROM users').all()) fillFor(u.id, u.points);
 
+  // 출석 기록을 포인트 내역과 맞춘다.
+  // 위에서 포인트 내역에는 '출석체크 +10P' 를 넣어 놓고 attendance 표는 비워 뒀더니,
+  // 마이페이지에는 "출석 0일" 인데 포인트 내역에는 출석체크가 줄줄이 있는 상태가 됐다.
+  // 적립 내역에 찍힌 출석 횟수만큼 실제 출석일을 채워 앞뒤가 맞게 한다.
+  //
+  // 마지막 출석은 '어제' 로 둔다. 오늘 것까지 찍어 두면 출석 버튼이 처음부터
+  // "오늘 출석 완료" 라서, 화면을 보시는 분이 눌러볼 수가 없다.
+  const insertDay = db.prepare('INSERT OR IGNORE INTO attendance (user_id, day) VALUES (?, ?)');
+  // 출석일 수는 두 가지를 다 만족해야 한다.
+  //  - 하루 10P 짜리 출석체크를 받은 횟수
+  //  - '연속 출석 7일 보너스' 를 받았다면 적어도 7일은 나와야 한다 (0일인데 보너스는 이상하다)
+  const STREAK_DAYS = { streak7: 7, streak14: 14, streak21: 21, streak28: 28, streak30: 30 };
+  for (const u of db.prepare('SELECT id FROM users').all()) {
+    const rows = db.prepare('SELECT reason FROM point_logs WHERE user_id = ?').all(u.id);
+    let n = rows.filter((r) => r.reason === 'attendance').length;
+    for (const r of rows) n = Math.max(n, STREAK_DAYS[r.reason] || 0);
+    for (let i = 1; i <= n; i++) {
+      const day = db.prepare("SELECT date('now', 'localtime', ?) AS d").get(`-${i} days`).d;
+      insertDay.run(u.id, day);
+    }
+  }
+
   // 공지 2건
   insertPost.run(admin, '커뮤니티 이용 규칙 안내 (필독)',
     `안녕하세요, 운영자입니다.\n\n모두가 즐거운 커뮤니티를 위해 아래 규칙을 지켜주세요.\n\n1. 서로 존중하는 말투를 사용해주세요.\n2. 광고성 게시글은 사전 안내 없이 숨김 처리될 수 있어요.\n3. 다른 회원의 개인정보를 요구하거나 공개하지 마세요.\n4. 신고가 누적된 글은 운영자가 확인 후 조치합니다.\n\n감사합니다!`,
