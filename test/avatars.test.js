@@ -112,12 +112,18 @@ test('캐릭터는 이미지 태그로, 테두리는 그 위에 겹쳐 그린다
 
   const ringed = avatars.renderAvatar(code, borders[0].code, 44);
   assert.match(ringed, /class="avatar-ring"/);
+  assert.ok(ringed.includes(borders[0].thumb), '작게 그릴 때는 고리도 썸네일');
+  assert.ok(avatars.renderAvatar(code, borders[0].code, 200).includes(borders[0].file), '크면 고리도 원본');
 });
 
-test('작은 크기에는 썸네일을 쓴다', () => {
+test('썸네일로 충분한 크기에는 썸네일을 쓴다', () => {
+  // 썸네일이 96px 이라 그 이하로 그릴 자리에는 원본(256px)을 보내지 않는다.
+  // 상점처럼 캐릭터를 25칸씩 까는 화면에서 이 차이가 1MB 대 200KB 로 벌어진다.
   const c = chars[0];
   assert.ok(avatars.renderAvatar(c.code, null, 34).includes(c.thumb), '작을 때는 썸네일');
-  assert.ok(avatars.renderAvatar(c.code, null, 96).includes(c.file), '클 때는 원본');
+  assert.ok(avatars.renderAvatar(c.code, null, 64).includes(c.thumb), '상점 칸(64px)도 썸네일');
+  assert.ok(avatars.renderAvatar(c.code, null, 96).includes(c.thumb), '96px 까지는 썸네일');
+  assert.ok(avatars.renderAvatar(c.code, null, 200).includes(c.file), '더 크면 원본');
 });
 
 test('없는 코드를 넣어도 화면이 깨지지 않는다', () => {

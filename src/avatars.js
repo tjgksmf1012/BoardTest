@@ -130,14 +130,19 @@ function canUse(user, code, owned) {
 const url = (file) => `${AVATAR_BASE_URL}/${encodeURIComponent(file)}`;
 
 // 게시글·댓글 옆에 붙는 캐릭터. 테두리가 있으면 위에 겹쳐 그린다.
+// 썸네일은 96px 이다. 그보다 작게 그릴 자리에 원본(256px)을 내보내면
+// 캐릭터 25칸짜리 상점에서만 1MB 가까이 나간다 (썸네일이면 200KB 남짓).
+const THUMB_UP_TO = 96;
+
 function renderAvatar(avatarCode, borderCode, size = 44) {
   const a = get(avatarCode) || fallback();
   const b = borderCode ? get(borderCode) : null;
   const img = a
-    ? `<img src="${url(size <= 48 ? a.thumb : a.file)}" alt="" loading="lazy">`
+    ? `<img src="${url(size <= THUMB_UP_TO ? a.thumb : a.file)}" alt="" loading="lazy">`
     : '';
+  // 고리도 마찬가지다. 테두리 목록(9칸)에서만 원본이 281KB, 썸네일이면 53KB.
   const ring = b && b.kind === 'border'
-    ? `<img class="avatar-ring" src="${url(b.file)}" alt="" loading="lazy">`
+    ? `<img class="avatar-ring" src="${url(size <= THUMB_UP_TO ? b.thumb : b.file)}" alt="" loading="lazy">`
     : '';
   return `<span class="avatar" style="width:${size}px;height:${size}px">${img}${ring}</span>`;
 }
