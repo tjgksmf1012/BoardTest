@@ -80,7 +80,7 @@ blockquote{border-left:3px solid var(--teal);background:#eef5f4;border-radius:0 
       동작 중인 스키마를 그대로 읽어 MySQL 문법으로 옮긴 것이라 실제 코드와 어긋나지 않습니다.</p>
     <p class="meta">작성일 2026-08-04</p>
   </header>
-<blockquote>커뮤니티 게시판을 PHP 로 옮기실 때 참고하시라고 만든 문서입니다. 현재 동작 중인 스키마를 그대로 읽어 MySQL 문법으로 옮긴 것이라 실제 코드와 어긋나지 않습니다. (<code>node scripts/make-db-spec.js</code> 로 다시 만들 수 있습니다 · 작성일 2026-08-03)</blockquote>
+<blockquote>커뮤니티 게시판을 PHP 로 옮기실 때 참고하시라고 만든 문서입니다. 현재 동작 중인 스키마를 그대로 읽어 MySQL 문법으로 옮긴 것이라 실제 코드와 어긋나지 않습니다. (<code>node scripts/make-db-spec.js</code> 로 다시 만들 수 있습니다 · 작성일 2026-08-04)</blockquote>
 <h2 class="sec">0. 먼저 알아두실 것</h2>
 <ul><li>현재 구현은 <strong>Node.js + SQLite</strong> 입니다. 아래 DDL 은 그 스키마를 <strong>MySQL(InnoDB)</strong> 로 옮긴 것입니다.</li><li>커뮤니티는 <strong>아이디·비밀번호를 갖지 않습니다.</strong> A사이트 회원번호(<code>users.external_id</code>)에</li></ul>
 <p>  포인트·캐릭터·활동만 매답니다. 자세한 내용은 <a href="연동가이드.md">연동가이드</a>.</p>
@@ -198,11 +198,12 @@ blockquote{border-left:3px solid var(--teal);background:#eef5f4;border-radius:0 
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</code></pre>
 <h3 class="sub"><code>post_images</code></h3>
 <p>글에 첨부한 사진 (본문에 넣은 사진은 본문 HTML 안에 있고, 이 표는 옛 방식 첨부)</p>
-<table><thead><tr><th>컬럼</th><th>타입</th><th>NULL</th><th>설명</th></tr></thead><tbody><tr><td><code>id</code></td><td>INT UNSIGNED</td><td>N</td><td>기본키 (자동 증가)</td></tr><tr><td><code>post_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr><tr><td><code>filename</code></td><td>VARCHAR(255)</td><td>N</td><td></td></tr></tbody></table>
+<table><thead><tr><th>컬럼</th><th>타입</th><th>NULL</th><th>설명</th></tr></thead><tbody><tr><td><code>id</code></td><td>INT UNSIGNED</td><td>N</td><td>기본키 (자동 증가)</td></tr><tr><td><code>post_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr><tr><td><code>filename</code></td><td>VARCHAR(255)</td><td>N</td><td></td></tr><tr><td><code>sort</code></td><td>INT</td><td>N</td><td></td></tr></tbody></table>
 <pre><code>CREATE TABLE `post_images` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `post_id` INT UNSIGNED NOT NULL,
   `filename` VARCHAR(255) NOT NULL,
+  `sort` INT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_post_images_post_id` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</code></pre>

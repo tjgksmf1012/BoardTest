@@ -175,3 +175,44 @@ test('게시글 본문의 HTML은 이스케이프되어 저장·출력된다(XSS
   assert.ok(!body.includes('<script>alert(1)</script>')); // 실행 가능한 형태로 출력되지 않음
   assert.ok(body.includes('&lt;script&gt;'));             // 이스케이프되어 출력
 });
+
+// ---- 목록으로 돌아가기 ---------------------------------------------------------
+// 3페이지에서 글을 열었다가 '목록'을 누르면 늘 첫 페이지로 튕겨서,
+// 보던 자리까지 다시 내려가야 했다. 목록 상태를 링크에 실어 되돌린다.
+
+test('글이 한 페이지를 넘으면 맨 아래에 페이지 번호가 나온다', async () => {
+  const total = db.prepare('SELECT COUNT(*) c FROM posts WHERE is_notice = 0').get().c;
+  assert.ok(total > 10, `한 페이지(10개)보다 많아야 번호가 나온다 — 지금 ${total}개`);
+  const html = await (await get('/board')).text();
+  assert.ok(html.includes('class="pager"'), '페이지 이동 줄이 있어야 한다');
+  assert.match(html, /href="\/board\?page=2[^"]*"/, '2페이지로 가는 링크');
+});
+
+test('목록에서 연 글에는 보던 목록 상태가 함께 붙는다', async () => {
+  const html = await (await get('/board?page=2&sort=likes')).text();
+  // &는 화면에 &amp; 로 나온다 (HTML 규칙)
+  assert.match(html, /href="\/board\/\d+\?page=2&amp;sort=likes"/, '글 링크가 목록 상태를 달고 있다');
+});
+
+test("글 화면의 '목록'은 보던 페이지·정렬·말머리로 돌아간다", async () => {
+  const id = db.prepare('SELECT id FROM posts WHERE is_notice = 0 ORDER BY id LIMIT 1').get().id;
+  const html = await (await get(`/board/${id}?page=2&sort=likes&category=%EC%A7%88%EB%AC%B8`)).text();
+  const m = html.match(/href="([^"]*)"[^>]*>목록</);
+  assert.ok(m, "'목록' 버튼을 찾지 못했다");
+  const back = m[1].replace(/&amp;/g, '&');
+  assert.ok(back.startsWith('/board?'), back);
+  assert.ok(back.includes('page=2') && back.includes('sort=likes') && back.includes('category=%EC%A7%88%EB%AC%B8'), back);
+});
+
+test('목록 상태 없이 글을 열면 목록 버튼은 그냥 /board 다', async () => {
+  const id = db.prepare('SELECT id FROM posts WHERE is_notice = 0 ORDER BY id LIMIT 1').get().id;
+  const html = await (await get(`/board/${id}`)).text();
+  assert.match(html, /href="\/board"[^>]*>목록</);
+});
+
+test('목록 상태는 아무 값이나 받지 않는다 (이상한 값은 버린다)', async () => {
+  const id = db.prepare('SELECT id FROM posts WHERE is_notice = 0 ORDER BY id LIMIT 1').get().id;
+  const html = await (await get(`/board/${id}?page=-3&sort=%22onx&category=없는말머리`)).text();
+  const m = html.match(/href="([^"]*)"[^>]*>목록</);
+  assert.equal(m[1], '/board', '걸러지고 나면 남는 게 없다');
+});

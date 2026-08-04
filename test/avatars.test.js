@@ -107,11 +107,15 @@ test('값이 있는 항목은 사야 쓸 수 있다', () => {
 test('캐릭터는 이미지 태그로, 테두리는 그 위에 겹쳐 그린다', () => {
   const code = chars[0].code;
   const plain = avatars.renderAvatar(code, null, 44);
-  assert.match(plain, /<img src="\/avatars\//);
+  assert.match(plain, /<img class="avatar-face" src="\/avatars\//);
   assert.ok(!plain.includes('avatar-ring'), '테두리를 안 골랐으면 고리도 없다');
+  assert.ok(!plain.includes('has-ring'), '고리가 없으면 표시도 없다');
 
   const ringed = avatars.renderAvatar(code, borders[0].code, 44);
   assert.match(ringed, /class="avatar-ring"/);
+  // 고리는 그림 가운데가 뚫려 있어서 얼굴을 그 구멍 안으로 넣어야 한다.
+  // 이 표시가 없으면 고리가 얼굴을 가로지르고, 바깥쪽은 잘려 나간다.
+  assert.match(ringed, /class="avatar has-ring"/, '고리를 끼면 그리는 방식이 달라진다');
   assert.ok(ringed.includes(borders[0].thumb), '작게 그릴 때는 고리도 썸네일');
   assert.ok(avatars.renderAvatar(code, borders[0].code, 200).includes(borders[0].file), '크면 고리도 원본');
 });

@@ -138,13 +138,14 @@ function renderAvatar(avatarCode, borderCode, size = 44) {
   const a = get(avatarCode) || fallback();
   const b = borderCode ? get(borderCode) : null;
   const img = a
-    ? `<img src="${url(size <= THUMB_UP_TO ? a.thumb : a.file)}" alt="" loading="lazy">`
+    ? `<img class="avatar-face" src="${url(size <= THUMB_UP_TO ? a.thumb : a.file)}" alt="" loading="lazy">`
     : '';
   // 고리도 마찬가지다. 테두리 목록(9칸)에서만 원본이 281KB, 썸네일이면 53KB.
   const ring = b && b.kind === 'border'
     ? `<img class="avatar-ring" src="${url(size <= THUMB_UP_TO ? b.thumb : b.file)}" alt="" loading="lazy">`
     : '';
-  return `<span class="avatar" style="width:${size}px;height:${size}px">${img}${ring}</span>`;
+  // 고리를 낀 아바타는 그리는 방식이 달라서 표시를 남긴다 (자세한 건 style.css 의 .has-ring)
+  return `<span class="avatar${ring ? ' has-ring' : ''}" style="width:${size}px;height:${size}px">${img}${ring}</span>`;
 }
 
 module.exports = {

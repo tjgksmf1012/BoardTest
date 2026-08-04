@@ -13,7 +13,7 @@
     <h2 class="trending-head"><%- icon('flame', 15) %> 지금 뜨는 글</h2>
     <ol class="trending-list">
       <% trending.slice(0, 3).forEach(function (t, i) { %>
-        <li><a href="/board/<%= t.id %>">
+        <li><a href="/board/<%= t.id %><%= listQS %>">
           <span class="tr-rank"><%= i + 1 %></span>
           <span class="tr-title"><%= t.title %></span>
           <span class="tr-like"><%- icon('like', 14) %> <%= t.like_count %></span>
@@ -78,7 +78,7 @@
 
 <div class="post-list card">
   <% notices.forEach(function (p) { %>
-    <a class="post-row" href="/board/<%= p.id %>">
+    <a class="post-row" href="/board/<%= p.id %><%= listQS %>">
       <%- renderAvatar(p.avatar_id, p.border_id, 44) %>
       <div class="post-mid">
         <div class="post-title"><span class="badge badge-notice">공지</span> <%= p.title %></div>
@@ -101,7 +101,7 @@
   <% } %>
 
   <% posts.forEach(function (p) { %>
-    <a class="post-row" href="/board/<%= p.id %>">
+    <a class="post-row" href="/board/<%= p.id %><%= listQS %>">
       <% if (p.is_anonymous) { %>
         <%- renderAvatar('anon', null, 44) %>
       <% } else { %>

@@ -130,6 +130,25 @@ const PAGE_SIZE = 10;
 const POST_INTERVAL_SEC = 30;
 const COMMENT_PAGE_SIZE = 20; // 한 화면에 보여줄 최상위 댓글 수
 
+// 지금 보고 있는 목록의 상태(몇 쪽 · 어떤 말머리 · 정렬 · 검색어)를 주소 조각으로 만든다.
+//
+// 글을 열었다가 '목록'을 누르면 늘 첫 페이지 전체 글로 돌아가 버려서,
+// 3페이지에서 글을 본 사람은 다시 3페이지까지 내려가야 했다.
+// 그래서 목록 → 글 링크에 이 조각을 붙여 보내고, 글 화면의 '목록'이 그대로 되돌린다.
+// 값은 받은 그대로 쓰지 않고 목록 화면과 똑같은 기준으로 한 번 걸러서 넣는다.
+function listQuery(src = {}) {
+  const p = new URLSearchParams();
+  const page = parseInt(src.page, 10);
+  if (page > 1) p.set('page', String(page));
+  if (['likes', 'views'].includes(src.sort)) p.set('sort', src.sort);
+  if (src.filter === 'hot') p.set('filter', 'hot');
+  if (isValidCategory(src.category)) p.set('category', src.category);
+  const q = String(src.q || '').trim();
+  if (q) p.set('q', q.slice(0, 100));
+  const s = p.toString();
+  return s ? '?' + s : '';
+}
+
 // ---- 목록 ----------------------------------------------------------------
 router.get('/', (req, res) => {
   const page = Math.max(1, parseInt(req.query.page, 10) || 1);
@@ -195,6 +214,8 @@ router.get('/', (req, res) => {
   res.render('board', {
     notices, posts, page, q, sort, hot, trending, category, categories: BOARD_TABS,
     totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
+    // 글을 열 때 함께 보내는 '내가 보던 목록' 표시 (글 화면의 목록 버튼이 이걸 되짚는다)
+    listQS: listQuery({ page, sort, filter: hot ? 'hot' : '', category, q }),
   });
 });
 
@@ -374,9 +395,12 @@ router.get('/:id(\\d+)', (req, res) => {
     image: firstImage && !post.is_hidden ? `/uploads/${firstImage}` : null,
   };
 
+  // 목록에서 넘어왔다면 그 상태가 주소에 실려 있다. 없으면 그냥 목록 첫 화면.
+  const backQS = listQuery(req.query);
+
   res.render('post', {
     post, images, comments, csort, share,
-    cPage, cTotalPages,
+    cPage, cTotalPages, backQS, backHref: '/board' + backQS,
     commentCount: rows.filter((c) => !c.is_deleted).length,
     liked: !!myLike, bookmarked: !!myBookmark, prev, next,
   });

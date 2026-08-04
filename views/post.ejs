@@ -80,7 +80,7 @@
   <% } %>
 
   <div class="post-actions">
-    <a class="btn btn-ghost" href="/board">목록</a>
+    <a class="btn btn-ghost" href="<%= backHref %>">목록</a>
     <div class="spacer"></div>
 
     <% if (me) { %>
@@ -182,13 +182,13 @@
 <%# 시안대로 이전글이 왼쪽, 다음글이 오른쪽. 한쪽만 있으면 그 자리를 지킨다 %>
 <nav class="prev-next" aria-label="글 이동">
   <% if (prev) { %>
-    <a class="pn pn-prev" href="/board/<%= prev.id %>" rel="prev">
+    <a class="pn pn-prev" href="/board/<%= prev.id %><%= backQS %>" rel="prev">
       <span class="pn-label muted">‹ 이전글</span>
       <span class="pn-title"><%= prev.title %></span>
     </a>
   <% } else { %><span class="pn pn-empty" aria-hidden="true"></span><% } %>
   <% if (next) { %>
-    <a class="pn pn-next" href="/board/<%= next.id %>" rel="next">
+    <a class="pn pn-next" href="/board/<%= next.id %><%= backQS %>" rel="next">
       <span class="pn-label muted">다음글 ›</span>
       <span class="pn-title"><%= next.title %></span>
     </a>
