@@ -18,7 +18,7 @@
         <div><strong>익명</strong><br><span class="muted"><%= post.created_at.slice(0, 16) %> · 조회 <%= post.views %></span></div>
       <% } else { %>
         <a class="author-link" href="/users/<%= post.user_id %>" aria-label="<%= post.nickname %>님 프로필"><%- renderAvatar(post.avatar_id, post.border_id, 44) %></a>
-        <div><a class="author-link" href="/users/<%= post.user_id %>"><strong><%= post.nickname %></strong></a> <%- levelBadge(post.author_points) %><br><span class="muted"><%= post.created_at.slice(0, 16) %> · 조회 <%= post.views %></span></div>
+        <div><a class="author-link" href="/users/<%= post.user_id %>"><strong><%= post.nickname %></strong></a><br><span class="muted"><%= post.created_at.slice(0, 16) %> · 조회 <%= post.views %></span></div>
       <% } %>
       <div class="spacer"></div>
       <span class="muted post-head-stats"><%- icon('comment', 15) %> <%= commentCount %> · <%- icon('like', 15) %> <%= post.like_count %></span>
@@ -63,17 +63,20 @@
   </div>
 
   <% if (post.content_format === 'html') { %>
-    <%# 저장 시 정화(sanitize)된 HTML — 사진이 본문 안 원하는 위치에 들어간다 %>
+    <%# 저장 시 정화(sanitize)된 HTML %>
     <div class="post-body rich"><%- post.content %></div>
   <% } else { %>
     <div class="post-body"><%= post.content %></div>
-    <% if (images.length > 0) { %>
-      <div class="post-images">
-        <% images.forEach(function (img) { %>
-          <img src="/uploads/<%= img.filename %>" alt="첨부 이미지" loading="lazy">
-        <% }) %>
-      </div>
-    <% } %>
+  <% } %>
+
+  <%# 첨부 사진은 본문과 따로, 붙인 순서대로 아래에 붙는다.
+      옛 글은 사진이 본문 HTML 안에 들어 있어 여기 목록이 비어 있다. %>
+  <% if (images.length > 0) { %>
+    <div class="post-images">
+      <% images.forEach(function (img, i) { %>
+        <img src="/uploads/<%= img.filename %>" alt="첨부 사진 <%= i + 1 %>" loading="lazy">
+      <% }) %>
+    </div>
   <% } %>
 
   <div class="post-actions">

@@ -182,6 +182,9 @@ db.exec("UPDATE posts SET category = '자유' WHERE category IN ('알바후기',
 // 회원 유형(여성·남성·업소). 어떤 캐릭터를 배정·판매할지 가른다.
 // 연동 모드에서는 A사이트가 알려주고, 혼자 띄울 때는 가입 화면에서 고른다.
 addColumn('users', 'member_type', "TEXT NOT NULL DEFAULT 'female'");
+// 첨부 사진의 순서. 사진을 본문과 따로 붙이게 바꾸면서 필요해졌다
+// (본문 안에 있을 때는 나오는 순서가 곧 순서였다).
+addColumn('post_images', 'sort', 'INTEGER NOT NULL DEFAULT 0');
 
 // 임시로 넣었던 캐릭터(basic-*, hair-*, outfit-*, event-*, border-neon 등)를
 // 이번에 받은 이미지로 갈아끼운다. 옛 코드가 남아 있으면 이미지가 깨진다.

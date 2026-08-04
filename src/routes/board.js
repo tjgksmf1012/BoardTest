@@ -7,7 +7,7 @@ const multer = require('multer');
 const db = require('../db');
 const { award, unlockMessage } = require('../points');
 const { notify } = require('../notify');
-const { CATEGORIES, isValid: isValidCategory } = require('../categories');
+const { CATEGORIES, isValid: isValidCategory, BOARD_TABS } = require('../categories');
 const { sanitizePostHtml, htmlToText, textToHtml, usedUploadFiles } = require('../richtext');
 const { toMatchQuery, indexPost, unindexPost } = require('../search');
 const { storeUpload } = require('../images');
@@ -48,22 +48,40 @@ function editableHtml(post, images) {
   return sanitizePostHtml(paragraphs + imgs);
 }
 
-// 본문에 실제로 남아 있는 이미지만 post_images에 유지한다 (글 삭제 시 파일 정리용)
-function syncPostImages(postId, format, html) {
-  if (format !== 'html') return;
-  const used = usedUploadFiles(html);
+// 폼에서 넘어온 첨부 목록(순서 그대로)을 읽는다.
+// 파일 이름만 받고, 실제 파일이 업로드 폴더에 있는 것만 인정한다.
+function attachedFiles(body) {
+  const raw = body.images;
+  const list = Array.isArray(raw) ? raw : String(raw || '').split(',');
+  const out = [];
+  for (const name of list) {
+    const f = String(name).trim();
+    if (!f || out.includes(f)) continue;
+    if (!/^[A-Za-z0-9._-]+$/.test(f)) continue;                 // 경로를 섞어 넣지 못하게
+    if (!fs.existsSync(path.join(UPLOAD_DIR, f))) continue;
+    out.push(f);
+    if (out.length >= MAX_IMAGES) break;
+  }
+  return out;
+}
+
+// 첨부 목록을 post_images 에 그대로 반영한다 (순서 = sort).
+//
+// 예전에는 본문 HTML 을 정규식으로 훑어 어떤 사진이 쓰였는지 알아냈다.
+// 사진을 본문과 따로 붙이게 바꾸면서, 본문을 파싱할 일이 없어졌다.
+// (선배님이 PHP 로 옮길 때도 이 표만 조인하면 된다)
+function syncPostImages(postId, filenames) {
   const rows = db.prepare('SELECT * FROM post_images WHERE post_id = ?').all(postId);
-  // 본문에서 빠진 이미지는 레코드와 파일을 정리
+  // 빠진 사진은 기록과 파일을 함께 지운다
   rows.forEach((r) => {
-    if (!used.includes(r.filename)) {
+    if (!filenames.includes(r.filename)) {
       db.prepare('DELETE FROM post_images WHERE id = ?').run(r.id);
       fs.rm(path.join(UPLOAD_DIR, r.filename), { force: true }, () => {});
     }
   });
-  // 새로 들어온 이미지는 레코드 추가
-  const known = rows.map((r) => r.filename);
-  const insert = db.prepare('INSERT INTO post_images (post_id, filename) VALUES (?, ?)');
-  used.forEach((f) => { if (!known.includes(f)) insert.run(postId, f); });
+  db.prepare('DELETE FROM post_images WHERE post_id = ?').run(postId);
+  const insert = db.prepare('INSERT INTO post_images (post_id, filename, sort) VALUES (?, ?, ?)');
+  filenames.forEach((f, i) => insert.run(postId, f, i));
 }
 
 const router = express.Router();
@@ -107,6 +125,9 @@ function commentPageQuery(postId, rootCommentId) {
 }
 
 const PAGE_SIZE = 10;
+// 같은 사람이 글을 연달아 올릴 때의 최소 간격(초).
+// 짧으면 도배를 못 막고, 길면 연달아 두 글 올리는 보통 사람이 걸린다.
+const POST_INTERVAL_SEC = 30;
 const COMMENT_PAGE_SIZE = 20; // 한 화면에 보여줄 최상위 댓글 수
 
 // ---- 목록 ----------------------------------------------------------------
@@ -172,14 +193,24 @@ router.get('/', (req, res) => {
   }
 
   res.render('board', {
-    notices, posts, page, q, sort, hot, trending, category, categories: CATEGORIES,
+    notices, posts, page, q, sort, hot, trending, category, categories: BOARD_TABS,
     totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)),
   });
 });
 
 // ---- 글쓰기 ----------------------------------------------------------------
+// 글쓰기 화면의 '작성가이드'가 가리킬 규칙 공지.
+// 새 페이지를 따로 만들면 두 곳을 같이 고쳐야 해서, 이미 있는 공지로 보낸다.
+function guidePostId() {
+  const row = db.prepare(
+    "SELECT id FROM posts WHERE is_notice = 1 AND is_hidden = 0 AND title LIKE '%규칙%' ORDER BY id LIMIT 1"
+  ).get();
+  return row ? row.id : null;
+}
+
 router.get('/new', requireLogin, (req, res) => {
-  res.render('write', { post: null, images: [], error: null, categories: CATEGORIES, initialHtml: '' });
+  res.render('write', { post: null, images: [], error: null, categories: CATEGORIES,
+    initialHtml: '', guideId: guidePostId() });
 });
 
 // 업로드 남용 방지: 한 사람이 10분에 30장까지 (글 한 편 5장 기준 넉넉한 한도)
@@ -227,12 +258,32 @@ router.post('/', requireLogin, (req, res) => {
   const isNotice = req.body.is_notice && res.locals.me.is_admin ? 1 : 0;
   const fail = (msg) => res.render('write', {
     post: null, images: [], error: msg, categories: CATEGORIES, initialHtml: body.content,
+    guideId: guidePostId(),
   });
 
   if (!title || title.length > 50) return fail('제목은 1~50자로 입력해주세요.');
-  if (body.empty) return fail('내용을 입력해주세요.');
+  if (body.empty && attachedFiles(req.body).length === 0) return fail('내용을 입력해주세요.');
   if (body.tooLong) return fail('내용은 5,000자 이내로 입력해주세요.');
-  if (body.tooManyImages) return fail(`사진은 최대 ${MAX_IMAGES}장까지 넣을 수 있어요.`);
+  if ((Array.isArray(req.body.images) ? req.body.images : String(req.body.images || '').split(',').filter(Boolean)).length > MAX_IMAGES) {
+    return fail(`사진은 최대 ${MAX_IMAGES}장까지 넣을 수 있어요.`);
+  }
+
+  // 광고 도배 막기. 포인트 한도(하루 3개)는 '얼마나 주느냐'의 문제라 글은 계속 올라가는데,
+  // 그것만으로는 몇 초 사이에 같은 글을 수십 개 밀어 넣는 것을 못 막는다.
+  // 운영자는 공지를 연달아 올릴 일이 있어 빼 둔다.
+  if (!res.locals.me.is_admin) {
+    // created_at 은 localtime 으로 저장된다(테이블 기본값이 datetime('now','localtime')).
+    // 'now' 는 UTC 라 그냥 빼면 시차만큼 어긋나 — 서울이면 늘 -9시간이 나와
+    // 두 번째 글부터 영영 막힌다. 양쪽을 같은 기준으로 맞춘다.
+    const last = db.prepare(
+      `SELECT (strftime('%s','now','localtime') - strftime('%s', created_at)) AS ago
+       FROM posts WHERE user_id = ? ORDER BY id DESC LIMIT 1`
+    ).get(req.session.userId);
+    if (last && last.ago < POST_INTERVAL_SEC) {
+      return fail(`글은 ${POST_INTERVAL_SEC}초에 한 번씩 올릴 수 있어요. `
+        + `${POST_INTERVAL_SEC - last.ago}초 뒤에 다시 눌러주세요.`);
+    }
+  }
 
   const info = db.prepare(`
     INSERT INTO posts (user_id, category, title, content, content_format, content_text,
@@ -241,7 +292,7 @@ router.post('/', requireLogin, (req, res) => {
   ).run(req.session.userId, category, title, body.content, body.format, body.text,
     isAnonymous, blockComments, isNotice);
 
-  syncPostImages(info.lastInsertRowid, body.format, body.content);
+  syncPostImages(info.lastInsertRowid, attachedFiles(req.body));
   indexPost(info.lastInsertRowid, title, body.text);
 
   // 일반글 300P(하루 3개), 익명글 100P(하루 3개)
@@ -275,7 +326,7 @@ router.get('/:id(\\d+)', (req, res) => {
     post.views += 1;
   }
 
-  const images = db.prepare('SELECT * FROM post_images WHERE post_id = ?').all(post.id);
+  const images = db.prepare('SELECT * FROM post_images WHERE post_id = ? ORDER BY sort, id').all(post.id);
   const uid = req.session.userId || 0;
   const rows = db.prepare(`
     SELECT c.*, u.nickname, u.avatar_id, u.border_id, u.points AS author_points,
@@ -519,10 +570,10 @@ router.post('/comments/:cid(\\d+)/delete', requireLogin, (req, res) => {
 router.get('/:id(\\d+)/edit', requireLogin, (req, res) => {
   const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(req.params.id);
   if (!post || post.user_id !== req.session.userId) return res.redirect('/board');
-  const images = db.prepare('SELECT * FROM post_images WHERE post_id = ?').all(post.id);
+  const images = db.prepare('SELECT * FROM post_images WHERE post_id = ? ORDER BY sort, id').all(post.id);
   res.render('write', {
     post, images, error: null, categories: CATEGORIES,
-    initialHtml: editableHtml(post, images),
+    initialHtml: editableHtml(post, images), guideId: guidePostId(),
   });
 });
 
@@ -534,13 +585,15 @@ router.post('/:id(\\d+)/edit', requireLogin, (req, res) => {
   const body = prepareContent(req.body);
   const category = isValidCategory(req.body.category) ? req.body.category : post.category;
   const fail = (msg) => res.render('write', {
-    post, images: db.prepare('SELECT * FROM post_images WHERE post_id = ?').all(post.id),
-    error: msg, categories: CATEGORIES, initialHtml: body.content,
+    post, images: db.prepare('SELECT * FROM post_images WHERE post_id = ? ORDER BY sort, id').all(post.id),
+    error: msg, categories: CATEGORIES, initialHtml: body.content, guideId: guidePostId(),
   });
-  if (!title || title.length > 50 || body.empty || body.tooLong) {
+  if (!title || title.length > 50 || (body.empty && attachedFiles(req.body).length === 0) || body.tooLong) {
     return fail('제목(50자)과 내용(5,000자)을 확인해주세요.');
   }
-  if (body.tooManyImages) return fail(`사진은 최대 ${MAX_IMAGES}장까지 넣을 수 있어요.`);
+  if ((Array.isArray(req.body.images) ? req.body.images : String(req.body.images || '').split(',').filter(Boolean)).length > MAX_IMAGES) {
+    return fail(`사진은 최대 ${MAX_IMAGES}장까지 넣을 수 있어요.`);
+  }
 
   db.prepare(`UPDATE posts SET category = ?, title = ?, content = ?, content_format = ?,
               content_text = ?, block_comments = ?,
@@ -548,7 +601,7 @@ router.post('/:id(\\d+)/edit', requireLogin, (req, res) => {
     .run(category, title, body.content, body.format, body.text,
       req.body.block_comments ? 1 : 0, post.id);
   // 본문에서 빠진 사진은 여기서 정리된다 (에디터에서 지우면 파일도 삭제)
-  syncPostImages(post.id, body.format, body.content);
+  syncPostImages(post.id, attachedFiles(req.body));
   indexPost(post.id, title, body.text);
   req.session.flash = '게시글을 수정했어요.';
   res.redirect(`/board/${post.id}`);

@@ -2,7 +2,7 @@
 
 > 커뮤니티 게시판을 PHP 로 옮기실 때 참고하시라고 만든 문서입니다.
 > 현재 동작 중인 스키마를 그대로 읽어 MySQL 문법으로 옮긴 것이라 실제 코드와 어긋나지 않습니다.
-> (`node scripts/make-db-spec.js` 로 다시 만들 수 있습니다 · 작성일 2026-08-03)
+> (`node scripts/make-db-spec.js` 로 다시 만들 수 있습니다 · 작성일 2026-08-04)
 
 ## 0. 먼저 알아두실 것
 
@@ -245,12 +245,14 @@ CREATE TABLE `point_logs` (
 | `id` | INT UNSIGNED | N | 기본키 (자동 증가) |
 | `post_id` | INT UNSIGNED | N |  |
 | `filename` | VARCHAR(255) | N |  |
+| `sort` | INT | N |  |
 
 ```sql
 CREATE TABLE `post_images` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `post_id` INT UNSIGNED NOT NULL,
   `filename` VARCHAR(255) NOT NULL,
+  `sort` INT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_post_images_post_id` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

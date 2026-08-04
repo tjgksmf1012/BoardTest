@@ -404,16 +404,27 @@ persona('P5', '하은 (19) · 포인트 헤비유저', 'Android 412×915', async
   await pg.goto(BASE + '/attendance');
   want(!(await pg.$('button:has-text("출석체크 하기")')), 'BUG', '출석했는데 버튼이 또 보인다');
 
-  // 글 4개 — 3개까지만 포인트
-  for (let i = 1; i <= 4; i++) {
+  // 연달아 올리면 작성 간격에 걸려야 한다 (도배 막기)
+  const write = async (title) => {
     await pg.goto(BASE + '/board/new');
     await pg.selectOption('select[name=category]', '자유').catch(() => {});
-    await pg.fill('input[name=title]', `하은이의 ${i}번째 글입니다`);
+    await pg.fill('input[name=title]', title);
     await pg.click('.editor');
     await pg.keyboard.type('오늘도 열심히 포인트를 모아봅니다.');
     await pg.click('form[action="/board"] button[type=submit]');
     await pg.waitForLoadState('load');
-  }
+  };
+  await write('하은이의 1번째 글입니다');
+  await write('연달아 바로 올려보는 글');
+  want(!db.prepare("SELECT 1 FROM posts WHERE title='연달아 바로 올려보는 글'").get(),
+    'BUG', '작성 간격 제한이 안 걸린다 (도배 가능)');
+  want(/초에 한 번|초 뒤에/.test(await pg.textContent('body')),
+    'NIT', '간격에 걸렸는데 언제 다시 되는지 안 알려준다');
+
+  // 하루 상한(포인트 3개까지)은 간격과 다른 규칙이라, 시간을 되돌려 따로 본다
+  const backdate = () => db.prepare(
+    "UPDATE posts SET created_at = datetime(created_at, '-5 minutes') WHERE user_id = ?").run(uid);
+  for (let i = 2; i <= 4; i++) { backdate(); await write(`하은이의 ${i}번째 글입니다`); }
   const postLogs = db.prepare("SELECT COUNT(*) c FROM point_logs WHERE user_id=? AND reason='post'").get(uid).c;
   want(postLogs === 3, 'BUG', '게시글 포인트가 하루 3개를 넘겨 지급됐다', `${postLogs}건`);
   const postCount = db.prepare('SELECT COUNT(*) c FROM posts WHERE user_id=?').get(uid).c;

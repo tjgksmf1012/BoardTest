@@ -90,7 +90,17 @@ router.get('/points', requireLogin, (req, res) => {
     `SELECT COALESCE(SUM(amount), 0) AS s FROM point_logs
      WHERE user_id = ? AND date(created_at) = date('now', 'localtime')`
   ).get(req.session.userId).s;
-  res.render('points', { logs, todayTotal, RULES, milestones: MILESTONES, next: nextUnlock(res.locals.me.points) });
+  // 시안의 '이벤트·포인트게시판'. 회원이 글을 쓰는 게시판을 따로 파지 않고,
+  // 이벤트 말머리가 붙은 글을 여기에 모아 포인트 안내와 함께 보여준다.
+  const events = db.prepare(`
+    SELECT p.id, p.title, p.created_at, p.views, u.nickname,
+      (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id) AS comment_count,
+      (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.id) AS like_count
+    FROM posts p JOIN users u ON u.id = p.user_id
+    WHERE p.category = '이벤트' AND p.is_hidden = 0
+    ORDER BY p.id DESC LIMIT 10`).all();
+  res.render('points', { logs, todayTotal, RULES, milestones: MILESTONES,
+    next: nextUnlock(res.locals.me.points), events });
 });
 
 // ---- 알림 ------------------------------------------------------------------

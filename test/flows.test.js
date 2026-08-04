@@ -7,6 +7,13 @@ const path = require('path');
 
 process.env.DB_PATH = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'boardtest-flow-')), 'test.db');
 process.env.NODE_ENV = 'test';
+// 첨부는 실제로 파일이 있는 것만 인정하므로, 시험용 업로드 폴더를 따로 둔다
+process.env.UPLOAD_DIR = path.join(path.dirname(process.env.DB_PATH), 'uploads');
+fs.mkdirSync(process.env.UPLOAD_DIR, { recursive: true });
+const putFile = (name) => {
+  fs.writeFileSync(path.join(process.env.UPLOAD_DIR, name), 'x');
+  return name;
+};
 
 const app = require('../server');
 const db = require('../src/db');
@@ -240,12 +247,14 @@ test('검색은 HTML 태그 이름에 걸리지 않는다', async () => {
   assert.ok(byWord.includes('검색 대상 글'), '본문 낱말로는 검색돼야 한다');
 });
 
-test('본문에서 지운 사진은 첨부 기록에서도 정리된다', async () => {
+test('첨부에서 뺀 사진은 기록에서도 정리된다', async () => {
+  // 사진은 본문과 따로 붙인다. 본문 HTML 을 뒤지지 않고 폼이 보낸 목록을 그대로 쓴다.
   const jar = makeJar();
   await signup(jar, 'imgs1', '사진이');
+  putFile('a.png'); putFile('b.png');
   await post('/board', {
     category: '자유', title: '사진 글', content_format: 'html',
-    content: '<p><img src="/uploads/a.png"></p><p><img src="/uploads/b.png"></p>',
+    content: '<p>사진 붙인 글</p>', images: 'a.png,b.png',
   }, jar);
   const p = db.prepare("SELECT * FROM posts WHERE title = '사진 글'").get();
   assert.equal(db.prepare('SELECT COUNT(*) c FROM post_images WHERE post_id = ?').get(p.id).c, 2);
@@ -253,18 +262,73 @@ test('본문에서 지운 사진은 첨부 기록에서도 정리된다', async 
   // 한 장만 남기고 수정
   await post(`/board/${p.id}/edit`, {
     category: '자유', title: '사진 글', content_format: 'html',
-    content: '<p><img src="/uploads/a.png"></p>',
+    content: '<p>사진 붙인 글</p>', images: 'a.png',
   }, jar);
   const rows = db.prepare('SELECT filename FROM post_images WHERE post_id = ?').all(p.id);
   assert.deepEqual(rows.map((r) => r.filename), ['a.png']);
 });
 
+test('첨부 순서가 그대로 저장된다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'imgorder', '순서바꾼이');
+  ['o1.png', 'o2.png', 'o3.png'].forEach(putFile);
+  await post('/board', {
+    category: '자유', title: '사진 순서 글', content_format: 'html',
+    content: '<p>본문</p>', images: 'o3.png,o1.png,o2.png',
+  }, jar);
+  const p = db.prepare("SELECT id FROM posts WHERE title = '사진 순서 글'").get();
+  const rows = db.prepare('SELECT filename FROM post_images WHERE post_id = ? ORDER BY sort').all(p.id);
+  assert.deepEqual(rows.map((r) => r.filename), ['o3.png', 'o1.png', 'o2.png'], '끌어서 바꾼 순서대로');
+});
+
+test('없는 파일 이름이나 경로가 섞인 이름은 첨부되지 않는다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'imgevil', '경로장난');
+  putFile('real.png');
+  await post('/board', {
+    category: '자유', title: '이상한 첨부 글', content_format: 'html',
+    content: '<p>본문</p>', images: 'real.png,../../etc/passwd,없는파일.png',
+  }, jar);
+  const p = db.prepare("SELECT id FROM posts WHERE title = '이상한 첨부 글'").get();
+  const rows = db.prepare('SELECT filename FROM post_images WHERE post_id = ?').all(p.id);
+  assert.deepEqual(rows.map((r) => r.filename), ['real.png']);
+});
+
+
+test('글은 연달아 못 올린다 (도배 막기)', async () => {
+  const jar = makeJar();
+  await signup(jar, 'spam1', '연달아쓴이');
+  await newPost(jar, '연달아 1번째 글');
+  await post('/board', { category: '자유', title: '연달아 2번째 글', content: '본문' }, jar);
+  assert.ok(!db.prepare("SELECT 1 FROM posts WHERE title = '연달아 2번째 글'").get(),
+    '30초 안에 두 번째 글이 올라가면 안 된다');
+
+  // 시간이 지나면 다시 올라가야 한다.
+  // created_at 은 localtime 으로 저장되는데 'now' 는 UTC 라, 이 둘을 그냥 빼면
+  // 시차만큼 어긋나 두 번째 글부터 영영 막힌다. 그 회귀를 여기서 잡는다.
+  db.prepare("UPDATE posts SET created_at = datetime(created_at, '-1 minute') WHERE user_id = ?")
+    .run(uid('spam1'));
+  await post('/board', { category: '자유', title: '한참 뒤에 쓴 글', content: '본문' }, jar);
+  assert.ok(db.prepare("SELECT 1 FROM posts WHERE title = '한참 뒤에 쓴 글'").get(),
+    '간격이 지났으면 올라가야 한다 (시간 기준이 어긋나면 여기서 걸린다)');
+});
+
+test('운영자는 공지를 연달아 올릴 수 있다', async () => {
+  const jar = makeJar();
+  await login(jar, 'admin', 'admin1234');
+  await post('/board', { category: '자유', title: '운영자 연속 1', content: '본문', is_notice: '1' }, jar);
+  await post('/board', { category: '자유', title: '운영자 연속 2', content: '본문', is_notice: '1' }, jar);
+  assert.ok(db.prepare("SELECT 1 FROM posts WHERE title = '운영자 연속 2'").get(),
+    '운영자는 공지를 이어서 올릴 일이 있다');
+});
+
 test('사진은 5장까지만 넣을 수 있다', async () => {
   const jar = makeJar();
   await signup(jar, 'imgmax', '장수제한');
-  const six = Array.from({ length: 6 }, (_, i) => `<p><img src="/uploads/x${i}.png"></p>`).join('');
+  const six = Array.from({ length: 6 }, (_, i) => putFile(`x${i}.png`)).join(',');
   await post('/board', {
-    category: '자유', title: '사진 6장 글', content_format: 'html', content: six,
+    category: '자유', title: '사진 6장 글', content_format: 'html',
+    content: '<p>본문</p>', images: six,
   }, jar);
   assert.ok(!db.prepare("SELECT 1 FROM posts WHERE title = '사진 6장 글'").get(), '6장은 등록되면 안 된다');
 
@@ -301,11 +365,14 @@ test('로그인하면 세션 ID가 새로 발급된다 (세션 고정 방어)', 
 test('사진이 있으면 글자가 없어도 등록된다', async () => {
   const jar = makeJar();
   await signup(jar, 'imgonly', '사진만');
+  putFile('only.png');
   await post('/board', {
     category: '자유', title: '사진만 있는 글', content_format: 'html',
-    content: '<p><img src="/uploads/only.png"></p>',
+    content: '', images: 'only.png',
   }, jar);
-  assert.ok(db.prepare("SELECT 1 FROM posts WHERE title = '사진만 있는 글'").get());
+  const p = db.prepare("SELECT id FROM posts WHERE title = '사진만 있는 글'").get();
+  assert.ok(p, '사진이 곧 내용인 글도 있다');
+  assert.equal(db.prepare('SELECT COUNT(*) c FROM post_images WHERE post_id = ?').get(p.id).c, 1);
 });
 
 test('사진 업로드는 로그인해야 쓸 수 있다', async () => {

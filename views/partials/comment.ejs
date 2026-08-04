@@ -13,7 +13,6 @@
   <div class="comment-body">
     <div class="comment-head">
       <a class="comment-name" href="/users/<%= c.user_id %>"><strong><%= c.nickname %></strong></a>
-      <%- levelBadge(c.author_points) %>
       <span class="muted"><%= timeAgo(c.created_at) %></span>
       <% if (c.updated_at) { %><span class="muted edited-mark">· 수정됨</span><% } %>
 

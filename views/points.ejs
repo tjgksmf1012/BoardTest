@@ -1,11 +1,36 @@
-<%- include('partials/header', { title: '포인트', active: 'points' }) %>
+<%- include('partials/header', { title: '이벤트 · 포인트', active: 'points' }) %>
 
 <div class="board-head">
   <div>
-    <h1>포인트</h1>
-    <p class="muted">활동할수록 포인트가 쌓여요. 포인트는 활동 제한이 아니라 지급 기준이에요!</p>
+    <h1>이벤트 · 포인트</h1>
+    <p class="muted">진행 중인 이벤트와 포인트 적립 기준을 한곳에서 봐요.</p>
   </div>
 </div>
+
+<%# 이벤트 말머리가 붙은 글을 모아 보여준다. 게시판을 따로 파지 않고 말머리로 거른다. %>
+<section class="card event-card">
+  <div class="tier-head">
+    <h2>진행 중인 이벤트</h2>
+    <a class="muted" href="/board?category=%EC%9D%B4%EB%B2%A4%ED%8A%B8">더보기 →</a>
+  </div>
+  <% if (!events || events.length === 0) { %>
+    <div class="empty small">아직 등록된 이벤트가 없어요.</div>
+  <% } else { %>
+    <ul class="event-list">
+      <% events.forEach(function (e) { %>
+        <li>
+          <a href="/board/<%= e.id %>">
+            <span class="event-title"><%= e.title %></span>
+            <span class="muted event-meta">
+              <%= e.nickname %> · <%= e.created_at.slice(0, 10) %>
+              <% if (e.comment_count) { %> · 댓글 <%= e.comment_count %><% } %>
+            </span>
+          </a>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+</section>
 
 <div class="point-summary">
   <div class="card stat">

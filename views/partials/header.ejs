@@ -73,9 +73,11 @@
     </div>
     <nav class="tabs">
       <div class="tabs-inner">
-        <a href="/board" class="tab <%= (typeof active !== 'undefined' && active === 'board') ? 'on' : '' %>">커뮤니티</a>
+        <%# 시안의 커뮤니티 안 3분할: 밤알바커뮤니티 · 이벤트·포인트 · 출석체크.
+            회원이 글을 쓰는 게시판은 하나이고, 뒤 둘은 성격이 다른 화면이다. %>
+        <a href="/board" class="tab <%= (typeof active !== 'undefined' && active === 'board') ? 'on' : '' %>">밤알바커뮤니티</a>
+        <a href="/points" class="tab <%= (typeof active !== 'undefined' && active === 'points') ? 'on' : '' %>">이벤트·포인트</a>
         <a href="/attendance" class="tab <%= (typeof active !== 'undefined' && active === 'attendance') ? 'on' : '' %>">출석체크</a>
-        <a href="/points" class="tab <%= (typeof active !== 'undefined' && active === 'points') ? 'on' : '' %>">포인트</a>
         <a href="/ranking" class="tab <%= (typeof active !== 'undefined' && active === 'ranking') ? 'on' : '' %>">랭킹</a>
         <a href="/profile" class="tab <%= (typeof active !== 'undefined' && active === 'profile') ? 'on' : '' %>">마이페이지</a>
       </div>
