@@ -84,17 +84,20 @@ test('테두리 그림은 모두 가운데가 뚫린 고리다', async () => {
   }
 });
 
-test('고리 안쪽이 얼굴에 딱 붙는다 (시안처럼 틈도 겹침도 없이)', async () => {
-  // 기획 시안의 '움직이는 테두리' 는 고리 안쪽이 캐릭터에 딱 붙어 있다.
-  // 틈이 벌어지면 얼굴이 헐렁해 보이고, 겹치면 고리가 얼굴을 문 것처럼 보인다.
+test('캐릭터 테두리가 고리 몸통 위에 온다 (가이드처럼 고리가 얹히게)', async () => {
+  // 가이드의 '움직이는 테두리' 는 고리가 캐릭터 **바깥에 떨어져** 있지 않고
+  // 캐릭터 원의 가장자리 **위에 얹혀** 있다.
+  // 너무 안쪽이면 사이가 벌어져 흰 띠가 보이고, 너무 바깥이면 고리가 뒤로 숨는다.
   const { RING, FACE } = avatars;
   for (const b of borders) {
-    const { mid } = await holeRatio(b.file);
-    const 안쪽 = RING * mid;                     // 화면에서 고리 안쪽이 앉는 자리 (칸 대비)
-    const 어긋남 = (안쪽 - FACE) / FACE;
-    assert.ok(Math.abs(어긋남) <= 0.06,
-      `${b.code}: 고리 안쪽이 ${안쪽.toFixed(3)} 인데 얼굴이 ${FACE} 다`
-      + ` — ${어긋남 > 0 ? '틈이' : '겹침이'} ${Math.abs(어긋남 * 100).toFixed(0)}% 생긴다`);
+    const { mid, edge } = await holeRatio(b.file);
+    const 안쪽 = RING * mid;
+    const 바깥 = RING * edge;
+    const 자리 = (FACE - 안쪽) / (바깥 - 안쪽); // 몸통의 몇 % 지점인가
+    assert.ok(자리 >= 0.2 && 자리 <= 0.9,
+      `${b.code}: 캐릭터 테두리(${FACE})가 고리 몸통(${안쪽.toFixed(2)}~${바깥.toFixed(2)})의`
+      + ` ${(자리 * 100).toFixed(0)}% 지점이다`
+      + (자리 < 0.2 ? ' — 사이가 벌어져 흰 띠가 보인다' : ' — 고리가 캐릭터 뒤로 숨는다'));
   }
 });
 
@@ -138,17 +141,17 @@ test('크기는 CSS 가 아니라 요소에 직접 붙는다 (우선순위에 �
   const chars = avatars.characters ? avatars.characters() : avatars.items().filter((i) => i.kind !== 'border');
   const html = avatars.renderAvatar(chars[0].code, borders[0].code, 44);
   assert.match(html, /class="avatar-ring"[^>]*style="width:120%/, '고리 크기가 붙어 있어야 한다');
-  assert.match(html, /class="avatar-face"[^>]*style="width:72%/, '얼굴 크기가 붙어 있어야 한다');
+  assert.match(html, /class="avatar-face"[^>]*style="width:92%/, '얼굴 크기가 붙어 있어야 한다');
   // 테두리를 안 낀 아바타는 예전처럼 칸을 꽉 채운다
   const plain = avatars.renderAvatar(chars[0].code, null, 44);
-  assert.ok(!plain.includes('style="width:72%'), '고리가 없으면 얼굴을 줄이지 않는다');
+  assert.ok(!plain.includes('style="width:92%'), '고리가 없으면 얼굴을 줄이지 않는다');
 });
 
 test('테두리 칸에 나란히 놓을 때는 고리가 없어도 얼굴 크기를 맞춘다', () => {
   const chars = avatars.characters ? avatars.characters() : avatars.items().filter((i) => i.kind !== 'border');
   // 상점의 '사용 안 함' 칸만 테두리가 없어서 혼자 얼굴이 크게 나왔다 (72px 대 55px)
   const slot = avatars.renderAvatar(chars[0].code, null, 72, { ringSlot: true });
-  assert.match(slot, /class="avatar-face"[^>]*style="width:72%/);
+  assert.match(slot, /class="avatar-face"[^>]*style="width:92%/);
   assert.ok(!slot.includes('avatar-ring'), '고리를 넣으라는 뜻은 아니다');
   assert.ok(!slot.includes('has-ring'), '고리가 없으니 잘라내기는 그대로 둔다');
 });

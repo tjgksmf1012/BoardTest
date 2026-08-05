@@ -29,8 +29,13 @@ const { chromium } = req('playwright-core');
 const sharp = require(path.join(ROOT, 'node_modules', 'sharp'));
 const avatars = require(path.join(ROOT, 'src', 'avatars'));
 
-// 틈이 이보다 크면 흰 띠가 보이고, 이보다 작으면(음수) 고리가 얼굴을 문다
-const TOLERANCE = 0.02;
+// 가이드에서는 고리가 캐릭터 원의 테두리 **위에** 얹혀 있다.
+// 그러니 캐릭터 테두리는 고리 몸통이 걸쳐 있는 구간(안쪽~바깥) 안에 있어야 한다.
+//   너무 안쪽 → 캐릭터가 작아지고 사이에 흰 띠가 보인다
+//   너무 바깥 → 고리가 캐릭터 뒤로 숨어 테두리가 안 보인다
+// 그 구간의 몇 % 지점에 둘지는 취향이라, 넉넉한 범위만 지키고 값은 사람이 고른다.
+const 몸통_최소 = 0.25;   // 몸통 구간의 25% 지점보다는 바깥
+const 몸통_최대 = 0.90;   // 90% 지점보다는 안쪽
 
 async function waitUp() {
   for (let i = 0; i < 100; i++) {
@@ -139,37 +144,43 @@ async function faceOuter(pg, tmp, char, FACE) {
   const inner = {};
   for (const code of codes) inner[code] = await ringInner(pg, tmp, code, RING);
   const vals = Object.values(inner).filter(Boolean);
-  const 평균 = vals.reduce((a, b) => a + b, 0) / vals.length;
+  const 안쪽 = vals.reduce((a, b) => a + b, 0) / vals.length;
+  // 고리 바깥은 칸에 맞춰 놨으므로 1.00. 캐릭터 테두리는 안쪽~1.00 사이에 있어야 한다.
+  const 폭 = 1 - 안쪽;
+  const 하한 = 안쪽 + 폭 * 몸통_최소;
+  const 상한 = 안쪽 + 폭 * 몸통_최대;
+  const 자리 = (r) => (r - 안쪽) / 폭;
 
-  console.log(`\n테두리와 캐릭터가 딱 붙는지 (칸 반지름 대비 · 화면에 그려진 픽셀로 잰 값)\n`);
-  console.log(`  고리 안쪽  최소 ${Math.min(...vals).toFixed(3)} · 평균 ${평균.toFixed(3)}`
-    + ` · 최대 ${Math.max(...vals).toFixed(3)}   (RING ${RING})`);
+  console.log('\n테두리가 캐릭터 테두리에 얹히는지 (칸 반지름 대비 · 화면에 그려진 픽셀)\n');
+  console.log(`  고리 몸통  안쪽 ${안쪽.toFixed(3)} ~ 바깥 1.000   (RING ${RING})`);
+  console.log(`  캐릭터 테두리가 앉아도 되는 곳 = ${하한.toFixed(3)} ~ ${상한.toFixed(3)}`
+    + ` (몸통의 ${몸통_최소 * 100}~${몸통_최대 * 100}% 지점)`);
 
   if (SCAN) {
     console.log('\n  얼굴 크기별 틈');
-    for (const f of [0.68, 0.70, 0.72, 0.74, 0.76]) {
+    for (const f of [0.76, 0.80, 0.86, 0.92, 0.96, 1.00]) {
       const r = await faceOuter(pg, tmp, char, f);
-      const gap = 평균 - r;
-      console.log(`    FACE ${f.toFixed(2)} → 얼굴 ${r.toFixed(3)} · 틈 ${(gap * 100).toFixed(1)}%`
-        + (Math.abs(gap) <= TOLERANCE ? '   ← 딱 맞음' : gap < 0 ? '  (고리가 얼굴을 문다)' : '  (흰 띠가 보인다)'));
+      const at = 자리(r);
+      console.log(`    FACE ${f.toFixed(2)} → 얼굴 ${r.toFixed(3)} · 몸통의 ${(at * 100).toFixed(0)}% 지점`
+        + (at < 몸통_최소 ? '  (사이가 벌어져 흰 띠가 보인다)'
+          : at > 몸통_최대 ? '  (고리가 캐릭터 뒤로 숨는다)' : '   ← 괜찮음'));
     }
   }
 
   const 얼굴 = await faceOuter(pg, tmp, char, FACE);
-  const 틈 = 평균 - 얼굴;
+  const at = 자리(얼굴);
   await browser.close();
   srv.kill();
 
-  console.log(`  얼굴 바깥  ${얼굴.toFixed(3)}   (FACE ${FACE})`);
-  console.log(`\n  → 틈 ${(틈 * 100).toFixed(1)}%  (기준 ±${TOLERANCE * 100}%)\n`);
+  console.log(`  실제 캐릭터 테두리 ${얼굴.toFixed(3)} — 몸통의 ${(at * 100).toFixed(0)}% 지점   (FACE ${FACE})\n`);
 
-  if (Math.abs(틈) > TOLERANCE) {
-    console.error(틈 > 0
-      ? `✗ 캐릭터와 고리 사이가 벌어져 흰 띠가 보입니다. FACE 를 ${(FACE + 틈).toFixed(2)} 쯤으로 키우세요.`
-      : `✗ 고리가 캐릭터를 뭅니다. FACE 를 ${(FACE + 틈).toFixed(2)} 쯤으로 줄이세요.`);
+  if (at < 몸통_최소 || at > 몸통_최대) {
+    console.error(at < 몸통_최소
+      ? '✗ 고리가 캐릭터에서 떨어져 흰 띠가 보입니다. FACE 를 키우세요.'
+      : '✗ 캐릭터가 너무 커서 고리가 뒤로 숨습니다. FACE 를 줄이세요.');
     console.error('  (--scan 을 붙이면 얼굴 크기별로 훑어 봅니다)');
     process.exit(1);
   }
-  console.log('✓ 시안처럼 딱 붙습니다.\n');
+  console.log('✓ 가이드처럼 고리가 캐릭터 테두리 위에 얹힙니다.\n');
   process.exit(0);
 })().catch((e) => { console.error(e); process.exit(1); });
