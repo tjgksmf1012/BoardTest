@@ -136,20 +136,36 @@ const THUMB_UP_TO = 96;
 
 // 테두리(고리)를 낀 아바타의 크기 규칙.
 //
-// 받은 테두리 그림 9종은 모두 가운데가 뚫린 고리이고, 그 구멍이 그림 폭의 약 59% 다
-// (RING_HOLE — test/avatar-ring.test.js 가 실제 PNG 를 재서 확인한다).
-// 그래서 고리를 칸보다 키워야(RING) 구멍이 얼굴을 감싸고, 얼굴은 그 구멍 안에 들어가야(FACE) 한다.
-//   구멍 = RING × RING_HOLE = 1.32 × 0.586 ≒ 0.77  ≥  얼굴 0.76  ✅
-// 이 값을 지키지 않으면 고리가 얼굴 위로 올라와 얼굴을 가로지른다.
+// 기획 시안(A사이트 아바타 해금 가이드, 4번 '움직이는 테두리')이 기준이다.
+// 거기서는 고리 안쪽이 캐릭터에 **딱 붙어** 있다 — 사이에 틈도 없고 얼굴을 덮지도 않는다.
+// 그리고 고리 전체가 자기 칸 안에 들어가 있다.
+//
+// 받은 테두리 그림 9종을 실측하면 (test/avatar-ring.test.js 가 PNG 를 직접 잰다):
+//   고리 몸통 안쪽 = 그림 폭의 0.582   (RING_HOLE)
+//   고리 바깥      = 그림 폭의 0.836   (RING_EDGE — 나머지는 투명 여백이다)
+//   가장 안쪽까지 뻗은 붓터치 = 0.465  (RING_HOLE_MIN)
+//
+// 그래서 두 조건을 동시에 푼다.
+//   ① 고리 바깥이 칸을 꽉 채운다  : RING × 0.836 = 1.00  →  RING = 1.20
+//   ② 고리 안쪽이 얼굴에 딱 붙는다 : FACE = RING × 0.582  →  FACE = 0.70
+// 이러면 칸 밖으로 삐져나가지 않아 목록에서 글 제목을 밀지도 않는다.
+//
+// 반짝이 몇 점(RING_HOLE_MIN)은 얼굴 위로 올라온다. 시안에서도 하트·별이 캐릭터 위에
+// 얹혀 있으니 그게 그림의 의도다 — 거기까지 피하려고 얼굴을 줄이지 않는다.
+//
+// (지나온 값: 1.32/0.76 은 고리가 얼굴을 물었고, 1.40/0.72 는 틈이 벌어지고
+//  목록에서 고리가 글 제목 글자에 닿았다.)
 //
 // 크기를 CSS 가 아니라 여기서 붙이는 이유:
 // 예전에는 style.css 에 `.avatar-ring { width: 132% }` 로 뒀는데, 위쪽에 있던
 // `.avatar img { width: 100% }` 가 우선순위에서 이겨 132% 가 통째로 무시됐다.
 // 화면에는 오류 없이 잘 그려지고, 고리도 제자리에 있어서 아무도 알아채지 못했다.
 // 요소에 직접 붙이면 어떤 선택자도 이길 수 없어서 같은 일이 다시 생기지 않는다.
-const RING = 1.32;   // 고리를 칸의 몇 배로 그릴지
-const FACE = 0.76;   // 얼굴을 칸의 몇 배로 그릴지 (= 고리 구멍 안)
-const RING_HOLE = 0.586; // 고리 그림에서 구멍이 차지하는 비율 (실측 최솟값 — border-blue)
+const RING = 1.20;   // 고리 그림을 칸의 몇 배로 그릴지 (보이는 고리는 칸과 같아진다)
+const FACE = 0.70;   // 얼굴을 칸의 몇 배로 그릴지 (= 고리 안쪽에 딱 맞게)
+const RING_HOLE = 0.582;     // 고리 몸통 안쪽 (실측 최솟값 — border-rainbow)
+const RING_EDGE = 0.836;     // 고리 바깥 (실측 최댓값 — border-blue/red/pink)
+const RING_HOLE_MIN = 0.465; // 가장 안쪽으로 뻗은 붓터치 (실측 최솟값)
 
 // opts.ringSlot — 테두리를 낀 칸들과 나란히 놓이는 자리.
 //   테두리를 끼면 얼굴이 고리 구멍만큼 작아지는데, 상점의 '사용 안 함' 칸만 테두리가 없어서
@@ -178,7 +194,7 @@ function renderAvatar(avatarCode, borderCode, size = 44, opts = {}) {
 
 module.exports = {
   MEMBER_TYPES, FREE_PER_TYPE, CHARACTER_PRICE, BORDER_PRICE,
-  RING, FACE, RING_HOLE,
+  RING, FACE, RING_HOLE, RING_EDGE, RING_HOLE_MIN,
   items: () => ITEMS, characters, borders, get, fallback, themes, theme, THEME_NOTES,
   starterFor, canUse, renderAvatar, load,
 };
