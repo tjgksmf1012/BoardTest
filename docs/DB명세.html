@@ -80,13 +80,27 @@ blockquote{border-left:3px solid var(--teal);background:#eef5f4;border-radius:0 
       동작 중인 스키마를 그대로 읽어 MySQL 문법으로 옮긴 것이라 실제 코드와 어긋나지 않습니다.</p>
     <p class="meta">작성일 2026-08-05</p>
   </header>
-<blockquote>커뮤니티 게시판을 PHP 로 옮기실 때 참고하시라고 만든 문서입니다. 현재 동작 중인 스키마를 그대로 읽어 MySQL 문법으로 옮긴 것이라 실제 코드와 어긋나지 않습니다. (<code>node scripts/make-db-spec.js</code> 로 다시 만들 수 있습니다 · 작성일 2026-08-04)</blockquote>
+<blockquote>커뮤니티 게시판을 PHP 로 옮기실 때 참고하시라고 만든 문서입니다. 현재 동작 중인 스키마를 그대로 읽어 MySQL 문법으로 옮긴 것이라 실제 코드와 어긋나지 않습니다. (<code>node scripts/make-db-spec.js</code> 로 다시 만들 수 있습니다 · 작성일 2026-08-05)</blockquote>
 <h2 class="sec">0. 먼저 알아두실 것</h2>
 <ul><li>현재 구현은 <strong>Node.js + SQLite</strong> 입니다. 아래 DDL 은 그 스키마를 <strong>MySQL(InnoDB)</strong> 로 옮긴 것입니다.</li><li>커뮤니티는 <strong>아이디·비밀번호를 갖지 않습니다.</strong> A사이트 회원번호(<code>users.external_id</code>)에</li></ul>
 <p>  포인트·캐릭터·활동만 매답니다. 자세한 내용은 <a href="연동가이드.md">연동가이드</a>.</p>
 <ul><li>날짜/시간은 전부 <strong>Asia/Seoul 기준 문자열</strong>로 저장하고 있습니다. MySQL 로 옮기실 때는</li></ul>
 <p>  <code>DATETIME</code> 으로 두고 서버 타임존을 <code>+09:00</code> 으로 맞춰 주세요.</p>
 <ul><li>참(true)/거짓은 <code>TINYINT(1)</code> 의 <code>0/1</code> 입니다.</li></ul>
+<h3 class="sub">⚠ PHP 5.1 세대 서버에 맞춰 낮춰 둔 것</h3>
+<p>PHP 5.1 은 2005~2006년 물건이라, 그 시절 서버는 대개 <strong>MySQL 5.0</strong> 입니다. 아래 DDL 은 <strong>그 버전에서 그대로 돌아가도록</strong> 낮춰서 냈습니다.</p>
+<table><thead><tr><th>흔히 쓰는 표기</th><th>언제부터 쓸 수 있나</th><th>그래서 이 문서는</th></tr></thead><tbody><tr><td><code>CHARSET=utf8mb4</code></td><td>MySQL <strong>5.5.3</strong></td><td><code>utf8</code> 로 냈습니다</td></tr><tr><td><code>DATETIME ... DEFAULT CURRENT_TIMESTAMP</code></td><td>MySQL <strong>5.6.5</strong></td><td>기본값을 빼고, 넣을 때 <code>NOW()</code> 를 적게 했습니다</td></tr><tr><td>InnoDB <code>FULLTEXT</code></td><td>MySQL <strong>5.6</strong></td><td>검색은 <code>LIKE</code> 기준으로 적었습니다 (7장)</td></tr><tr><td><code>ngram</code> 파서 (한글 부분일치)</td><td>MySQL <strong>5.7</strong></td><td>같음</td></tr></tbody></table>
+<p><code>DEFAULT CURRENT_TIMESTAMP</code> 가 특히 조심하실 부분입니다. 옛 MySQL 에서는 <code>TIMESTAMP</code> 컬럼에만, 그것도 <strong>표당 하나만</strong> 허용돼서, 그대로 두면 <code>CREATE TABLE</code> 자체가 실패합니다. 그래서 시각 컬럼에는 기본값을 안 넣고 <code>INSERT ... (created_at) VALUES (..., NOW())</code> 로 적게 해 뒀습니다.</p>
+<p><strong>이모지는 못 담습니다.</strong> MySQL 5.0 의 <code>utf8</code> 은 3바이트라 이모지(4바이트)를 넣으면 잘리거나 오류가 납니다. 지금 데모 글 제목에도 <code>☺</code> 가 들어 있습니다. 서버가 5.5.3 이상이면 <code>utf8</code> 을 전부 <code>utf8mb4</code> 로 바꾸시는 편이 낫고, 5.0 이면 글쓰기에서 4바이트 문자를 걸러 주셔야 합니다.</p>
+<h3 class="sub">PHP 5.1 자체에 없는 것</h3>
+<table><thead><tr><th>쓰고 싶은 것</th><th>언제부터</th><th>5.1 에서는</th></tr></thead><tbody><tr><td><code>json_decode</code> / <code>json_encode</code></td><td>PHP <strong>5.2</strong></td><td>같은 목록을 <code>docs/avatars.php</code> 로 뽑아 뒀습니다</td></tr><tr><td><code>DateTime</code> 클래스</td><td>PHP <strong>5.2</strong></td><td><code>strtotime()</code> · <code>date()</code> 로</td></tr><tr><td><code>password_hash</code> / <code>password_verify</code></td><td>PHP <strong>5.5</strong></td><td>연동 모드면 비밀번호 자체가 없습니다</td></tr><tr><td>익명 함수(클로저)</td><td>PHP <strong>5.3</strong></td><td><code>create_function</code> 또는 일반 함수</td></tr><tr><td>네임스페이스</td><td>PHP <strong>5.3</strong></td><td>접두사로</td></tr></tbody></table>
+<p><strong>캐릭터 목록은 <code>docs/avatars.php</code> 를 쓰시면 됩니다.</strong> 지금 Node 구현은 <code>public/avatars/manifest.json</code> 을 읽는데, PHP 5.1 에는 그걸 읽을 <code>json_decode</code> 가 없습니다. 그래서 같은 내용을 PHP 배열 파일로도 뽑아 뒀습니다 (대괄호 배열도 5.4부터라 <code>array()</code> 로 냈습니다).</p>
+<pre><code>$avatars = include 'avatars.php';
+foreach ($avatars as $a) {
+    echo $a['code'], ' ', $a['name'];   // female-glamgold-2-2 / 글램 골드 2-2
+}</code></pre>
+<p><code>users.avatar_id</code> · <code>users.border_id</code> · <code>user_items.item_code</code> 에 들어가는 값이 <code>code</code> 입니다. 그림 파일은 <code>public/avatars/</code> 아래 <code>file</code>(본문) · <code>thumb</code>(썸네일) 이름으로 있습니다. 캐릭터가 늘면 이 파일도 같이 다시 만들어집니다.</p>
+<p>SQL 은 <strong>반드시 값을 바인딩</strong>해 주세요. PDO·mysqli 가 없고 <code>mysql_*</code> 만 있는 서버라면 <code>mysql_real_escape_string()</code> 을 빠짐없이 거쳐야 합니다. 지금 Node 구현은 모든 쿼리를 바인딩하고 있어 그 부분만 옮기면 됩니다.</p>
 <h3 class="sub">SQLite → MySQL 로 바꿀 때 주의할 함수</h3>
 <table><thead><tr><th>지금 (SQLite)</th><th>MySQL</th></tr></thead><tbody><tr><td><code>datetime('now', 'localtime')</code></td><td><code>NOW()</code></td></tr><tr><td><code>date('now', 'localtime')</code></td><td><code>CURDATE()</code></td></tr><tr><td><code>datetime('now', 'localtime', '-7 days')</code></td><td><code>DATE_SUB(NOW(), INTERVAL 7 DAY)</code></td></tr><tr><td><code>strftime('%Y-%m-', 'now', 'localtime')</code></td><td><code>DATE_FORMAT(NOW(), '%Y-%m-')</code></td></tr><tr><td><code>AUTOINCREMENT</code></td><td><code>AUTO_INCREMENT</code></td></tr><tr><td>`a</td><td></td><td>b` (문자열 잇기)</td><td><code>CONCAT(a, b)</code></td></tr></tbody></table>
 <h2 class="sec">1. 표 한눈에 보기</h2>
@@ -102,7 +116,7 @@ blockquote{border-left:3px solid var(--teal);background:#eef5f4;border-radius:0 
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_attendance_user_id_day` (`user_id`, `day`),
   CONSTRAINT `fk_attendance_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</code></pre>
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;</code></pre>
 <h3 class="sub"><code>bookmarks</code></h3>
 <p>스크랩</p>
 <table><thead><tr><th>컬럼</th><th>타입</th><th>NULL</th><th>설명</th></tr></thead><tbody><tr><td><code>id</code></td><td>INT UNSIGNED</td><td>N</td><td>기본키 (자동 증가)</td></tr><tr><td><code>user_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr><tr><td><code>post_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr><tr><td><code>created_at</code></td><td>DATETIME</td><td>N</td><td></td></tr></tbody></table>
@@ -110,12 +124,12 @@ blockquote{border-left:3px solid var(--teal);background:#eef5f4;border-radius:0 
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id` INT UNSIGNED NOT NULL,
   `post_id` INT UNSIGNED NOT NULL,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_bookmarks_user_id_post_id` (`user_id`, `post_id`),
   CONSTRAINT `fk_bookmarks_post_id` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_bookmarks_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</code></pre>
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;</code></pre>
 <h3 class="sub"><code>comment_likes</code></h3>
 <p>댓글 좋아요</p>
 <table><thead><tr><th>컬럼</th><th>타입</th><th>NULL</th><th>설명</th></tr></thead><tbody><tr><td><code>id</code></td><td>INT UNSIGNED</td><td>N</td><td>기본키 (자동 증가)</td></tr><tr><td><code>comment_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr><tr><td><code>user_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr></tbody></table>
@@ -127,7 +141,7 @@ blockquote{border-left:3px solid var(--teal);background:#eef5f4;border-radius:0 
   UNIQUE KEY `uq_comment_likes_comment_id_user_id` (`comment_id`, `user_id`),
   CONSTRAINT `fk_comment_likes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `fk_comment_likes_comment_id` FOREIGN KEY (`comment_id`) REFERENCES `comments` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</code></pre>
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;</code></pre>
 <h3 class="sub"><code>comment_reports</code></h3>
 <p>댓글 신고</p>
 <table><thead><tr><th>컬럼</th><th>타입</th><th>NULL</th><th>설명</th></tr></thead><tbody><tr><td><code>id</code></td><td>INT UNSIGNED</td><td>N</td><td>기본키 (자동 증가)</td></tr><tr><td><code>comment_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr><tr><td><code>user_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr><tr><td><code>created_at</code></td><td>DATETIME</td><td>N</td><td></td></tr></tbody></table>
@@ -135,12 +149,12 @@ blockquote{border-left:3px solid var(--teal);background:#eef5f4;border-radius:0 
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `comment_id` INT UNSIGNED NOT NULL,
   `user_id` INT UNSIGNED NOT NULL,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_comment_reports_comment_id_user_id` (`comment_id`, `user_id`),
   CONSTRAINT `fk_comment_reports_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `fk_comment_reports_comment_id` FOREIGN KEY (`comment_id`) REFERENCES `comments` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</code></pre>
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;</code></pre>
 <h3 class="sub"><code>comments</code></h3>
 <p>댓글·답글 (parent_id 가 있으면 답글)</p>
 <table><thead><tr><th>컬럼</th><th>타입</th><th>NULL</th><th>설명</th></tr></thead><tbody><tr><td><code>id</code></td><td>INT UNSIGNED</td><td>N</td><td>기본키 (자동 증가)</td></tr><tr><td><code>post_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr><tr><td><code>user_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr><tr><td><code>parent_id</code></td><td>INT UNSIGNED</td><td>Y</td><td></td></tr><tr><td><code>content</code></td><td>TEXT</td><td>N</td><td></td></tr><tr><td><code>created_at</code></td><td>DATETIME</td><td>N</td><td></td></tr><tr><td><code>updated_at</code></td><td>DATETIME</td><td>Y</td><td></td></tr><tr><td><code>is_deleted</code></td><td>TINYINT(1)</td><td>N</td><td>답글이 달린 댓글은 지우지 않고 흔적만 남긴다</td></tr></tbody></table>
@@ -150,14 +164,14 @@ blockquote{border-left:3px solid var(--teal);background:#eef5f4;border-radius:0 
   `user_id` INT UNSIGNED NOT NULL,
   `parent_id` INT UNSIGNED,
   `content` TEXT NOT NULL,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   `updated_at` DATETIME,
   `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_comments_parent_id` FOREIGN KEY (`parent_id`) REFERENCES `comments` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_comments_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `fk_comments_post_id` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</code></pre>
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;</code></pre>
 <h3 class="sub"><code>likes</code></h3>
 <p>글 추천 (취소 없음, 1인 1회)</p>
 <table><thead><tr><th>컬럼</th><th>타입</th><th>NULL</th><th>설명</th></tr></thead><tbody><tr><td><code>id</code></td><td>INT UNSIGNED</td><td>N</td><td>기본키 (자동 증가)</td></tr><tr><td><code>post_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr><tr><td><code>user_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr></tbody></table>
@@ -169,7 +183,7 @@ blockquote{border-left:3px solid var(--teal);background:#eef5f4;border-radius:0 
   UNIQUE KEY `uq_likes_post_id_user_id` (`post_id`, `user_id`),
   CONSTRAINT `fk_likes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `fk_likes_post_id` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</code></pre>
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;</code></pre>
 <h3 class="sub"><code>notifications</code></h3>
 <p>알림</p>
 <table><thead><tr><th>컬럼</th><th>타입</th><th>NULL</th><th>설명</th></tr></thead><tbody><tr><td><code>id</code></td><td>INT UNSIGNED</td><td>N</td><td>기본키 (자동 증가)</td></tr><tr><td><code>user_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr><tr><td><code>message</code></td><td>VARCHAR(255)</td><td>N</td><td></td></tr><tr><td><code>link</code></td><td>VARCHAR(255)</td><td>Y</td><td></td></tr><tr><td><code>is_read</code></td><td>TINYINT(1)</td><td>N</td><td></td></tr><tr><td><code>created_at</code></td><td>DATETIME</td><td>N</td><td></td></tr></tbody></table>
@@ -179,10 +193,10 @@ blockquote{border-left:3px solid var(--teal);background:#eef5f4;border-radius:0 
   `message` VARCHAR(255) NOT NULL,
   `link` VARCHAR(255),
   `is_read` TINYINT(1) NOT NULL DEFAULT 0,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_notifications_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</code></pre>
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;</code></pre>
 <h3 class="sub"><code>point_logs</code></h3>
 <p>포인트 적립·차감 내역</p>
 <table><thead><tr><th>컬럼</th><th>타입</th><th>NULL</th><th>설명</th></tr></thead><tbody><tr><td><code>id</code></td><td>INT UNSIGNED</td><td>N</td><td>기본키 (자동 증가)</td></tr><tr><td><code>user_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr><tr><td><code>amount</code></td><td>INT</td><td>N</td><td>지급은 양수, 구매 차감은 음수</td></tr><tr><td><code>reason</code></td><td>VARCHAR(20)</td><td>N</td><td>signup / attendance / post / anon_post / comment / like_received / popular / admin_pick / streak7 / streak14 / streak21 / streak28 / streak30 / purchase</td></tr><tr><td><code>detail</code></td><td>VARCHAR(255)</td><td>Y</td><td></td></tr><tr><td><code>created_at</code></td><td>DATETIME</td><td>N</td><td></td></tr></tbody></table>
@@ -192,10 +206,10 @@ blockquote{border-left:3px solid var(--teal);background:#eef5f4;border-radius:0 
   `amount` INT NOT NULL,
   `reason` VARCHAR(20) NOT NULL,
   `detail` VARCHAR(255),
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_point_logs_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</code></pre>
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;</code></pre>
 <h3 class="sub"><code>post_images</code></h3>
 <p>글에 첨부한 사진 (본문에 넣은 사진은 본문 HTML 안에 있고, 이 표는 옛 방식 첨부)</p>
 <table><thead><tr><th>컬럼</th><th>타입</th><th>NULL</th><th>설명</th></tr></thead><tbody><tr><td><code>id</code></td><td>INT UNSIGNED</td><td>N</td><td>기본키 (자동 증가)</td></tr><tr><td><code>post_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr><tr><td><code>filename</code></td><td>VARCHAR(255)</td><td>N</td><td></td></tr><tr><td><code>sort</code></td><td>INT</td><td>N</td><td></td></tr></tbody></table>
@@ -206,7 +220,7 @@ blockquote{border-left:3px solid var(--teal);background:#eef5f4;border-radius:0 
   `sort` INT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_post_images_post_id` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</code></pre>
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;</code></pre>
 <h3 class="sub"><code>posts</code></h3>
 <p>게시글</p>
 <table><thead><tr><th>컬럼</th><th>타입</th><th>NULL</th><th>설명</th></tr></thead><tbody><tr><td><code>id</code></td><td>INT UNSIGNED</td><td>N</td><td>기본키 (자동 증가)</td></tr><tr><td><code>user_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr><tr><td><code>category</code></td><td>VARCHAR(20)</td><td>N</td><td></td></tr><tr><td><code>title</code></td><td>VARCHAR(255)</td><td>N</td><td></td></tr><tr><td><code>content</code></td><td>TEXT</td><td>N</td><td></td></tr><tr><td><code>is_anonymous</code></td><td>TINYINT(1)</td><td>N</td><td></td></tr><tr><td><code>block_comments</code></td><td>TINYINT(1)</td><td>N</td><td></td></tr><tr><td><code>is_notice</code></td><td>TINYINT(1)</td><td>N</td><td></td></tr><tr><td><code>is_hidden</code></td><td>TINYINT(1)</td><td>N</td><td>숨김 처리. 일반 회원에게 보이지 않고 운영자만 열람</td></tr><tr><td><code>is_popular</code></td><td>TINYINT(1)</td><td>N</td><td>인기글 선정 여부 (추천 10개 이상)</td></tr><tr><td><code>admin_picked</code></td><td>INT</td><td>N</td><td>운영자 추천글 선정 여부</td></tr><tr><td><code>views</code></td><td>INT</td><td>N</td><td></td></tr><tr><td><code>created_at</code></td><td>DATETIME</td><td>N</td><td></td></tr><tr><td><code>updated_at</code></td><td>DATETIME</td><td>Y</td><td></td></tr><tr><td><code>content_format</code></td><td>VARCHAR(20)</td><td>N</td><td>text(옛 글, 그대로 이스케이프) / html(에디터 글, 정화 후 저장)</td></tr><tr><td><code>content_text</code></td><td>TEXT</td><td>Y</td><td>검색·미리보기용 평문 사본 (HTML 태그 제외)</td></tr><tr><td><code>like_count</code></td><td>INT</td><td>N</td><td>추천 수 비정규화. 정렬을 인덱스만으로 끝내려고 둔다</td></tr></tbody></table>
@@ -223,14 +237,14 @@ blockquote{border-left:3px solid var(--teal);background:#eef5f4;border-radius:0 
   `is_popular` TINYINT(1) NOT NULL DEFAULT 0,
   `admin_picked` INT NOT NULL DEFAULT 0,
   `views` INT NOT NULL DEFAULT 0,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   `updated_at` DATETIME,
   `content_format` VARCHAR(20) NOT NULL DEFAULT 'text',
   `content_text` TEXT,
   `like_count` INT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_posts_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</code></pre>
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;</code></pre>
 <h3 class="sub"><code>reports</code></h3>
 <p>글 신고</p>
 <table><thead><tr><th>컬럼</th><th>타입</th><th>NULL</th><th>설명</th></tr></thead><tbody><tr><td><code>id</code></td><td>INT UNSIGNED</td><td>N</td><td>기본키 (자동 증가)</td></tr><tr><td><code>post_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr><tr><td><code>user_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr><tr><td><code>created_at</code></td><td>DATETIME</td><td>N</td><td></td></tr></tbody></table>
@@ -238,12 +252,12 @@ blockquote{border-left:3px solid var(--teal);background:#eef5f4;border-radius:0 
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `post_id` INT UNSIGNED NOT NULL,
   `user_id` INT UNSIGNED NOT NULL,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_reports_post_id_user_id` (`post_id`, `user_id`),
   CONSTRAINT `fk_reports_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `fk_reports_post_id` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</code></pre>
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;</code></pre>
 <h3 class="sub"><code>user_items</code></h3>
 <p>포인트로 산 캐릭터·테두리</p>
 <table><thead><tr><th>컬럼</th><th>타입</th><th>NULL</th><th>설명</th></tr></thead><tbody><tr><td><code>id</code></td><td>INT UNSIGNED</td><td>N</td><td>기본키 (자동 증가)</td></tr><tr><td><code>user_id</code></td><td>INT UNSIGNED</td><td>N</td><td></td></tr><tr><td><code>item_code</code></td><td>VARCHAR(40)</td><td>N</td><td>구매한 캐릭터·테두리 code</td></tr><tr><td><code>price</code></td><td>INT</td><td>N</td><td></td></tr><tr><td><code>created_at</code></td><td>DATETIME</td><td>N</td><td></td></tr></tbody></table>
@@ -252,11 +266,11 @@ blockquote{border-left:3px solid var(--teal);background:#eef5f4;border-radius:0 
   `user_id` INT UNSIGNED NOT NULL,
   `item_code` VARCHAR(40) NOT NULL,
   `price` INT NOT NULL DEFAULT 0,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_user_items_user_id_item_code` (`user_id`, `item_code`),
   CONSTRAINT `fk_user_items_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</code></pre>
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;</code></pre>
 <h3 class="sub"><code>users</code></h3>
 <p>회원. 연동 모드에서는 아이디·비밀번호가 아니라 <strong>A사이트 회원번호에 매달린 커뮤니티 프로필</strong>이다.</p>
 <table><thead><tr><th>컬럼</th><th>타입</th><th>NULL</th><th>설명</th></tr></thead><tbody><tr><td><code>id</code></td><td>INT UNSIGNED</td><td>N</td><td>기본키 (자동 증가)</td></tr><tr><td><code>username</code></td><td>VARCHAR(50)</td><td>N</td><td></td></tr><tr><td><code>password_hash</code></td><td>VARCHAR(255)</td><td>N</td><td>연동 모드에서는 빈 문자열 (비밀번호를 갖지 않음)</td></tr><tr><td><code>nickname</code></td><td>VARCHAR(50)</td><td>N</td><td></td></tr><tr><td><code>points</code></td><td>INT</td><td>N</td><td>현재 보유 포인트. point_logs 의 합과 같아야 한다</td></tr><tr><td><code>avatar_id</code></td><td>VARCHAR(40)</td><td>N</td><td>public/avatars/manifest.json 의 code (예: male-03)</td></tr><tr><td><code>border_id</code></td><td>VARCHAR(40)</td><td>Y</td><td>같은 매니페스트의 테두리 code. 없으면 NULL</td></tr><tr><td><code>is_admin</code></td><td>TINYINT(1)</td><td>N</td><td></td></tr><tr><td><code>is_banned</code></td><td>TINYINT(1)</td><td>N</td><td></td></tr><tr><td><code>created_at</code></td><td>DATETIME</td><td>N</td><td></td></tr><tr><td><code>member_type</code></td><td>VARCHAR(20)</td><td>N</td><td>female / male / venue — 어떤 캐릭터를 배정·판매할지 가른다</td></tr><tr><td><code>external_id</code></td><td>VARCHAR(64)</td><td>Y</td><td>A사이트 회원번호. 연동 모드에서 사람을 가리키는 열쇠</td></tr></tbody></table>
@@ -270,14 +284,14 @@ blockquote{border-left:3px solid var(--teal);background:#eef5f4;border-radius:0 
   `border_id` VARCHAR(40),
   `is_admin` TINYINT(1) NOT NULL DEFAULT 0,
   `is_banned` TINYINT(1) NOT NULL DEFAULT 0,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   `member_type` VARCHAR(20) NOT NULL DEFAULT 'female',
   `external_id` VARCHAR(64),
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_users_external` (`external_id`),
   UNIQUE KEY `uq_users_nickname` (`nickname`),
   UNIQUE KEY `uq_users_username` (`username`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;</code></pre>
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;</code></pre>
 <h2 class="sec">3. 인덱스와 그 이유</h2>
 <p>목록이 느려지는 지점은 정해져 있어서, 아래 인덱스는 꼭 함께 옮겨 주세요.</p>
 <pre><code>-- 목록: 최신순 (공지 분리 + id 역순)

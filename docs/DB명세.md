@@ -2,7 +2,7 @@
 
 > 커뮤니티 게시판을 PHP 로 옮기실 때 참고하시라고 만든 문서입니다.
 > 현재 동작 중인 스키마를 그대로 읽어 MySQL 문법으로 옮긴 것이라 실제 코드와 어긋나지 않습니다.
-> (`node scripts/make-db-spec.js` 로 다시 만들 수 있습니다 · 작성일 2026-08-04)
+> (`node scripts/make-db-spec.js` 로 다시 만들 수 있습니다 · 작성일 2026-08-05)
 
 ## 0. 먼저 알아두실 것
 
@@ -12,6 +12,58 @@
 - 날짜/시간은 전부 **Asia/Seoul 기준 문자열**로 저장하고 있습니다. MySQL 로 옮기실 때는
   `DATETIME` 으로 두고 서버 타임존을 `+09:00` 으로 맞춰 주세요.
 - 참(true)/거짓은 `TINYINT(1)` 의 `0/1` 입니다.
+
+### ⚠ PHP 5.1 세대 서버에 맞춰 낮춰 둔 것
+
+PHP 5.1 은 2005~2006년 물건이라, 그 시절 서버는 대개 **MySQL 5.0** 입니다.
+아래 DDL 은 **그 버전에서 그대로 돌아가도록** 낮춰서 냈습니다.
+
+| 흔히 쓰는 표기 | 언제부터 쓸 수 있나 | 그래서 이 문서는 |
+|---|---|---|
+| `CHARSET=utf8mb4` | MySQL **5.5.3** | `utf8` 로 냈습니다 |
+| `DATETIME ... DEFAULT CURRENT_TIMESTAMP` | MySQL **5.6.5** | 기본값을 빼고, 넣을 때 `NOW()` 를 적게 했습니다 |
+| InnoDB `FULLTEXT` | MySQL **5.6** | 검색은 `LIKE` 기준으로 적었습니다 (7장) |
+| `ngram` 파서 (한글 부분일치) | MySQL **5.7** | 같음 |
+
+`DEFAULT CURRENT_TIMESTAMP` 가 특히 조심하실 부분입니다. 옛 MySQL 에서는
+`TIMESTAMP` 컬럼에만, 그것도 **표당 하나만** 허용돼서, 그대로 두면
+`CREATE TABLE` 자체가 실패합니다. 그래서 시각 컬럼에는 기본값을 안 넣고
+`INSERT ... (created_at) VALUES (..., NOW())` 로 적게 해 뒀습니다.
+
+**이모지는 못 담습니다.** MySQL 5.0 의 `utf8` 은 3바이트라 이모지(4바이트)를
+넣으면 잘리거나 오류가 납니다. 지금 데모 글 제목에도 `☺` 가 들어 있습니다.
+서버가 5.5.3 이상이면 `utf8` 을 전부 `utf8mb4` 로 바꾸시는 편이 낫고,
+5.0 이면 글쓰기에서 4바이트 문자를 걸러 주셔야 합니다.
+
+### PHP 5.1 자체에 없는 것
+
+| 쓰고 싶은 것 | 언제부터 | 5.1 에서는 |
+|---|---|---|
+| `json_decode` / `json_encode` | PHP **5.2** | 같은 목록을 `docs/avatars.php` 로 뽑아 뒀습니다 |
+| `DateTime` 클래스 | PHP **5.2** | `strtotime()` · `date()` 로 |
+| `password_hash` / `password_verify` | PHP **5.5** | 연동 모드면 비밀번호 자체가 없습니다 |
+| 익명 함수(클로저) | PHP **5.3** | `create_function` 또는 일반 함수 |
+| 네임스페이스 | PHP **5.3** | 접두사로 |
+
+**캐릭터 목록은 `docs/avatars.php` 를 쓰시면 됩니다.**
+지금 Node 구현은 `public/avatars/manifest.json` 을 읽는데, PHP 5.1 에는 그걸 읽을
+`json_decode` 가 없습니다. 그래서 같은 내용을 PHP 배열 파일로도 뽑아 뒀습니다
+(대괄호 배열도 5.4부터라 `array()` 로 냈습니다).
+
+```php
+$avatars = include 'avatars.php';
+foreach ($avatars as $a) {
+    echo $a['code'], ' ', $a['name'];   // female-glamgold-2-2 / 글램 골드 2-2
+}
+```
+
+`users.avatar_id` · `users.border_id` · `user_items.item_code` 에 들어가는 값이
+`code` 입니다. 그림 파일은 `public/avatars/` 아래 `file`(본문) · `thumb`(썸네일)
+이름으로 있습니다. 캐릭터가 늘면 이 파일도 같이 다시 만들어집니다.
+
+SQL 은 **반드시 값을 바인딩**해 주세요. PDO·mysqli 가 없고 `mysql_*` 만 있는
+서버라면 `mysql_real_escape_string()` 을 빠짐없이 거쳐야 합니다.
+지금 Node 구현은 모든 쿼리를 바인딩하고 있어 그 부분만 옮기면 됩니다.
 
 ### SQLite → MySQL 로 바꿀 때 주의할 함수
 
@@ -65,7 +117,7 @@ CREATE TABLE `attendance` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_attendance_user_id_day` (`user_id`, `day`),
   CONSTRAINT `fk_attendance_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ```
 
 ### `bookmarks`
@@ -83,12 +135,12 @@ CREATE TABLE `bookmarks` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id` INT UNSIGNED NOT NULL,
   `post_id` INT UNSIGNED NOT NULL,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_bookmarks_user_id_post_id` (`user_id`, `post_id`),
   CONSTRAINT `fk_bookmarks_post_id` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_bookmarks_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ```
 
 ### `comment_likes`
@@ -109,7 +161,7 @@ CREATE TABLE `comment_likes` (
   UNIQUE KEY `uq_comment_likes_comment_id_user_id` (`comment_id`, `user_id`),
   CONSTRAINT `fk_comment_likes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `fk_comment_likes_comment_id` FOREIGN KEY (`comment_id`) REFERENCES `comments` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ```
 
 ### `comment_reports`
@@ -127,12 +179,12 @@ CREATE TABLE `comment_reports` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `comment_id` INT UNSIGNED NOT NULL,
   `user_id` INT UNSIGNED NOT NULL,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_comment_reports_comment_id_user_id` (`comment_id`, `user_id`),
   CONSTRAINT `fk_comment_reports_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `fk_comment_reports_comment_id` FOREIGN KEY (`comment_id`) REFERENCES `comments` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ```
 
 ### `comments`
@@ -156,14 +208,14 @@ CREATE TABLE `comments` (
   `user_id` INT UNSIGNED NOT NULL,
   `parent_id` INT UNSIGNED,
   `content` TEXT NOT NULL,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   `updated_at` DATETIME,
   `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_comments_parent_id` FOREIGN KEY (`parent_id`) REFERENCES `comments` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_comments_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `fk_comments_post_id` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ```
 
 ### `likes`
@@ -184,7 +236,7 @@ CREATE TABLE `likes` (
   UNIQUE KEY `uq_likes_post_id_user_id` (`post_id`, `user_id`),
   CONSTRAINT `fk_likes_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `fk_likes_post_id` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ```
 
 ### `notifications`
@@ -206,10 +258,10 @@ CREATE TABLE `notifications` (
   `message` VARCHAR(255) NOT NULL,
   `link` VARCHAR(255),
   `is_read` TINYINT(1) NOT NULL DEFAULT 0,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_notifications_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ```
 
 ### `point_logs`
@@ -231,10 +283,10 @@ CREATE TABLE `point_logs` (
   `amount` INT NOT NULL,
   `reason` VARCHAR(20) NOT NULL,
   `detail` VARCHAR(255),
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_point_logs_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ```
 
 ### `post_images`
@@ -255,7 +307,7 @@ CREATE TABLE `post_images` (
   `sort` INT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_post_images_post_id` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ```
 
 ### `posts`
@@ -295,14 +347,14 @@ CREATE TABLE `posts` (
   `is_popular` TINYINT(1) NOT NULL DEFAULT 0,
   `admin_picked` INT NOT NULL DEFAULT 0,
   `views` INT NOT NULL DEFAULT 0,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   `updated_at` DATETIME,
   `content_format` VARCHAR(20) NOT NULL DEFAULT 'text',
   `content_text` TEXT,
   `like_count` INT NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   CONSTRAINT `fk_posts_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ```
 
 ### `reports`
@@ -320,12 +372,12 @@ CREATE TABLE `reports` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `post_id` INT UNSIGNED NOT NULL,
   `user_id` INT UNSIGNED NOT NULL,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_reports_post_id_user_id` (`post_id`, `user_id`),
   CONSTRAINT `fk_reports_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`),
   CONSTRAINT `fk_reports_post_id` FOREIGN KEY (`post_id`) REFERENCES `posts` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ```
 
 ### `user_items`
@@ -345,11 +397,11 @@ CREATE TABLE `user_items` (
   `user_id` INT UNSIGNED NOT NULL,
   `item_code` VARCHAR(40) NOT NULL,
   `price` INT NOT NULL DEFAULT 0,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   PRIMARY KEY (`id`),
   UNIQUE KEY `uq_user_items_user_id_item_code` (`user_id`, `item_code`),
   CONSTRAINT `fk_user_items_user_id` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ```
 
 ### `users`
@@ -381,14 +433,14 @@ CREATE TABLE `users` (
   `border_id` VARCHAR(40),
   `is_admin` TINYINT(1) NOT NULL DEFAULT 0,
   `is_banned` TINYINT(1) NOT NULL DEFAULT 0,
-  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `created_at` DATETIME NOT NULL,   -- 넣을 때 NOW() 를 함께 적어 주세요
   `member_type` VARCHAR(20) NOT NULL DEFAULT 'female',
   `external_id` VARCHAR(64),
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_users_external` (`external_id`),
   UNIQUE KEY `uq_users_nickname` (`nickname`),
   UNIQUE KEY `uq_users_username` (`username`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 ```
 
 

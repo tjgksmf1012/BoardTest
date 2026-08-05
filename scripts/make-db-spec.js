@@ -96,6 +96,7 @@ function tableDDL(name) {
   const idxList = db.prepare(`PRAGMA index_list(${name})`).all();
 
   const lines = [];
+  const notes = {};   // 줄 번호 → 줄 끝에 붙일 설명 (쉼표 뒤에 붙는다)
   for (const c of cols) {
     let t = mysqlType(name, c.name, c.type);
     let line = `  \`${c.name}\` ${t}`;
@@ -103,7 +104,14 @@ function tableDDL(name) {
     if (c.notnull) line += ' NOT NULL';
     if (c.dflt_value !== null && c.dflt_value !== undefined) {
       let d = String(c.dflt_value);
-      if (/datetime\('now'/i.test(d)) d = 'CURRENT_TIMESTAMP';
+      // 시각 기본값은 넣지 않는다.
+      // DATETIME 컬럼에 DEFAULT CURRENT_TIMESTAMP 를 쓸 수 있게 된 건 MySQL 5.6.5 부터고,
+      // 그 전에는 TIMESTAMP 컬럼에만, 그것도 표당 하나만 허용된다.
+      // 옮겨 갈 곳이 PHP 5.1 세대(대개 MySQL 5.0)라 그대로 두면 CREATE TABLE 자체가 실패한다.
+      // 넣을 때 NOW() 를 함께 적는 쪽이 어느 버전에서나 돈다.
+      // 주석은 줄 끝에 붙이는데, 쉼표보다 앞에 오면 -- 가 쉼표까지 삼켜 SQL 이 깨진다.
+      // 그래서 표시만 해 두고 쉼표를 찍은 뒤에 붙인다(아래 join).
+      if (/datetime\('now'/i.test(d)) { lines.push(line); notes[lines.length - 1] = '넣을 때 NOW() 를 함께 적어 주세요'; continue; }
       line += ` DEFAULT ${d}`;
     }
     lines.push(line);
@@ -125,8 +133,13 @@ function tableDDL(name) {
       + (fk.on_delete && fk.on_delete !== 'NO ACTION' ? ` ON DELETE ${fk.on_delete}` : ''));
   }
 
-  return '```sql\nCREATE TABLE `' + name + '` (\n' + lines.join(',\n')
-    + '\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;\n```';
+  // utf8mb4 는 MySQL 5.5.3 부터다. 옮겨 갈 곳이 그보다 옛 버전일 수 있어 utf8 로 낸다.
+  // (5.5.3 이상이면 utf8mb4 로 바꾸는 편이 낫다 — 이모지가 안 깨진다. 0장에 적어 뒀다)
+  const body = lines
+    .map((l, i) => l + (i < lines.length - 1 ? ',' : '') + (notes[i] ? `   -- ${notes[i]}` : ''))
+    .join('\n');
+  return '```sql\nCREATE TABLE `' + name + '` (\n' + body
+    + '\n) ENGINE=InnoDB DEFAULT CHARSET=utf8;\n```';
 }
 
 function columnTable(name) {
@@ -305,6 +318,58 @@ const md = `# DB 스키마 · 쿼리 명세서
   \`DATETIME\` 으로 두고 서버 타임존을 \`+09:00\` 으로 맞춰 주세요.
 - 참(true)/거짓은 \`TINYINT(1)\` 의 \`0/1\` 입니다.
 
+### ⚠ PHP 5.1 세대 서버에 맞춰 낮춰 둔 것
+
+PHP 5.1 은 2005~2006년 물건이라, 그 시절 서버는 대개 **MySQL 5.0** 입니다.
+아래 DDL 은 **그 버전에서 그대로 돌아가도록** 낮춰서 냈습니다.
+
+| 흔히 쓰는 표기 | 언제부터 쓸 수 있나 | 그래서 이 문서는 |
+|---|---|---|
+| \`CHARSET=utf8mb4\` | MySQL **5.5.3** | \`utf8\` 로 냈습니다 |
+| \`DATETIME ... DEFAULT CURRENT_TIMESTAMP\` | MySQL **5.6.5** | 기본값을 빼고, 넣을 때 \`NOW()\` 를 적게 했습니다 |
+| InnoDB \`FULLTEXT\` | MySQL **5.6** | 검색은 \`LIKE\` 기준으로 적었습니다 (7장) |
+| \`ngram\` 파서 (한글 부분일치) | MySQL **5.7** | 같음 |
+
+\`DEFAULT CURRENT_TIMESTAMP\` 가 특히 조심하실 부분입니다. 옛 MySQL 에서는
+\`TIMESTAMP\` 컬럼에만, 그것도 **표당 하나만** 허용돼서, 그대로 두면
+\`CREATE TABLE\` 자체가 실패합니다. 그래서 시각 컬럼에는 기본값을 안 넣고
+\`INSERT ... (created_at) VALUES (..., NOW())\` 로 적게 해 뒀습니다.
+
+**이모지는 못 담습니다.** MySQL 5.0 의 \`utf8\` 은 3바이트라 이모지(4바이트)를
+넣으면 잘리거나 오류가 납니다. 지금 데모 글 제목에도 \`☺\` 가 들어 있습니다.
+서버가 5.5.3 이상이면 \`utf8\` 을 전부 \`utf8mb4\` 로 바꾸시는 편이 낫고,
+5.0 이면 글쓰기에서 4바이트 문자를 걸러 주셔야 합니다.
+
+### PHP 5.1 자체에 없는 것
+
+| 쓰고 싶은 것 | 언제부터 | 5.1 에서는 |
+|---|---|---|
+| \`json_decode\` / \`json_encode\` | PHP **5.2** | 같은 목록을 \`docs/avatars.php\` 로 뽑아 뒀습니다 |
+| \`DateTime\` 클래스 | PHP **5.2** | \`strtotime()\` · \`date()\` 로 |
+| \`password_hash\` / \`password_verify\` | PHP **5.5** | 연동 모드면 비밀번호 자체가 없습니다 |
+| 익명 함수(클로저) | PHP **5.3** | \`create_function\` 또는 일반 함수 |
+| 네임스페이스 | PHP **5.3** | 접두사로 |
+
+**캐릭터 목록은 \`docs/avatars.php\` 를 쓰시면 됩니다.**
+지금 Node 구현은 \`public/avatars/manifest.json\` 을 읽는데, PHP 5.1 에는 그걸 읽을
+\`json_decode\` 가 없습니다. 그래서 같은 내용을 PHP 배열 파일로도 뽑아 뒀습니다
+(대괄호 배열도 5.4부터라 \`array()\` 로 냈습니다).
+
+\`\`\`php
+$avatars = include 'avatars.php';
+foreach ($avatars as $a) {
+    echo $a['code'], ' ', $a['name'];   // female-glamgold-2-2 / 글램 골드 2-2
+}
+\`\`\`
+
+\`users.avatar_id\` · \`users.border_id\` · \`user_items.item_code\` 에 들어가는 값이
+\`code\` 입니다. 그림 파일은 \`public/avatars/\` 아래 \`file\`(본문) · \`thumb\`(썸네일)
+이름으로 있습니다. 캐릭터가 늘면 이 파일도 같이 다시 만들어집니다.
+
+SQL 은 **반드시 값을 바인딩**해 주세요. PDO·mysqli 가 없고 \`mysql_*\` 만 있는
+서버라면 \`mysql_real_escape_string()\` 을 빠짐없이 거쳐야 합니다.
+지금 Node 구현은 모든 쿼리를 바인딩하고 있어 그 부분만 옮기면 됩니다.
+
 ### SQLite → MySQL 로 바꿀 때 주의할 함수
 
 | 지금 (SQLite) | MySQL |
@@ -482,6 +547,70 @@ UPDATE posts SET category = '자유' WHERE category IN ('알바후기', '구인�
    \`users.avatar_id\` 에는 그 \`code\` 가 들어갑니다. 이미지가 225장으로 늘어나도 표는 그대로입니다.
 `;
 
+// ---- 내보내기 전에 DDL 을 한 번 훑는다 ----------------------------------------
+// 한 번은 줄 끝 주석을 쉼표보다 앞에 붙이는 바람에 `--` 가 쉼표까지 삼켜서,
+// 문서에 실린 CREATE TABLE 이 통째로 안 도는 상태로 나갈 뻔했다.
+// 사람이 눈으로 훑기엔 표가 13개나 되니 여기서 기계가 본다.
+{
+  const blocks = [...md.matchAll(/```sql\n(CREATE TABLE[\s\S]*?)\n```/g)].map((m) => m[1]);
+  const bad = [];
+  for (const b of blocks) {
+    const name = (b.match(/CREATE TABLE `(\w+)`/) || [])[1] || '?';
+    const lines = b.split('\n').slice(1, -1);      // CREATE TABLE ... ( 와 ) ENGINE... 사이
+    lines.forEach((l, i) => {
+      const code = l.replace(/--.*$/, '').trimEnd(); // 주석을 떼고 본다
+      const last = i === lines.length - 1;
+      if (!last && !code.endsWith(',')) bad.push(`${name}: 쉼표가 빠졌어요 — ${l.trim()}`);
+      if (last && code.endsWith(',')) bad.push(`${name}: 마지막 줄에 쉼표가 남았어요 — ${l.trim()}`);
+    });
+    const open = (b.match(/\(/g) || []).length;
+    const close = (b.match(/\)/g) || []).length;
+    if (open !== close) bad.push(`${name}: 괄호 짝이 안 맞아요 (${open} 대 ${close})`);
+  }
+  if (bad.length) {
+    console.error('문서에 실으려던 DDL 이 그대로는 안 돌아요:\n - ' + bad.join('\n - '));
+    process.exit(1);
+  }
+  console.log(`DDL ${blocks.length}개 구문 확인`);
+}
+
 fs.writeFileSync(OUT, md);
+
+// ---- 캐릭터 목록을 PHP 배열로도 내보낸다 --------------------------------------
+// 캐릭터 225장 + 테두리 9종의 목록은 public/avatars/manifest.json 에 있는데,
+// PHP 5.1 에는 json_decode 가 없다(5.2부터). 그래서 같은 내용을 그냥
+// PHP 파일로 뽑아 둔다 — include 한 줄이면 배열로 받을 수 있다.
+// 대괄호 배열([])도 5.4부터라 array() 로 쓴다.
+{
+  const items = require('../src/avatars').items();
+  const q = (v) => "'" + String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'";
+  const val = (v) => (v === null || v === undefined ? 'null'
+    : typeof v === 'number' ? String(v)
+    : typeof v === 'boolean' ? (v ? 'true' : 'false') : q(v));
+  const KEYS = ['code', 'kind', 'memberType', 'name', 'theme', 'themeCode',
+    'row', 'col', 'free', 'price', 'file', 'thumb'];
+  const rows = items.map((it) => '  array('
+    + KEYS.filter((k) => it[k] !== undefined).map((k) => `${q(k)} => ${val(it[k])}`).join(', ')
+    + '),');
+  const php = `<?php
+// 캐릭터·테두리 목록 (자동 생성 — node scripts/make-db-spec.js)
+//
+// public/avatars/manifest.json 과 같은 내용입니다.
+// PHP 5.1 에는 json_decode 가 없어서(5.2부터) 배열 그대로 뽑아 뒀습니다.
+//
+//   $avatars = include 'avatars.php';
+//   foreach ($avatars as $a) { echo $a['code'], ' ', $a['name'], "\\n"; }
+//
+// users.avatar_id · users.border_id · user_items.item_code 에 들어가는 값이 'code' 입니다.
+// 그림 파일은 public/avatars/ 아래 'file'(본문) · 'thumb'(썸네일) 이름으로 있습니다.
+// 총 ${items.length}개 · 만든 날 ${today}
+
+return array(
+${rows.join('\n')}
+);
+`;
+  fs.writeFileSync(path.join(__dirname, '..', 'docs', 'avatars.php'), php);
+  console.log(`캐릭터 ${items.length}개를 PHP 배열로도 냈어요 → docs/avatars.php`);
+}
 console.log(`쿼리 ${QUERIES.length}개 실행 확인 · 테이블 ${TABLES.length}개`);
 console.log('→ docs/DB명세.md');
