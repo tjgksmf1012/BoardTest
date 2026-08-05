@@ -7,7 +7,8 @@
     "start": "node server.js",
     "test": "node --test",
     "persona": "node scripts/persona-test.js",
-    "sweep": "node scripts/sweep.js"
+    "sweep": "node scripts/sweep.js",
+    "ring": "node scripts/check-ring.js"
   },
   "engines": {
     "node": ">=20.19 <21 || >=22.12 <23"

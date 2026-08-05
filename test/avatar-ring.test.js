@@ -8,6 +8,12 @@
 //
 // 그래서 '보이는 것'을 숫자로 바꿔서 검사한다.
 // 고리 PNG 를 직접 읽어 구멍이 얼마나 뚫려 있는지 재고, 그 구멍이 얼굴보다 큰지 본다.
+//
+// 다만 이 검사에는 한계가 있다. PNG 의 알파값을 재는 것이라 '알파가 남아 있지만
+// 눈에는 안 보이는' 흐린 가장자리까지 고리로 친다. 그래서 여기를 통과하고도
+// 화면에는 흰 띠가 남은 적이 있다. 실제로 그려진 픽셀을 재는 검사는 따로 있다 —
+//   npm run ring   (scripts/check-ring.js)
+// 이 파일은 '그림이 바뀌었는지' 를 지키고, 저쪽이 '화면에서 딱 붙는지' 를 지킨다.
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -132,17 +138,17 @@ test('크기는 CSS 가 아니라 요소에 직접 붙는다 (우선순위에 �
   const chars = avatars.characters ? avatars.characters() : avatars.items().filter((i) => i.kind !== 'border');
   const html = avatars.renderAvatar(chars[0].code, borders[0].code, 44);
   assert.match(html, /class="avatar-ring"[^>]*style="width:120%/, '고리 크기가 붙어 있어야 한다');
-  assert.match(html, /class="avatar-face"[^>]*style="width:70%/, '얼굴 크기가 붙어 있어야 한다');
+  assert.match(html, /class="avatar-face"[^>]*style="width:72%/, '얼굴 크기가 붙어 있어야 한다');
   // 테두리를 안 낀 아바타는 예전처럼 칸을 꽉 채운다
   const plain = avatars.renderAvatar(chars[0].code, null, 44);
-  assert.ok(!plain.includes('style="width:70%'), '고리가 없으면 얼굴을 줄이지 않는다');
+  assert.ok(!plain.includes('style="width:72%'), '고리가 없으면 얼굴을 줄이지 않는다');
 });
 
 test('테두리 칸에 나란히 놓을 때는 고리가 없어도 얼굴 크기를 맞춘다', () => {
   const chars = avatars.characters ? avatars.characters() : avatars.items().filter((i) => i.kind !== 'border');
   // 상점의 '사용 안 함' 칸만 테두리가 없어서 혼자 얼굴이 크게 나왔다 (72px 대 55px)
   const slot = avatars.renderAvatar(chars[0].code, null, 72, { ringSlot: true });
-  assert.match(slot, /class="avatar-face"[^>]*style="width:70%/);
+  assert.match(slot, /class="avatar-face"[^>]*style="width:72%/);
   assert.ok(!slot.includes('avatar-ring'), '고리를 넣으라는 뜻은 아니다');
   assert.ok(!slot.includes('has-ring'), '고리가 없으니 잘라내기는 그대로 둔다');
 });
