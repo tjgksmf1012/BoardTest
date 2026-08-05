@@ -148,7 +148,7 @@ t('끊겼다 다시 7일을 채우면 보너스를 다시 받는다', $r5['award
 
 echo "\n== 캐릭터 그리기 ==\n";
 $html = cm_render_avatar($paid['code'], 'border-gold', 44);
-t('고리 크기가 요소에 직접 붙는다 (120%)', strpos($html, 'width:120%') !== false);
+t('고리 크기가 요소에 직접 붙는다 (134%)', strpos($html, 'width:134%') !== false);
 t('캐릭터 크기가 요소에 직접 붙는다 (92%)', strpos($html, 'width:92%') !== false);
 t('고리를 끼면 잘라내기를 푼다', strpos($html, 'overflow:visible') !== false);
 $plain = cm_render_avatar($paid['code'], null, 44);

@@ -69,7 +69,8 @@ async function holeRatio(file) {
   return {
     mid: (found[Math.floor(found.length / 2)] * 2) / W, // 고리 몸통 안쪽 (지름 비율)
     min: (found[0] * 2) / W,                            // 가장 안쪽까지 뻗은 붓터치
-    edge: (outer[Math.floor(outer.length / 2)] * 2) / W, // 고리 몸통 바깥
+    edge: (outer[Math.floor(outer.length / 2)] * 2) / W, // 고리 몸통 바깥 (가운뎃값)
+    edgeMin: (outer[0] * 2) / W,                          // 고리가 가장 가늘어지는 곳의 바깥
     edgeMax: (outer[outer.length - 1] * 2) / W,           // 밖으로 튄 반짝이 끝
   };
 }
@@ -106,14 +107,38 @@ test('고리가 칸 밖으로 나가지 않는다 (목록에서 글 제목을 �
   for (const b of borders) {
     const { edge } = await holeRatio(b.file);
     const 바깥 = RING * edge;
-    assert.ok(바깥 <= 1.03,
-      `${b.code}: 고리 몸통이 칸의 ${(바깥 * 100).toFixed(0)}% 라 좌우로 삐져나간다`);
-    assert.ok(바깥 >= 0.92,
+    // 고리는 붓으로 휘갈긴 것이라 바깥선이 울퉁불퉁하다. 얼굴이 안 새게 하려면
+    // 가장 가는 쪽을 얼굴 밖으로 밀어야 하고, 그러면 가장 굵은 쪽은 칸을 넘는다.
+    // 넘는 것 자체는 괜찮다. 목록에서 옆 글자에 닿지만 않으면 된다.
+    //
+    // 목록 아바타는 44px 이고 글 제목까지 간격이 16px 이다.
+    // 한쪽으로 8px (간격의 절반) 까지만 나가게 잡으면 1 + 2×8/44 = 1.36 이다.
+    assert.ok(바깥 <= 1.20,
+      `${b.code}: 고리 몸통이 칸의 ${(바깥 * 100).toFixed(0)}% 라 너무 크다`);
+    assert.ok(바깥 >= 0.95,
       `${b.code}: 고리 몸통이 칸의 ${(바깥 * 100).toFixed(0)}% 뿐이라 칸이 헐겁다`);
-    // 밖으로 튄 반짝이까지는 봐준다. 다만 목록에서 글 제목(간격 16px)을 밀면 안 된다.
     const { edgeMax } = await holeRatio(b.file);
-    assert.ok(RING * edgeMax <= 1.20,
+    assert.ok(RING * edgeMax <= 1.36,
       `${b.code}: 반짝이가 칸의 ${(RING * edgeMax * 100).toFixed(0)}% 까지 뻗어 옆 글자에 닿는다`);
+  }
+});
+
+test('얼굴이 고리 바깥으로 삐져나오지 않는다', async () => {
+  // 이번에 놓친 것이 이것이다.
+  //
+  // 위 검사들은 고리 바깥선의 **가운뎃값·최댓값**만 봤다. 그래서 '고리가 칸을 꽉 채운다'는
+  // 통과했는데, 고리가 **가장 가늘어지는 쪽**에서는 바깥선이 얼굴보다 안쪽이었다.
+  // 그 각도에서 캐릭터의 머리와 어깨가 고리 밖으로 새어 나왔다.
+  // 상점에서 72px 로 크게 놓고 보니 눈에 띄었다.
+  //
+  // 가운뎃값이 아니라 **최솟값**으로 봐야 한다.
+  const { RING, FACE } = avatars;
+  for (const b of borders) {
+    const { edgeMin } = await holeRatio(b.file);
+    const 고리바깥_가장가는쪽 = RING * edgeMin;
+    assert.ok(FACE <= 고리바깥_가장가는쪽,
+      `${b.code}: 고리가 가장 가는 쪽 바깥선이 칸의 ${(고리바깥_가장가는쪽 * 100).toFixed(0)}% 인데`
+      + ` 얼굴이 ${(FACE * 100).toFixed(0)}% 라 그만큼 밖으로 나온다`);
   }
 });
 
@@ -140,7 +165,7 @@ test('실측한 구멍 비율이 코드에 적어둔 값과 맞는다', async ()
 test('크기는 CSS 가 아니라 요소에 직접 붙는다 (우선순위에 지지 않게)', () => {
   const chars = avatars.characters ? avatars.characters() : avatars.items().filter((i) => i.kind !== 'border');
   const html = avatars.renderAvatar(chars[0].code, borders[0].code, 44);
-  assert.match(html, /class="avatar-ring"[^>]*style="width:120%/, '고리 크기가 붙어 있어야 한다');
+  assert.match(html, /class="avatar-ring"[^>]*style="width:134%/, '고리 크기가 붙어 있어야 한다');
   assert.match(html, /class="avatar-face"[^>]*style="width:92%/, '얼굴 크기가 붙어 있어야 한다');
   // 테두리를 안 낀 아바타는 예전처럼 칸을 꽉 채운다
   const plain = avatars.renderAvatar(chars[0].code, null, 44);

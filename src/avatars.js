@@ -146,8 +146,19 @@ const THUMB_UP_TO = 96;
 //   가장 안쪽까지 뻗은 붓터치 = 0.477  (RING_HOLE_MIN)
 //
 // 그래서 두 값을 이렇게 잡는다.
-//   ① 고리 바깥이 칸을 꽉 채운다 : RING × 0.816 ≒ 1.00  →  RING = 1.20
-//   ② 캐릭터 원의 테두리가 고리 몸통 **위에** 온다      →  FACE = 0.92
+//   ① 고리가 **가장 가늘어지는 쪽** 바깥선이 얼굴보다 밖에 있다 → RING = 1.34
+//   ② 캐릭터 원의 테두리가 고리 몸통 **위에** 온다              → FACE = 0.92
+//
+// ①은 한 번 틀렸다가 고친 것이다. 처음에는 '고리 바깥이 칸을 꽉 채운다' 로 잡아
+// RING = 1/0.816 = 1.20 으로 뒀다. 0.816 은 바깥선의 **가운뎃값**이다.
+// 그런데 고리는 붓으로 휘갈긴 것이라 바깥선이 0.691 에서 0.95 까지 출렁인다.
+// 가는 쪽에서는 바깥선이 칸의 1.20 × 0.691 = 0.83 밖에 안 되는데 얼굴이 0.92 라,
+// 그 각도에서 캐릭터의 머리와 어깨가 고리 밖으로 새어 나왔다.
+// 상점에서 72px 로 크게 놓고 보니 눈에 띄었다.
+// 가운뎃값이 아니라 **최솟값**으로 잡아야 한다: RING >= 0.92 / 0.691 = 1.331 → 1.34.
+//
+// 대신 가장 굵은 쪽은 칸을 넘는다 (1.34 × 0.95 = 1.27). 넘는 것 자체는 괜찮다.
+// 목록 아바타는 44px 이고 글 제목까지 간격이 16px 인데, 한쪽으로 나가는 건 6px 뿐이다.
 //
 // ②가 핵심이다. 가이드를 확대해 보면 고리가 캐릭터 **바깥에 떨어져** 있는 게 아니라
 // 캐릭터 원의 가장자리 **위에 얹혀** 있다. 빛나는 선이 원의 테두리를 따라 지나간다.
@@ -169,10 +180,11 @@ const THUMB_UP_TO = 96;
 // `.avatar img { width: 100% }` 가 우선순위에서 이겨 132% 가 통째로 무시됐다.
 // 화면에는 오류 없이 잘 그려지고, 고리도 제자리에 있어서 아무도 알아채지 못했다.
 // 요소에 직접 붙이면 어떤 선택자도 이길 수 없어서 같은 일이 다시 생기지 않는다.
-const RING = 1.20;   // 고리 그림을 칸의 몇 배로 그릴지 (보이는 고리는 칸과 같아진다)
+const RING = 1.34;   // 고리 그림을 칸의 몇 배로 그릴지 (가는 쪽이 얼굴을 덮게)
 const FACE = 0.92;   // 얼굴을 칸의 몇 배로 그릴지 (가이드와 나란히 놓고 눈으로 정한 값)
-const RING_HOLE = 0.613;     // 고리 몸통 안쪽 (실측 최솟값)
-const RING_EDGE = 0.816;     // 고리 바깥 (실측 최댓값)
+const RING_HOLE = 0.613;     // 고리 몸통 안쪽 (실측 가운뎃값)
+const RING_EDGE = 0.816;     // 고리 바깥 (실측 가운뎃값)
+const RING_EDGE_MIN = 0.691; // 고리가 가장 가늘어지는 곳의 바깥 — RING 은 이 값으로 잡는다
 const RING_HOLE_MIN = 0.477; // 가장 안쪽으로 뻗은 붓터치 (실측 최솟값)
 
 // opts.ringSlot — 테두리를 낀 칸들과 나란히 놓이는 자리.
@@ -202,7 +214,7 @@ function renderAvatar(avatarCode, borderCode, size = 44, opts = {}) {
 
 module.exports = {
   MEMBER_TYPES, FREE_PER_TYPE, CHARACTER_PRICE, BORDER_PRICE,
-  RING, FACE, RING_HOLE, RING_EDGE, RING_HOLE_MIN,
+  RING, FACE, RING_HOLE, RING_EDGE, RING_EDGE_MIN, RING_HOLE_MIN,
   items: () => ITEMS, characters, borders, get, fallback, themes, theme, THEME_NOTES,
   starterFor, canUse, renderAvatar, load,
 };
