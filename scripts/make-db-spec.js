@@ -464,15 +464,13 @@ SQL 을 적어 넣어서 DB 를 통째로 읽어 갈 수 있습니다. 지금 No
 
 표를 세 갈래로 나눠 보면 이렇습니다.
 
-이미 갖고 계실 표는 \`users\`, \`posts\`, \`comments\`, \`likes\`, \`comment_likes\`,
-\`reports\`, \`comment_reports\`, \`bookmarks\`, \`post_images\` 입니다.
-이건 기존 표를 그대로 쓰시고 아래 적어 둔 칸만 몇 개 보태 주시면 됩니다.
+| 갈래 | 표 | 어떻게 하시면 되나 |
+|---|---|---|
+| 이미 있으실 것 | \`users\` \`posts\` \`comments\` \`likes\` \`comment_likes\` \`reports\` \`comment_reports\` \`bookmarks\` \`post_images\` | 기존 표 그대로 쓰시고 아래 칸만 보태기 |
+| 새로 만드실 것 | \`point_logs\` \`attendance\` \`user_items\` \`notifications\` | 이 넷이 핵심입니다 |
+| 안 옮기셔도 될 것 | \`posts_fts\` | 검색 색인입니다. 기존 검색 쓰시면 됩니다 |
 
-새로 만드셔야 하는 표는 \`point_logs\`, \`attendance\`, \`user_items\`, \`notifications\`
-네 개입니다. 이 넷이 핵심이고, 기존 시스템에는 없을 가능성이 큽니다.
-
-안 옮기셔도 되는 표는 \`posts_fts\` 하나입니다. 검색을 빠르게 하려고 만든 색인인데
-기존 검색을 쓰시면 됩니다.
+새로 만드실 표 네 개가 이 일의 대부분입니다. 기존 커뮤니티에는 없을 가능성이 큽니다.
 
 ### 기존 회원 표에 붙이실 칸
 
