@@ -9,7 +9,8 @@
     "persona": "node scripts/persona-test.js",
     "sweep": "node scripts/sweep.js",
     "ring": "node scripts/check-ring.js",
-    "php51": "node scripts/check-php51.js"
+    "php51": "node scripts/check-php51.js",
+    "php": "php 이식용/test/run.php && node scripts/check-php51.js"
   },
   "engines": {
     "node": ">=20.19 <21 || >=22.12 <23"

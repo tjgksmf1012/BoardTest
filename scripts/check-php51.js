@@ -13,7 +13,16 @@ const fs = require('fs');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const TARGETS = ['docs/avatars.php', 'docs/check-server.php'];
+const TARGETS = [
+  'docs/avatars.php',
+  'docs/check-server.php',
+  '이식용/캐릭터목록.php',
+  '이식용/lib/cm_config.php',
+  '이식용/lib/cm_db.php',
+  '이식용/lib/cm_points.php',
+  '이식용/lib/cm_attendance.php',
+  '이식용/lib/cm_avatar.php',
+];
 
 // 문자열·주석 안의 내용은 문법이 아니다. 대충이라도 걷어내고 본다.
 function stripStringsAndComments(src) {
