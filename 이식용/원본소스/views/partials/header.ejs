@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= typeof title !== 'undefined' && title ? title + ' · ' : '' %>밤알바커뮤니티</title>
+  <%
+    // 카카오톡·트위터 등에 링크를 붙였을 때 보이는 미리보기 정보.
+    // 각 화면에서 share = { title, description, image } 를 넘기면 그 값을 쓴다.
+    const s = typeof share !== 'undefined' && share ? share : {};
+    const ogTitle = s.title || (typeof title !== 'undefined' && title ? title : '밤알바커뮤니티');
+    const ogDesc = s.description
+      || '활동할수록 포인트가 쌓이고, 포인트로 아바타가 성장하는 커뮤니티 게시판이에요.';
+    const ogUrl = siteUrl + currentPath;
+  %>
+  <meta name="csrf-token" content="<%= csrfToken %>">
+  <meta name="description" content="<%= ogDesc %>">
+  <meta property="og:type" content="<%= s.type || 'website' %>">
+  <meta property="og:site_name" content="밤알바커뮤니티">
+  <meta property="og:title" content="<%= ogTitle %>">
+  <meta property="og:description" content="<%= ogDesc %>">
+  <meta property="og:url" content="<%= ogUrl %>">
+  <% if (s.image) { %><meta property="og:image" content="<%= siteUrl + s.image %>"><% } %>
+  <meta name="twitter:card" content="<%= s.image ? 'summary_large_image' : 'summary' %>">
+  <meta name="twitter:title" content="<%= ogTitle %>">
+  <meta name="twitter:description" content="<%= ogDesc %>">
+  <% if (s.image) { %><meta name="twitter:image" content="<%= siteUrl + s.image %>"><% } %>
+  <link rel="canonical" href="<%= ogUrl %>">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%2300a99d'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white'%3EP%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/css/style.css?v=<%= assetVersion %>">
+  <script>
+    // 화면이 그려지기 전에 테마를 적용해야 밝은 화면이 번쩍이지 않는다.
+    // 저장된 선택이 없으면 기기 설정(prefers-color-scheme)을 그대로 따른다.
+    (function () {
+      try {
+        var t = localStorage.getItem('pl-theme');
+        if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문 바로가기</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-user">
+        <button class="theme-btn" id="themeBtn" type="button" aria-label="화면 테마 바꾸기" title="화면 테마 바꾸기">
+          <span class="theme-ico theme-sun"><%- icon('sun', 20) %></span>
+          <span class="theme-ico theme-moon"><%- icon('moon', 20) %></span>
+        </button>
+        <% if (me) { %>
+          <a href="/notifications" class="bell" id="bell" title="알림">
+            <%- icon('bell', 22) %><span class="bell-badge" id="bellBadge" <%= unread > 0 ? '' : 'hidden' %>><%= unread > 99 ? '99+' : unread %></span>
+          </a>
+          <a href="/profile" class="me-chip">
+            <%- renderAvatar(me.avatar_id, me.border_id, 34) %>
+            <span class="me-name"><%= me.nickname %></span>
+            <span class="me-points"><%= me.points.toLocaleString() %>P</span>
+          </a>
+          <form action="/logout" method="post" class="inline logout-form"><%- csrfField() %>
+            <button class="btn btn-ghost btn-sm" type="submit">로그아웃</button>
+          </form>
+        <% } else { %>
+          <%# 연동 모드에서는 A사이트 회원이 곧 커뮤니티 회원이라 '회원가입'이 없다 %>
+          <% if (authMode === 'host') { %>
+            <a class="btn btn-primary btn-sm" href="/login">로그인</a>
+          <% } else { %>
+            <a class="btn btn-ghost btn-sm" href="/login">로그인</a>
+            <a class="btn btn-primary btn-sm" href="/signup">회원가입</a>
+          <% } %>
+        <% } %>
+      </div>
+    </div>
+    <nav class="tabs">
+      <div class="tabs-inner">
+        <%# 시안의 커뮤니티 안 3분할: 밤알바커뮤니티 · 이벤트·포인트 · 출석체크.
+            회원이 글을 쓰는 게시판은 하나이고, 뒤 둘은 성격이 다른 화면이다. %>
+        <a href="/board" class="tab <%= (typeof active !== 'undefined' && active === 'board') ? 'on' : '' %>">밤알바커뮤니티</a>
+        <a href="/points" class="tab <%= (typeof active !== 'undefined' && active === 'points') ? 'on' : '' %>">이벤트·포인트</a>
+        <a href="/attendance" class="tab <%= (typeof active !== 'undefined' && active === 'attendance') ? 'on' : '' %>">출석체크</a>
+        <a href="/ranking" class="tab <%= (typeof active !== 'undefined' && active === 'ranking') ? 'on' : '' %>">랭킹</a>
+        <a href="/profile" class="tab <%= (typeof active !== 'undefined' && active === 'profile') ? 'on' : '' %>">마이페이지</a>
+      </div>
+    </nav>
+  </header>
+
+  <% if (flash) { %>
+    <div class="toast" id="toast"><%= flash %></div>
+    <script>setTimeout(function () { var t = document.getElementById('toast'); if (t) t.classList.add('hide'); }, 3200);</script>
+  <% } %>
+
+  <main class="container" id="main">

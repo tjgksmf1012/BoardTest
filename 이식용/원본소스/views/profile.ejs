@@ -1,0 +1,431 @@
+<%- include('partials/header', { title: '마이페이지', active: 'profile' }) %>
+
+<div class="profile-top card">
+  <div class="profile-avatar"><%- renderAvatar(me.avatar_id, me.border_id, 96) %></div>
+  <div class="profile-info">
+    <h1>
+      <span class="lv-chip" style="background:<%= level.color %>1a;color:<%= level.color %>">Lv.<%= level.level %> <%= level.title %></span>
+      <%= me.nickname %>
+      <% if (me.is_admin) { %><span class="badge badge-notice">운영자</span><% } %>
+    </h1>
+    <a href="/points" class="accent big points-link"><%= me.points.toLocaleString() %>P <span class="points-arrow">내역 →</span></a>
+    <div class="profile-stats">
+      <span>게시글 <strong><%= stats.posts %></strong></span>
+      <span>댓글 <strong><%= stats.comments %></strong></span>
+      <span>받은 추천 <strong><%= stats.likesReceived %></strong></span>
+      <span>출석 <strong><%= stats.attendance %></strong>일</span>
+    </div>
+  </div>
+  <form action="/logout" method="post" class="inline profile-logout"><%- csrfField() %>
+    <button class="btn btn-ghost btn-sm" type="submit">로그아웃</button>
+  </form>
+</div>
+
+<div class="ptab-bar">
+  <button class="ptab <%= tab === 'info' ? 'on' : '' %>" type="button" data-target="info">내 정보</button>
+  <button class="ptab <%= tab === 'attendance' ? 'on' : '' %>" type="button" data-target="attendance">출석</button>
+  <button class="ptab <%= tab === 'avatar' ? 'on' : '' %>" type="button" data-target="avatar">캐릭터</button>
+</div>
+
+<div class="ptab-panel <%= tab === 'info' ? 'on' : '' %>" id="panel-info">
+
+<div class="card next-unlock">
+  <% if (next) { %>
+    <div class="nu-head">
+      <span>다음 해금까지 <strong class="accent"><%= next.remaining.toLocaleString() %>P</strong> 남았어요</span>
+      <span class="muted"><%= next.label %> · <%= me.points.toLocaleString() %> / <%= next.need.toLocaleString() %>P</span>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width: <%= next.percent %>%"></div></div>
+  <% } else { %>
+    <div class="nu-head"><span>🏆 모든 아바타를 해금했어요! 최고 등급이에요.</span></div>
+    <div class="progress"><div class="progress-fill" style="width: 100%"></div></div>
+  <% } %>
+</div>
+
+<% if (me.is_admin) { %>
+  <div class="admin-links">
+    <a class="btn btn-ghost" href="/reports"><%- icon('report', 16) %> 신고 관리</a>
+    <a class="btn btn-ghost" href="/admin/members"><%- icon('user', 16) %> 회원 관리</a>
+  </div>
+<% } %>
+
+<div class="my-activity">
+  <div class="card">
+    <h3 class="mini-title">내가 쓴 글</h3>
+    <% if (myPosts.length === 0) { %>
+      <div class="empty small">아직 쓴 글이 없어요.</div>
+    <% } else { %>
+      <ul class="mini-list">
+        <% myPosts.forEach(function (p) { %>
+          <li><a href="/board/<%= p.id %>">
+            <span class="mini-text"><%= p.title %></span>
+            <span class="muted">💬 <%= p.comment_count %> · <%= p.created_at.slice(5, 10) %></span>
+          </a></li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <h3 class="mini-title">내가 쓴 댓글</h3>
+    <% if (myComments.length === 0) { %>
+      <div class="empty small">아직 쓴 댓글이 없어요.</div>
+    <% } else { %>
+      <ul class="mini-list">
+        <% myComments.forEach(function (c) { %>
+          <li><a href="/board/<%= c.post_id %>">
+            <span class="mini-text"><%= c.content %></span>
+            <span class="muted"><%= c.post_title %>에 남긴 댓글</span>
+          </a></li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <h3 class="mini-title">스크랩한 글</h3>
+    <% if (myBookmarks.length === 0) { %>
+      <div class="empty small">스크랩한 글이 없어요.</div>
+    <% } else { %>
+      <ul class="mini-list">
+        <% myBookmarks.forEach(function (b) { %>
+          <li><a href="/board/<%= b.post_id %>">
+            <span class="mini-text"><%= b.title %></span>
+            <span class="muted"><%= b.is_anonymous ? '익명' : b.nickname %></span>
+          </a></li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+</div>
+
+<h2 class="section-title">획득한 배지</h2>
+<p class="muted">활동으로 얻는 업적이에요. <%= badges.filter(b => b.earned).length %> / <%= badges.length %>개 달성!</p>
+<div class="card badge-card">
+  <div class="badge-grid">
+    <% badges.forEach(function (b) { %>
+      <div class="ach <%= b.earned ? 'earned' : 'locked' %>" title="<%= b.desc %>">
+        <span class="ach-icon"><%= b.icon %></span>
+        <span class="ach-name"><%= b.name %></span>
+        <span class="ach-desc muted"><%= b.earned ? b.desc : '🔒 ' + b.desc %></span>
+      </div>
+    <% }) %>
+  </div>
+</div>
+
+</div><%# /panel-info %>
+
+<div class="ptab-panel <%= tab === 'attendance' ? 'on' : '' %>" id="panel-attendance">
+
+<div class="att-grid">
+  <div class="card att-card">
+    <div class="att-card-head">
+      <h2><%= att.year %>년 <%= att.month %>월</h2>
+      <% if (att.checkedToday) { %>
+        <span class="badge badge-hot">오늘 출석 완료</span>
+      <% } else { %>
+        <span class="badge badge-lock">오늘 출석 전</span>
+      <% } %>
+    </div>
+    <div class="calendar">
+      <% ['일','월','화','수','목','금','토'].forEach(function (d) { %>
+        <div class="cal-head"><%= d %></div>
+      <% }) %>
+      <% for (let i = 0; i < att.firstWeekday; i++) { %><div class="cal-cell empty-cell"></div><% } %>
+      <% for (let d = 1; d <= att.daysInMonth; d++) { %>
+        <div class="cal-cell <%= att.checkedDays.has(d) ? 'checked' : '' %> <%= d === att.today ? 'today' : '' %>">
+          <span class="cal-day"><%= d %></span>
+          <% if (att.checkedDays.has(d)) { %><span class="cal-stamp">✓</span><% } %>
+        </div>
+      <% } %>
+    </div>
+
+    <% if (att.checkedToday) { %>
+      <button class="btn btn-primary btn-block" disabled>오늘 출석 완료! 내일 또 만나요 ✓</button>
+    <% } else { %>
+      <a class="btn btn-primary btn-block" href="/attendance">출석체크 하러 가기</a>
+    <% } %>
+  </div>
+
+  <div class="card att-side">
+    <h2>연속 출석 현황</h2>
+    <% if (att.checkedToday) { %>
+      <p class="streak-now"><%- icon('flame', 18) %> 현재 <strong><%= att.streak %></strong>일 연속 출석 중</p>
+    <% } else if (att.streak > 0) { %>
+      <p class="streak-now"><%- icon('flame', 18) %> 어제까지 <strong><%= att.streak %></strong>일 연속</p>
+      <p class="muted att-keep">오늘 출석하면 <strong><%= att.streak + 1 %>일째</strong>로 이어져요!</p>
+    <% } else { %>
+      <p class="streak-now"><%- icon('flame', 18) %> 연속 출석 <strong>0</strong>일</p>
+      <p class="muted att-keep">오늘 출석하면 연속 기록이 시작돼요.</p>
+    <% } %>
+    <ul class="streak-list">
+      <% milestones.forEach(function (m) { %>
+        <li class="<%= att.streak >= m.days ? 'done' : '' %>">
+          <span><%= m.days %>일 연속</span><strong>+<%= m.points.toLocaleString() %>P</strong>
+        </li>
+      <% }) %>
+    </ul>
+    <p class="muted">하루 출석하면 <%= attendPoint %>P. 연속 출석이 끊기면 처음부터 다시 시작돼요.</p>
+  </div>
+</div>
+
+</div><%# /panel-attendance %>
+
+<div class="ptab-panel <%= tab === 'avatar' ? 'on' : '' %>" id="panel-avatar">
+
+<h2 class="section-title">캐릭터 꾸미기</h2>
+<p class="muted">
+  <%= memberTypes[me.member_type] ? memberTypes[me.member_type].label : '회원' %>용 캐릭터예요.
+  가입할 때 받은 캐릭터는 바로 쓸 수 있고, 나머지는 포인트로 살 수 있어요.
+</p>
+
+<%#
+  캐릭터 상점은 시안대로 2단계다.
+  1차 = 기본 캐릭터 9종, 2차 = 그 캐릭터 안의 스타일 25종.
+  ?theme=<코드> 로 2차를 열고 ?f=... 로 거른다. 링크만으로 오가서 자바스크립트가 없어도 된다.
+%>
+<% if (themeItems) { %>
+  <% const shopUrl = (o) => '/profile?tab=avatar&theme=' + encodeURIComponent(openTheme.code)
+       + (o.f && o.f !== 'all' ? '&f=' + o.f : '')
+       + (o.style ? '&style=' + encodeURIComponent(o.style) : '') + '#avatar'; %>
+
+  <%# 고른 캐릭터 소개 %>
+  <div class="card shop-hero">
+    <a class="shop-back" href="/profile?tab=avatar#avatar" aria-label="캐릭터 목록으로">←</a>
+    <%- renderAvatar(openTheme.cover.code, null, 64) %>
+    <div class="hero-text">
+      <h3>
+        <%= openTheme.name %>
+        <% if (openTheme.items.some(function (i) { return i.price === 0; })) { %>
+          <span class="badge badge-free">기본 캐릭터</span>
+        <% } %>
+      </h3>
+      <p class="muted"><%= openTheme.note %></p>
+    </div>
+  </div>
+
+  <div class="card shop-card">
+    <div class="tier-head">
+      <h3>스타일 <%= openTheme.items.length %>종</h3>
+      <span class="muted"><%= themeHave %> / <%= openTheme.items.length %> 보유</span>
+    </div>
+
+    <%# 시안의 칩 줄 %>
+    <nav class="shop-chips" aria-label="스타일 거르기">
+      <% [['all','전체'],['hair','헤어'],['outfit','의상'],['popular','인기'],['owned','보유중']].forEach(function (c) { %>
+        <a class="chip <%= shopFilter === c[0] ? 'on' : '' %>"
+           href="<%= shopUrl({ f: c[0], style: picked && picked.code }) %>"
+           <%= shopFilter === c[0] ? 'aria-current="true"' : '' %>><%= c[1] %></a>
+      <% }) %>
+    </nav>
+
+    <% const cell = function (a) { %>
+      <a class="style-cell <%= me.avatar_id === a.code ? 'using' : '' %> <%= picked && picked.code === a.code ? 'sel' : '' %> <%= a.unlocked ? '' : 'locked' %>"
+         href="<%= shopUrl({ f: shopFilter, style: a.code }) %>"
+         title="<%= a.name %>">
+        <%- renderAvatar(a.code, null, 64) %>
+        <span class="style-no"><%= String(a.no).padStart(2, '0') %></span>
+        <% if (me.avatar_id === a.code) { %><span class="style-check" aria-label="사용 중">✓</span><% } %>
+      </a>
+    <% }; %>
+
+    <% if (shopGroups) { %>
+      <% shopGroups.forEach(function (g) { %>
+        <div class="style-group">
+          <h4 class="style-group-name"><%= g.label %></h4>
+          <div class="style-grid"><% g.items.forEach(cell) %></div>
+        </div>
+      <% }) %>
+    <% } else if (themeItems.length === 0) { %>
+      <div class="empty small">아직 가진 스타일이 없어요. ‘전체’에서 골라 보세요.</div>
+    <% } else { %>
+      <div class="style-grid"><% themeItems.forEach(cell) %></div>
+    <% } %>
+
+    <%# 아래 고정 선택 바 %>
+    <% if (picked) { %>
+      <div class="style-bar">
+        <%- renderAvatar(picked.code, null, 44) %>
+        <div class="sb-text">
+          <strong>선택 스타일 <%= String(picked.no).padStart(2, '0') %></strong>
+          <span class="muted"><%= openTheme.name %> · 헤어 <%= picked.row %> · 의상 <%= picked.col %></span>
+        </div>
+        <div class="sb-actions">
+          <button class="btn btn-ghost btn-sm sb-preview" type="button" hidden
+            data-name="<%= openTheme.name %> 스타일 <%= String(picked.no).padStart(2, '0') %>"
+            data-avatar="<%= picked.code %>">미리보기</button>
+          <% if (me.avatar_id === picked.code) { %>
+            <span class="sb-price accent">사용 중</span>
+            <span class="btn btn-ghost btn-sm sb-done">장착됨 ✓</span>
+          <% } else if (picked.unlocked) { %>
+            <span class="sb-price accent">보유</span>
+            <form method="post" action="/profile/avatar" class="inline"><%- csrfField() %>
+              <input type="hidden" name="avatar_id" value="<%= picked.code %>">
+              <input type="hidden" name="theme" value="<%= openTheme.code %>">
+              <input type="hidden" name="f" value="<%= shopFilter %>">
+              <button class="btn btn-primary btn-sm" type="submit">장착하기</button>
+            </form>
+          <% } else { %>
+            <span class="sb-price <%= me.points >= picked.price ? 'accent' : 'muted' %>"><%= picked.price.toLocaleString() %>P</span>
+            <form method="post" action="/profile/buy" class="inline"><%- csrfField() %>
+              <input type="hidden" name="code" value="<%= picked.code %>">
+              <input type="hidden" name="theme" value="<%= openTheme.code %>">
+              <input type="hidden" name="f" value="<%= shopFilter %>">
+              <button class="btn btn-primary btn-sm" type="submit">구매하기</button>
+            </form>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
+  </div>
+<% } else { %>
+  <div class="card shop-card">
+    <div class="tier-head">
+      <h3>캐릭터 선택</h3>
+      <span class="muted">
+        <% if (myThemes.length && !myThemes[0].single) { %>스타일 1개 <%= characterPrice.toLocaleString() %>P
+        <% } else { %><%= myThemes.filter(function (t) { return t.unlocked; }).length %> / <%= myThemes.length %> 보유<% } %>
+      </span>
+    </div>
+    <p class="muted shop-lead">원하는 기본 캐릭터를 선택해 주세요.</p>
+    <% if (myThemes.length === 0) { %>
+      <div class="empty small">아직 등록된 캐릭터가 없어요.</div>
+    <% } %>
+    <div class="theme-grid">
+      <% myThemes.forEach(function (t) { %>
+        <% if (!t.single) { %>
+          <a class="theme-cell <%= t.using ? 'sel' : '' %>" href="/profile?tab=avatar&amp;theme=<%= encodeURIComponent(t.code) %>#avatar">
+            <%- renderAvatar(t.cover.code, null, 88) %>
+            <span class="theme-name"><%= t.name %></span>
+            <span class="shop-count"><%= t.have %>/<%= t.total %></span>
+            <% if (t.using) { %><span class="style-check" aria-label="사용 중">✓</span><% } %>
+          </a>
+        <% } else if (t.unlocked) { %>
+          <form method="post" action="/profile/avatar" class="theme-cell-form"><%- csrfField() %>
+            <input type="hidden" name="avatar_id" value="<%= t.code %>">
+            <button class="theme-cell <%= me.avatar_id === t.code ? 'sel' : '' %>" type="submit">
+              <%- renderAvatar(t.code, null, 88) %>
+              <span class="theme-name"><%= t.name %></span>
+              <% if (me.avatar_id === t.code) { %><span class="style-check" aria-label="사용 중">✓</span><% } %>
+            </button>
+          </form>
+        <% } else { %>
+          <form method="post" action="/profile/buy" class="theme-cell-form"><%- csrfField() %>
+            <input type="hidden" name="code" value="<%= t.code %>">
+            <button class="theme-cell locked" type="submit">
+              <%- renderAvatar(t.code, null, 88) %>
+              <span class="theme-name"><%= t.name %></span>
+              <span class="shop-price <%= me.points >= t.price ? 'can' : '' %>"><%= t.price.toLocaleString() %>P</span>
+            </button>
+          </form>
+        <% } %>
+      <% }) %>
+    </div>
+    <% if (myThemes.length && !myThemes[0].single) { %>
+      <p class="muted shop-foot">✦ <%= myThemes.length %>개의 기본 캐릭터 중 하나를 골라 들어가 보세요</p>
+    <% } %>
+  </div>
+<% } %>
+
+<div class="card shop-card">
+  <div class="tier-head">
+    <h3>테두리</h3>
+    <span class="muted">각 <%= myBorders.length ? myBorders[0].price.toLocaleString() : 0 %>P</span>
+  </div>
+  <div class="shop-grid">
+    <form method="post" action="/profile/border" class="shop-item <%= me.border_id ? '' : 'selected' %>"><%- csrfField() %>
+      <input type="hidden" name="border_id" value="">
+      <button type="submit" title="테두리 없음">
+        <%# 테두리 낀 칸들과 나란히 놓이므로 얼굴 크기를 맞춘다 (ringSlot) %>
+        <%- renderAvatar(me.avatar_id, null, 72, { ringSlot: true }) %>
+        <span class="shop-name">사용 안 함</span>
+        <% if (!me.border_id) { %><span class="using">사용 중</span><% } %>
+      </button>
+    </form>
+    <% myBorders.forEach(function (b) { %>
+      <% if (b.unlocked) { %>
+        <form method="post" action="/profile/border" class="shop-item <%= me.border_id === b.code ? 'selected' : '' %>"><%- csrfField() %>
+          <input type="hidden" name="border_id" value="<%= b.code %>">
+          <button type="submit" title="<%= b.name %> 장착">
+            <%- renderAvatar(me.avatar_id, b.code, 72) %>
+            <span class="shop-name"><%= b.name %></span>
+            <% if (me.border_id === b.code) { %><span class="using">사용 중</span><% } %>
+          </button>
+        </form>
+      <% } else { %>
+        <form method="post" action="/profile/buy" class="shop-item locked"><%- csrfField() %>
+          <input type="hidden" name="code" value="<%= b.code %>">
+          <button type="submit" title="<%= b.name %> 구매">
+            <%- renderAvatar(me.avatar_id, b.code, 72) %>
+            <span class="shop-name"><%= b.name %></span>
+            <span class="shop-price <%= me.points >= b.price ? 'can' : '' %>"><%= b.price.toLocaleString() %>P</span>
+          </button>
+        </form>
+      <% } %>
+    <% }) %>
+  </div>
+</div>
+
+</div>
+
+<%# 미리보기 창. 자바스크립트가 없으면 아예 열리지 않고 버튼도 숨어 있다 %>
+<div class="preview-back" id="previewBack" hidden>
+  <div class="preview-box" role="dialog" aria-modal="true" aria-labelledby="previewName">
+    <div id="previewFace"></div>
+    <p id="previewName"></p>
+    <button class="btn btn-ghost btn-sm" type="button" id="previewClose">닫기</button>
+  </div>
+</div>
+
+<script>
+// 미리보기: 목록의 작은 그림 대신 큰 그림을, 지금 낀 테두리까지 얹어 보여준다
+(function () {
+  var btn = document.querySelector('.sb-preview');
+  var back = document.getElementById('previewBack');
+  if (!btn || !back) return;
+  btn.hidden = false;
+  var face = document.getElementById('previewFace');
+  var name = document.getElementById('previewName');
+  var border = <%- JSON.stringify(me.border_id || '') %>;
+  var files = <%- JSON.stringify(Object.fromEntries(
+    (openTheme ? openTheme.items : []).concat(myBorders).map(function (i) { return [i.code, i.file]; })
+  )) %>;
+  function close() { back.hidden = true; btn.focus(); }
+  btn.addEventListener('click', function () {
+    var code = btn.dataset.avatar;
+    face.innerHTML = '<span class="avatar" style="width:200px;height:200px">'
+      + '<img src="/avatars/' + encodeURIComponent(files[code] || '') + '" alt="">'
+      + (border && files[border] ? '<img class="avatar-ring" src="/avatars/' + encodeURIComponent(files[border]) + '" alt="">' : '')
+      + '</span>';
+    name.textContent = btn.dataset.name;
+    back.hidden = false;
+    document.getElementById('previewClose').focus();
+  });
+  document.getElementById('previewClose').addEventListener('click', close);
+  back.addEventListener('click', function (e) { if (e.target === back) close(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !back.hidden) close(); });
+})();
+</script>
+
+<script>
+// 탭 전환. 자바스크립트가 없으면 js-tabs 가 안 붙어 세 칸이 그냥 위아래로 이어 보인다
+// (내용을 못 보는 일은 없다). 켜져 있으면 한 칸씩 보여준다.
+(function () {
+  var bar = document.querySelector('.ptab-bar');
+  if (!bar) return;
+  document.body.classList.add('js-tabs');
+  bar.addEventListener('click', function (e) {
+    var btn = e.target.closest('.ptab');
+    if (!btn) return;
+    var name = btn.dataset.target;
+    bar.querySelectorAll('.ptab').forEach(function (b) { b.classList.toggle('on', b === btn); });
+    document.querySelectorAll('.ptab-panel').forEach(function (p) {
+      p.classList.toggle('on', p.id === 'panel-' + name);
+    });
+    // 새로고침해도 보던 칸으로 돌아오게 주소에 남긴다
+    history.replaceState(null, '', name === 'info' ? location.pathname : location.pathname + '?tab=' + name);
+  });
+})();
+</script>
+
+<%- include('partials/footer') %>

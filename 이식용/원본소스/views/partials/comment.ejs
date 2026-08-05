@@ -1,0 +1,75 @@
+<%# 댓글 한 개 렌더링. locals: c(댓글), post, me %>
+<% const eid = c.id; %>
+<% if (c.is_deleted) { %>
+  <%# 답글이 달려 있어 자리만 남긴 댓글 — 아래 답글들이 고아가 되지 않도록 %>
+  <div class="comment deleted <%= c.parent_id ? 'reply' : '' %>" id="comment-<%= eid %>">
+    <div class="comment-body"><p class="deleted-note">삭제된 댓글이에요.</p></div>
+  </div>
+<% } else { %>
+<div class="comment <%= c.parent_id ? 'reply' : '' %>" id="comment-<%= eid %>">
+  <a class="comment-avatar" href="/users/<%= c.user_id %>" aria-label="<%= c.nickname %>님 프로필">
+    <%- renderAvatar(c.avatar_id, c.border_id, c.parent_id ? 32 : 38) %>
+  </a>
+  <div class="comment-body">
+    <div class="comment-head">
+      <a class="comment-name" href="/users/<%= c.user_id %>"><strong><%= c.nickname %></strong></a>
+      <span class="muted"><%= timeAgo(c.created_at) %></span>
+      <% if (c.updated_at) { %><span class="muted edited-mark">· 수정됨</span><% } %>
+
+      <%# 수정·삭제·신고는 점 3개 안으로. 댓글마다 링크가 서너 개씩 붙으면 목록이 어수선해진다 %>
+      <% if (me) { %>
+        <div class="menu comment-menu">
+          <button class="menu-btn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="댓글 더보기">
+            <%- icon('more', 16) %>
+          </button>
+          <div class="menu-pop" role="menu" hidden>
+            <% if (me.id === c.user_id) { %>
+              <button class="menu-item" role="menuitem" type="button" onclick="toggleEdit('<%= eid %>')">수정하기</button>
+            <% } %>
+            <% if (me.id === c.user_id || me.is_admin) { %>
+              <form action="/board/comments/<%= c.id %>/delete" method="post"><%- csrfField() %>
+                <button class="menu-item danger" role="menuitem" type="submit">삭제하기</button>
+              </form>
+            <% } %>
+            <% if (me.id !== c.user_id) { %>
+              <form action="/board/comments/<%= c.id %>/report" method="post"><%- csrfField() %>
+                <button class="menu-item" role="menuitem" type="submit">신고하기</button>
+              </form>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
+    </div>
+
+    <p class="comment-text" id="ctext-<%= eid %>"><%= c.content %></p>
+
+    <% if (me && me.id === c.user_id) { %>
+      <form action="/board/comments/<%= c.id %>/edit" method="post" class="edit-form" id="cedit-<%= eid %>" hidden><%- csrfField() %>
+        <input type="text" name="content" value="<%= c.content %>" required maxlength="1000" aria-label="댓글 수정">
+        <button class="btn btn-primary btn-sm" type="submit">저장</button>
+        <button class="btn btn-ghost btn-sm" type="button" onclick="toggleEdit('<%= eid %>')">취소</button>
+      </form>
+    <% } %>
+
+    <div class="comment-actions" id="cacts-<%= eid %>">
+      <% if (me) { %>
+        <form action="/board/comments/<%= c.id %>/like" method="post" class="inline"><%- csrfField() %>
+          <button class="clike <%= c.liked ? 'on' : '' %>" type="submit"><%- icon('like', 14) %> <%= c.like_count %></button>
+        </form>
+        <% if (!c.parent_id) { %>
+          <button class="link-btn" type="button" onclick="toggleReply('<%= eid %>')">답글</button>
+        <% } %>
+      <% } else { %>
+        <span class="clike-static"><%- icon('like', 14) %> <%= c.like_count %></span>
+      <% } %>
+    </div>
+    <% if (me && !c.parent_id) { %>
+      <form action="/board/<%= post.id %>/comments" method="post" class="reply-form" id="reply-<%= eid %>" hidden><%- csrfField() %>
+        <input type="hidden" name="parent_id" value="<%= c.id %>">
+        <input type="text" name="content" placeholder="답글을 입력해주세요" required maxlength="1000">
+        <button class="btn btn-primary btn-sm" type="submit">등록</button>
+      </form>
+    <% } %>
+  </div>
+</div>
+<% } %>

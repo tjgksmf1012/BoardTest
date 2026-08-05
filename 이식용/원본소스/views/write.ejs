@@ -1,0 +1,312 @@
+<%- include('partials/header', { title: post ? '글 수정' : '글쓰기', active: 'board' }) %>
+
+<div class="card write-card">
+  <h1><%= post ? '글 수정' : '글쓰기' %></h1>
+  <% if (error) { %><div class="alert"><%= error %></div><% } %>
+
+  <form method="post" id="write-form"
+        action="<%= post ? '/board/' + post.id + '/edit' : '/board' %>" class="form"><%- csrfField() %>
+    <label><span>말머리 <span class="req">*</span></span>
+      <select name="category" class="cat-select">
+        <% categories.forEach(function (c) { %>
+          <option value="<%= c.id %>" <%= (post ? post.category === c.id : c.id === '자유') ? 'selected' : '' %>><%= c.id %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label><span class="label-row"><span>제목 <span class="req">*</span></span>
+      <% if (guideId) { %>
+        <a class="write-guide" href="/board/<%= guideId %>" target="_blank" rel="noopener">
+          <span aria-hidden="true">?</span> 작성가이드
+        </a>
+      <% } %>
+    </span>
+      <input type="text" name="title" maxlength="50" required
+             placeholder="제목을 입력해주세요 (50자 이내)"
+             value="<%= post ? post.title : '' %>"
+             oninput="counter(this.value.length, 'title-count', 50)">
+      <span class="count" id="title-count"><%= post ? post.title.length : 0 %> / 50</span>
+    </label>
+
+    <div class="field">
+      <span class="field-label">내용 <span class="req">*</span></span>
+
+      <div class="editor-wrap">
+        <div class="editor-toolbar" role="toolbar" aria-label="글 서식 도구">
+          <div class="tb-group">
+            <button type="button" class="tb-btn" data-block="p" title="본문">본문</button>
+            <button type="button" class="tb-btn" data-block="h2" title="제목">제목</button>
+            <button type="button" class="tb-btn tb-sub" data-block="h3" title="소제목">소제목</button>
+          </div>
+          <div class="tb-group">
+            <button type="button" class="tb-btn tb-bold" data-cmd="bold" title="굵게">가</button>
+            <button type="button" class="tb-btn tb-under" data-cmd="underline" title="밑줄">가</button>
+          </div>
+          <div class="tb-group">
+            <button type="button" class="tb-btn" data-cmd="insertUnorderedList" title="목록">• 목록</button>
+            <button type="button" class="tb-btn" data-cmd="insertOrderedList" title="번호 목록">1. 번호</button>
+            <button type="button" class="tb-btn" data-block="blockquote" title="인용">❝ 인용</button>
+          </div>
+        </div>
+
+        <div id="editor" class="editor" contenteditable="true" role="textbox" aria-multiline="true"
+             aria-label="내용" data-placeholder="내용을 입력해주세요."><%- initialHtml %></div>
+      </div>
+
+      <div class="editor-foot">
+        <span class="editor-hint">글자를 고른 뒤 서식 버튼을 누르면 적용돼요</span>
+        <span class="count" id="content-count">0 / 5,000</span>
+      </div>
+
+      <input type="hidden" name="content" id="content-input">
+      <input type="hidden" name="content_format" value="html">
+    </div>
+
+    <%# 시안대로 사진은 본문과 따로 붙인다.
+        넘겨받는 쪽에서도 본문을 뒤질 필요 없이 post_images 만 보면 된다. %>
+    <div class="field">
+      <span class="field-label">이미지 첨부 <span class="muted">(선택)</span></span>
+
+      <div class="attach" id="attach">
+        <div class="attach-drop" id="attachDrop">
+          <button type="button" class="attach-add" id="attachAdd">
+            <span class="attach-plus" aria-hidden="true">+</span> 이미지 추가
+          </button>
+          <p class="muted attach-hint">최대 <%= 5 %>장 · JPG, PNG · 장당 10MB 이하</p>
+        </div>
+
+        <ul class="attach-list" id="attachList"></ul>
+
+        <div class="attach-foot">
+          <span class="muted attach-tip" id="attachTip" hidden>사진을 끌어서 순서를 바꿀 수 있어요</span>
+          <span class="count" id="attachCount">0 / 5</span>
+        </div>
+      </div>
+
+      <input type="file" id="photo-input" accept="image/jpeg,image/png" multiple hidden>
+      <input type="hidden" name="images" id="images-input"
+             value="<%= (images || []).map(function (i) { return i.filename; }).join(',') %>">
+    </div>
+
+    <div class="write-options">
+      <% if (!post) { %>
+        <label class="check"><input type="checkbox" name="is_anonymous">
+          익명으로 작성 <span class="muted">(닉네임 대신 익명으로 표시, 추천 비활성화, +100P)</span></label>
+      <% } %>
+      <label class="check"><input type="checkbox" name="block_comments"
+        <%= post && post.block_comments ? 'checked' : '' %>>
+        댓글 차단 <span class="muted">(다른 회원이 댓글을 달 수 없어요)</span></label>
+      <% if (!post && me && me.is_admin) { %>
+        <label class="check"><input type="checkbox" name="is_notice"> 공지로 등록 (운영자)</label>
+      <% } %>
+    </div>
+
+    <div class="write-actions">
+      <a class="btn btn-ghost" href="<%= post ? '/board/' + post.id : '/board' %>">취소</a>
+      <button class="btn btn-primary" type="submit"><%= post ? '수정하기' : '등록하기' %></button>
+    </div>
+  </form>
+</div>
+
+<script>
+(function () {
+  var editor = document.getElementById('editor');
+  var form = document.getElementById('write-form');
+  var contentInput = document.getElementById('content-input');
+  var photoInput = document.getElementById('photo-input');
+  var MAX = 5000;
+  var MAX_IMAGES = 5;
+
+  // Enter로 줄을 바꿀 때 <div> 대신 <p>가 생기도록 (서버 허용 태그와 맞춤)
+  try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
+
+  window.counter = function (len, id, max) {
+    document.getElementById(id).textContent = len + ' / ' + max.toLocaleString();
+  };
+
+  function textLength() {
+    return (editor.innerText || '').replace(/\s+/g, ' ').trim().length;
+  }
+  function updateCount() {
+    var n = textLength();
+    var el = document.getElementById('content-count');
+    el.textContent = n.toLocaleString() + ' / 5,000';
+    el.classList.toggle('over', n > MAX);
+    editor.classList.toggle('is-empty', !editor.textContent.trim() && !editor.querySelector('img'));
+  }
+
+  // ---- 커서 위치 기억 (사진 버튼을 누르면 포커스가 잠깐 떠나기 때문) ----
+  var savedRange = null;
+  function saveRange() {
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount && editor.contains(sel.anchorNode)) savedRange = sel.getRangeAt(0);
+  }
+  function restoreRange() {
+    editor.focus();
+    if (!savedRange) return;
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedRange);
+  }
+  document.addEventListener('selectionchange', function () {
+    if (document.activeElement === editor) { saveRange(); syncToolbar(); }
+  });
+
+  // ---- 서식 버튼 ----
+  function exec(cmd, value) {
+    restoreRange();
+    document.execCommand(cmd, false, value || null);
+    saveRange();
+    updateCount();
+    syncToolbar();
+  }
+  document.querySelectorAll('.tb-btn[data-cmd]').forEach(function (btn) {
+    // mousedown/touchstart에서 막아야 에디터의 선택 영역이 유지된다
+    btn.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    btn.addEventListener('click', function () { exec(btn.dataset.cmd); });
+  });
+  document.querySelectorAll('.tb-btn[data-block]').forEach(function (btn) {
+    btn.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    btn.addEventListener('click', function () { exec('formatBlock', '<' + btn.dataset.block + '>'); });
+  });
+
+  // 현재 커서 위치의 서식을 버튼에 표시
+  function syncToolbar() {
+    document.querySelectorAll('.tb-btn[data-cmd]').forEach(function (b) {
+      var on = false;
+      try { on = document.queryCommandState(b.dataset.cmd); } catch (e) {}
+      b.classList.toggle('on', !!on);
+    });
+    var block = '';
+    try { block = (document.queryCommandValue('formatBlock') || '').toLowerCase(); } catch (e) {}
+    document.querySelectorAll('.tb-btn[data-block]').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.block === block);
+    });
+  }
+
+  // ---- 사진 첨부 (본문과 따로) ----
+  //
+  // 예전에는 커서 자리에 <img> 를 밀어 넣었다. 모바일에서 커서를 원하는 자리에
+  // 두기가 어렵고, 넘겨받는 쪽에서 본문 HTML 을 뒤져야 해서 첨부칸으로 바꿨다.
+  var attachAdd = document.getElementById('attachAdd');
+  var attachList = document.getElementById('attachList');
+  var attachCount = document.getElementById('attachCount');
+  var attachTip = document.getElementById('attachTip');
+  var attachDrop = document.getElementById('attachDrop');
+  var imagesInput = document.getElementById('images-input');
+  var files = imagesInput.value ? imagesInput.value.split(',').filter(Boolean) : [];
+
+  function draw() {
+    attachList.innerHTML = '';
+    files.forEach(function (name, i) {
+      var li = document.createElement('li');
+      li.className = 'attach-item';
+      li.draggable = true;
+      li.dataset.index = String(i);
+      li.innerHTML = '<img src="/uploads/' + encodeURIComponent(name) + '" alt="첨부 사진 ' + (i + 1) + '">'
+        + '<button type="button" class="attach-x" aria-label="' + (i + 1) + '번째 사진 빼기">×</button>';
+      li.querySelector('.attach-x').addEventListener('click', function () {
+        files.splice(i, 1); sync();
+      });
+      attachList.appendChild(li);
+    });
+    sync(true);
+  }
+  function sync(skipDraw) {
+    imagesInput.value = files.join(',');
+    attachCount.textContent = files.length + ' / ' + MAX_IMAGES;
+    attachDrop.hidden = files.length >= MAX_IMAGES;
+    attachTip.hidden = files.length < 2;
+    if (!skipDraw) draw();
+  }
+
+  attachAdd.addEventListener('click', function () { photoInput.click(); });
+
+  photoInput.addEventListener('change', function () {
+    var chosen = Array.prototype.slice.call(photoInput.files || []);
+    photoInput.value = '';                       // 같은 파일을 다시 골라도 동작하게
+    if (!chosen.length) return;
+    if (files.length + chosen.length > MAX_IMAGES) {
+      alert('사진은 최대 ' + MAX_IMAGES + '장까지 붙일 수 있어요.');
+      chosen = chosen.slice(0, MAX_IMAGES - files.length);
+      if (!chosen.length) return;
+    }
+    var tooBig = chosen.filter(function (f) { return f.size > 10 * 1024 * 1024; });
+    if (tooBig.length) { alert('사진은 장당 10MB까지 올릴 수 있어요.'); return; }
+
+    attachAdd.disabled = true;
+    attachAdd.classList.add('loading');
+    // 고른 순서대로 붙도록 하나씩 차례로 올린다
+    chosen.reduce(function (chain, file) {
+      return chain.then(function () {
+        var data = new FormData();
+        data.append('image', file);
+        return fetch('/board/upload-image', {
+          method: 'POST', body: data, credentials: 'same-origin',
+          headers: { 'X-CSRF-Token': '<%= csrfToken %>' },
+        })
+          .then(function (r) { return r.json().then(function (j) { return r.ok ? j : Promise.reject(j); }); })
+          .then(function (j) { files.push(j.url.split('/').pop()); sync(); });
+      });
+    }, Promise.resolve())
+      .catch(function (e) { alert((e && e.error) || '사진을 올리지 못했어요. 잠시 후 다시 시도해주세요.'); })
+      .finally(function () { attachAdd.disabled = false; attachAdd.classList.remove('loading'); });
+  });
+
+  // 끌어서 순서 바꾸기
+  var dragFrom = null;
+  attachList.addEventListener('dragstart', function (e) {
+    var li = e.target.closest('.attach-item');
+    if (!li) return;
+    dragFrom = Number(li.dataset.index);
+    li.classList.add('dragging');
+  });
+  attachList.addEventListener('dragover', function (e) { e.preventDefault(); });
+  attachList.addEventListener('drop', function (e) {
+    e.preventDefault();
+    var li = e.target.closest('.attach-item');
+    if (!li || dragFrom === null) return;
+    var to = Number(li.dataset.index);
+    if (to === dragFrom) return;
+    files.splice(to, 0, files.splice(dragFrom, 1)[0]);
+    dragFrom = null;
+    sync();
+  });
+  attachList.addEventListener('dragend', function () {
+    dragFrom = null;
+    attachList.querySelectorAll('.dragging').forEach(function (n) { n.classList.remove('dragging'); });
+  });
+
+  draw();
+
+  // ---- 붙여넣기는 글자만 (다른 사이트 서식이 딸려와 깨지는 것 방지) ----
+  editor.addEventListener('paste', function (e) {
+    e.preventDefault();
+    var text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    document.execCommand('insertText', false, text);
+  });
+
+  editor.addEventListener('input', function () { updateCount(); });
+  editor.addEventListener('focus', saveRange);
+
+  // ---- 전송 ----
+  form.addEventListener('submit', function (e) {
+    if (!textLength() && files.length === 0) {
+      e.preventDefault();
+      alert('내용을 입력해주세요.');
+      editor.focus();
+      return;
+    }
+    if (textLength() > MAX) {
+      e.preventDefault();
+      alert('내용은 5,000자 이내로 입력해주세요.');
+      return;
+    }
+    contentInput.value = editor.innerHTML;
+  });
+
+  updateCount();
+  
+})();
+</script>
+
+<%- include('partials/footer') %>

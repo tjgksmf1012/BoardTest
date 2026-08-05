@@ -1,0 +1,67 @@
+<%- include('partials/header', { title: '회원가입', active: null }) %>
+
+<div class="auth-card card">
+  <h1>회원가입</h1>
+  <p class="muted">가입 즉시 <strong>1,000P</strong>와 회원 유형에 맞는 캐릭터를 받아요!</p>
+  <% if (error) { %><div class="alert"><%= error %></div><% } %>
+  <form method="post" action="/signup" class="form"><%- csrfField() %>
+    <label>아이디 (영문/숫자 4~20자)
+      <input type="text" name="username" value="<%= form.username || '' %>" required autofocus>
+    </label>
+    <label>닉네임 (2~10자)
+      <input type="text" name="nickname" value="<%= form.nickname || '' %>" required>
+    </label>
+    <label>비밀번호 (8자 이상)
+      <input type="password" name="password" required>
+    </label>
+    <label>회원 유형
+      <select class="cat-select" name="member_type" required>
+        <% Object.keys(memberTypes).forEach(function (k) { %>
+          <option value="<%= k %>" <%= form.member_type === k ? 'selected' : '' %>><%= memberTypes[k].label %></option>
+        <% }) %>
+      </select>
+      <small class="muted">유형에 따라 쓸 수 있는 캐릭터가 달라요.</small>
+    </label>
+
+    <%# 여성회원은 가입할 때 무료 캐릭터를 직접 고른다.
+        남성·업소회원은 고를 것이 없어 안내만 보여준다. %>
+    <div class="pick-wrap" data-for="female" <%= form.member_type && form.member_type !== 'female' ? 'hidden' : '' %>>
+      <span class="pick-label">캐릭터 고르기</span>
+      <div class="pick-grid">
+        <% starterChoices.forEach(function (a, i) { %>
+          <label class="pick-item">
+            <input type="radio" name="avatar_id" value="<%= a.code %>"
+              <%= (form.avatar_id ? form.avatar_id === a.code : i === 0) ? 'checked' : '' %>>
+            <span class="pick-face"><%- renderAvatar(a.code, null, 72) %></span>
+          </label>
+        <% }) %>
+      </div>
+      <small class="muted">가입 후 마이페이지에서 다른 캐릭터도 포인트로 살 수 있어요.</small>
+    </div>
+    <div class="pick-wrap" data-for="other" <%= form.member_type && form.member_type !== 'female' ? '' : 'hidden' %>>
+      <small class="muted">가입하면 유형에 맞는 캐릭터가 무작위로 하나 배정돼요.</small>
+    </div>
+
+    <button class="btn btn-primary btn-block" type="submit">가입하고 1,000P 받기</button>
+  </form>
+  <p class="muted center">이미 회원이신가요? <a href="/login">로그인</a></p>
+</div>
+
+<script>
+// 회원 유형을 바꾸면 고를 수 있는 캐릭터도 바뀐다.
+// 자바스크립트가 없으면 두 안내가 다 보일 뿐, 가입은 그대로 된다.
+(function () {
+  var sel = document.querySelector('select[name=member_type]');
+  if (!sel) return;
+  function sync() {
+    var female = sel.value === 'female';
+    document.querySelectorAll('.pick-wrap').forEach(function (w) {
+      w.hidden = (w.dataset.for === 'female') !== female;
+    });
+  }
+  sel.addEventListener('change', sync);
+  sync();
+})();
+</script>
+
+<%- include('partials/footer') %>

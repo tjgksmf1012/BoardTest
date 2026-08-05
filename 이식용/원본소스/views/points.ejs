@@ -1,0 +1,100 @@
+<%- include('partials/header', { title: '이벤트 · 포인트', active: 'points' }) %>
+
+<div class="board-head">
+  <div>
+    <h1>이벤트 · 포인트</h1>
+    <p class="muted">진행 중인 이벤트와 포인트 적립 기준을 한곳에서 봐요.</p>
+  </div>
+</div>
+
+<%# 이벤트 말머리가 붙은 글을 모아 보여준다. 게시판을 따로 파지 않고 말머리로 거른다. %>
+<section class="card event-card">
+  <div class="tier-head">
+    <h2>진행 중인 이벤트</h2>
+    <a class="muted" href="/board?category=%EC%9D%B4%EB%B2%A4%ED%8A%B8">더보기 →</a>
+  </div>
+  <% if (!events || events.length === 0) { %>
+    <div class="empty small">아직 등록된 이벤트가 없어요.</div>
+  <% } else { %>
+    <ul class="event-list">
+      <% events.forEach(function (e) { %>
+        <li>
+          <a href="/board/<%= e.id %>">
+            <span class="event-title"><%= e.title %></span>
+            <span class="muted event-meta">
+              <%= e.nickname %> · <%= e.created_at.slice(0, 10) %>
+              <% if (e.comment_count) { %> · 댓글 <%= e.comment_count %><% } %>
+            </span>
+          </a>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+</section>
+
+<div class="point-summary">
+  <div class="card stat">
+    <span class="muted">내 포인트</span>
+    <strong class="accent"><%= me.points.toLocaleString() %>P</strong>
+  </div>
+  <div class="card stat">
+    <span class="muted">오늘 적립</span>
+    <strong class="<%= todayTotal < 0 ? 'minus' : '' %>"><%= signedPoints(todayTotal) %></strong>
+  </div>
+</div>
+
+<div class="card next-unlock">
+  <% if (next) { %>
+    <div class="nu-head">
+      <span>다음 해금: <strong><%= next.label %></strong> 까지 <strong class="accent"><%= next.remaining.toLocaleString() %>P</strong></span>
+      <a href="/profile" class="muted">아바타 보러가기 →</a>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width: <%= next.percent %>%"></div></div>
+  <% } else { %>
+    <div class="nu-head"><span>🏆 모든 아바타를 해금했어요!</span></div>
+    <div class="progress"><div class="progress-fill" style="width: 100%"></div></div>
+  <% } %>
+</div>
+
+<div class="point-grid">
+  <div class="card">
+    <h2>적립 기준</h2>
+    <table class="rules">
+      <tr><td><%= authMode === 'host' ? '커뮤니티 첫 방문' : '회원가입' %> <span class="muted">(최초 1회)</span></td><td>1,000P</td></tr>
+      <tr><td>출석체크 <span class="muted">(하루 1회)</span></td><td><%= RULES.attendance.amount %>P</td></tr>
+      <tr><td>일반 게시글 작성 <span class="muted">(하루 3개까지)</span></td><td>300P</td></tr>
+      <tr><td>익명 게시글 작성 <span class="muted">(하루 3개까지)</span></td><td>100P</td></tr>
+      <tr><td>댓글·대댓글 작성 <span class="muted">(하루 10개까지)</span></td><td>100P</td></tr>
+      <tr><td>일반 게시글 추천받기 <span class="muted">(추천 1개당)</span></td><td>10P</td></tr>
+      <tr><td>인기글 선정 <span class="muted">(추천 10개 이상)</span></td><td>1,000P</td></tr>
+      <tr><td>운영자 추천글 선정</td><td>1,500P</td></tr>
+      <% milestones.forEach(function (m) { %>
+        <tr><td>연속 출석 <%= m.days %>일<%= m.special ? ' 달성' : '' %></td><td><%= m.points.toLocaleString() %>P</td></tr>
+      <% }) %>
+    </table>
+    <div class="note">
+      <strong>익명글 규칙</strong> · 익명글 작성 시 100P 지급 · 익명글은 추천 버튼 비활성화 · 추천 포인트 적립 불가
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>적립 내역</h2>
+    <% if (logs.length === 0) { %>
+      <div class="empty">아직 적립 내역이 없어요.</div>
+    <% } else { %>
+      <ul class="log-list">
+        <% logs.forEach(function (l) { %>
+          <li>
+            <div>
+              <strong><%= l.detail %></strong>
+              <span class="muted"><%= l.created_at.slice(0, 16) %></span>
+            </div>
+            <span class="<%= l.amount < 0 ? 'minus' : 'accent' %>"><%= signedPoints(l.amount) %></span>
+          </li>
+        <% }) %>
+      </ul>
+    <% } %>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

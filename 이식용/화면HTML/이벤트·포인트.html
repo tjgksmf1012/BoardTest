@@ -1,0 +1,1165 @@
+<!DOCTYPE html><html lang="ko"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>이벤트 · 포인트 · 밤알바커뮤니티</title>
+  
+  <meta name="csrf-token" content="d2rmAW_K7ovSHqDvix_1daSJv3Fwf_kW">
+  <meta name="description" content="활동할수록 포인트가 쌓이고, 포인트로 아바타가 성장하는 커뮤니티 게시판이에요.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="밤알바커뮤니티">
+  <meta property="og:title" content="이벤트 · 포인트">
+  <meta property="og:description" content="활동할수록 포인트가 쌓이고, 포인트로 아바타가 성장하는 커뮤니티 게시판이에요.">
+  <meta property="og:url" content="./points">
+  
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="이벤트 · 포인트">
+  <meta name="twitter:description" content="활동할수록 포인트가 쌓이고, 포인트로 아바타가 성장하는 커뮤니티 게시판이에요.">
+  
+  <link rel="canonical" href="./points">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%2300a99d'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white'%3EP%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    // 화면이 그려지기 전에 테마를 적용해야 밝은 화면이 번쩍이지 않는다.
+    // 저장된 선택이 없으면 기기 설정(prefers-color-scheme)을 그대로 따른다.
+    (function () {
+      try {
+        var t = localStorage.getItem('pl-theme');
+        if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문 바로가기</a>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="topbar-user">
+        <button class="theme-btn" id="themeBtn" type="button" aria-label="어두운 화면으로 바꾸기" title="어두운 화면으로 바꾸기">
+          <span class="theme-ico theme-sun"><svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"></path></svg></span>
+          <span class="theme-ico theme-moon"><svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"></path></svg></span>
+        </button>
+        
+          <a href="#notifications" class="bell" id="bell" title="알림">
+            <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 9a5.5 5.5 0 0 1 11 0c0 4.5 2 6 2 6H4.5s2-1.5 2-6z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span class="bell-badge" id="bellBadge" hidden="">0</span>
+          </a>
+          <a href="#profile" class="me-chip">
+            <span class="avatar" style="width:34px;height:34px"><img class="avatar-face" src="../img/avatars/admin-t.png" alt="" loading="lazy"></span>
+            <span class="me-name">운영자</span>
+            <span class="me-points">25,000P</span>
+          </a>
+          <form action="/logout" method="post" class="inline logout-form"><input type="hidden" name="_csrf" value="d2rmAW_K7ovSHqDvix_1daSJv3Fwf_kW">
+            <button class="btn btn-ghost btn-sm" type="submit">로그아웃</button>
+          </form>
+        
+      </div>
+    </div>
+    <nav class="tabs">
+      <div class="tabs-inner">
+        
+        <a href="#board" class="tab ">밤알바커뮤니티</a>
+        <a href="#points" class="tab on">이벤트·포인트</a>
+        <a href="#attendance" class="tab ">출석체크</a>
+        <a href="#ranking" class="tab ">랭킹</a>
+        <a href="#profile" class="tab ">마이페이지</a>
+      </div>
+    </nav>
+  </header>
+
+  
+
+  <main class="container" id="main">
+
+
+<div class="board-head">
+  <div>
+    <h1>이벤트 · 포인트</h1>
+    <p class="muted">진행 중인 이벤트와 포인트 적립 기준을 한곳에서 봐요.</p>
+  </div>
+</div>
+
+
+<section class="card event-card">
+  <div class="tier-head">
+    <h2>진행 중인 이벤트</h2>
+    <a class="muted" href="#board?category=%EC%9D%B4%EB%B2%A4%ED%8A%B8">더보기 →</a>
+  </div>
+  
+    <ul class="event-list">
+      
+        <li>
+          <a href="#board/28">
+            <span class="event-title">강남 쪽 카페 알바 구해요!</span>
+            <span class="muted event-meta">
+              스트릿캡 · 2026-08-01
+               · 댓글 3
+            </span>
+          </a>
+        </li>
+      
+        <li>
+          <a href="#board/17">
+            <span class="event-title">이번 주 근무 인원 모집합니다</span>
+            <span class="muted event-meta">
+              루노라운지 · 2026-07-21
+              
+            </span>
+          </a>
+        </li>
+      
+        <li>
+          <a href="#board/8">
+            <span class="event-title">신규 오픈 기념 인사드려요</span>
+            <span class="muted event-meta">
+              루노라운지 · 2026-07-12
+              
+            </span>
+          </a>
+        </li>
+      
+    </ul>
+  
+</section>
+
+<div class="point-summary">
+  <div class="card stat">
+    <span class="muted">내 포인트</span>
+    <strong class="accent">25,000P</strong>
+  </div>
+  <div class="card stat">
+    <span class="muted">오늘 적립</span>
+    <strong class="">+10P</strong>
+  </div>
+</div>
+
+<div class="card next-unlock">
+  
+    <div class="nu-head"><span>🏆 모든 아바타를 해금했어요!</span></div>
+    <div class="progress"><div class="progress-fill" style="width: 100%"></div></div>
+  
+</div>
+
+<div class="point-grid">
+  <div class="card">
+    <h2>적립 기준</h2>
+    <table class="rules">
+      <tbody><tr><td>회원가입 <span class="muted">(최초 1회)</span></td><td>1,000P</td></tr>
+      <tr><td>출석체크 <span class="muted">(하루 1회)</span></td><td>10P</td></tr>
+      <tr><td>일반 게시글 작성 <span class="muted">(하루 3개까지)</span></td><td>300P</td></tr>
+      <tr><td>익명 게시글 작성 <span class="muted">(하루 3개까지)</span></td><td>100P</td></tr>
+      <tr><td>댓글·대댓글 작성 <span class="muted">(하루 10개까지)</span></td><td>100P</td></tr>
+      <tr><td>일반 게시글 추천받기 <span class="muted">(추천 1개당)</span></td><td>10P</td></tr>
+      <tr><td>인기글 선정 <span class="muted">(추천 10개 이상)</span></td><td>1,000P</td></tr>
+      <tr><td>운영자 추천글 선정</td><td>1,500P</td></tr>
+      
+        <tr><td>연속 출석 7일</td><td>50P</td></tr>
+      
+        <tr><td>연속 출석 14일</td><td>100P</td></tr>
+      
+        <tr><td>연속 출석 21일</td><td>150P</td></tr>
+      
+        <tr><td>연속 출석 28일</td><td>200P</td></tr>
+      
+        <tr><td>연속 출석 30일 달성</td><td>100P</td></tr>
+      
+    </tbody></table>
+    <div class="note">
+      <strong>익명글 규칙</strong> · 익명글 작성 시 100P 지급 · 익명글은 추천 버튼 비활성화 · 추천 포인트 적립 불가
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>적립 내역</h2>
+    
+      <ul class="log-list">
+        
+          <li>
+            <div>
+              <strong>출석체크</strong>
+              <span class="muted">2026-08-05 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>출석체크</strong>
+              <span class="muted">2026-08-04 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>출석체크</strong>
+              <span class="muted">2026-08-03 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>출석체크</strong>
+              <span class="muted">2026-08-02 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>출석체크</strong>
+              <span class="muted">2026-08-01 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>출석체크</strong>
+              <span class="muted">2026-07-31 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>출석체크</strong>
+              <span class="muted">2026-07-30 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>출석체크</strong>
+              <span class="muted">2026-07-29 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>출석체크</strong>
+              <span class="muted">2026-07-28 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>출석체크</strong>
+              <span class="muted">2026-07-27 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>출석체크</strong>
+              <span class="muted">2026-07-26 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>출석체크</strong>
+              <span class="muted">2026-07-25 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-07-24 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-07-23 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-07-22 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-07-21 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-07-20 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-07-19 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-07-18 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-07-17 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-07-16 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-07-15 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-07-14 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-07-13 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-07-12 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-07-11 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-07-10 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-07-09 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-07-08 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-07-07 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-07-06 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-07-05 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-07-04 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-07-03 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-07-02 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-07-01 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-06-30 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-06-29 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-06-28 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-06-27 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-06-26 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-06-25 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-06-24 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-06-23 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-06-22 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-06-21 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-06-20 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-06-19 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-06-18 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-06-17 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-06-16 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-06-15 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-06-14 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-06-13 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-06-12 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-06-11 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-06-10 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-06-09 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-06-08 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-06-07 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-06-06 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-06-05 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-06-04 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-06-03 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-06-02 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-06-01 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-05-31 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-05-30 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-05-29 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-05-28 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-05-27 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-05-26 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-05-25 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-05-24 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-05-23 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-05-22 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-05-21 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-05-20 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-05-19 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-05-18 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-05-17 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-05-16 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-05-15 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-05-14 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-05-13 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-05-12 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-05-11 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-05-10 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-05-09 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-05-08 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-05-07 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-05-06 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-05-05 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-05-04 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-05-03 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-05-02 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-05-01 14:35</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-04-30 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-04-29 14:35</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-04-28 14:35</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+      </ul>
+    
+  </div>
+</div>
+
+  </main>
+  <footer class="footer">
+    <p>활동할수록 포인트가 쌓이고 캐릭터가 성장하는 커뮤니티예요.</p>
+  </footer>
+
+  <script>
+    // 화면 테마 전환: 밝게 ↔ 어둡게. 고른 값은 기기에 저장해 다음에도 유지된다.
+    (function () {
+      var btn = document.getElementById('themeBtn');
+      if (!btn) return;
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      function isDark() {
+        var t = document.documentElement.getAttribute('data-theme');
+        return t ? t === 'dark' : mq.matches;
+      }
+      function label() {
+        btn.title = btn.setAttribute('aria-label', isDark() ? '밝은 화면으로 바꾸기' : '어두운 화면으로 바꾸기');
+        btn.title = isDark() ? '밝은 화면으로 바꾸기' : '어두운 화면으로 바꾸기';
+      }
+      btn.addEventListener('click', function () {
+        var next = isDark() ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem('pl-theme', next); } catch (e) {}
+        label();
+      });
+      // 직접 고른 적이 없으면 기기 설정이 바뀔 때 따라간다
+      mq.addEventListener('change', label);
+      label();
+    })();
+  </script>
+
+  <script>
+    // 점 3개(더보기) 메뉴 — 글·댓글마다 하나씩 있어서 각각에 거는 대신
+    // 문서 전체에서 클릭을 한 번만 받아 처리한다.
+    (function () {
+      function closeAll(except) {
+        document.querySelectorAll('.menu-pop').forEach(function (pop) {
+          if (pop === except) return;
+          pop.hidden = true;
+          var btn = pop.parentNode.querySelector('.menu-btn');
+          if (btn) btn.setAttribute('aria-expanded', 'false');
+        });
+      }
+      document.addEventListener('click', function (e) {
+        var btn = e.target.closest && e.target.closest('.menu-btn');
+        if (btn) {
+          var pop = btn.parentNode.querySelector('.menu-pop');
+          var opening = pop.hidden;
+          closeAll(pop);
+          pop.hidden = !opening;
+          btn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+          if (opening) {
+            // 화면 오른쪽으로 삐져나가면 왼쪽으로 붙인다
+            pop.style.right = '0';
+            pop.style.left = 'auto';
+            var r = pop.getBoundingClientRect();
+            if (r.left < 4) { pop.style.right = 'auto'; pop.style.left = '0'; }
+          }
+          return;
+        }
+        // 메뉴 안을 누른 게 아니면 닫는다
+        if (!(e.target.closest && e.target.closest('.menu-pop'))) closeAll(null);
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        var open = document.querySelector('.menu-pop:not([hidden])');
+        if (!open) return;
+        var btn = open.parentNode.querySelector('.menu-btn');
+        closeAll(null);
+        if (btn) btn.focus();
+      });
+    })();
+  </script>
+
+  <script>
+    // 필수 입력 안내 문구를 한글로 (브라우저 기본 영어 메시지 대체)
+    document.querySelectorAll('input[required], textarea[required]').forEach(function (el) {
+      el.addEventListener('invalid', function () {
+        if (!el.value) el.setCustomValidity('이 항목을 입력해주세요.');
+      });
+      el.addEventListener('input', function () { el.setCustomValidity(''); });
+    });
+  </script>
+
+  <button class="to-top" id="toTop" type="button" aria-label="맨 위로" hidden=""><svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"></path><path d="M6 11l6-6 6 6"></path></svg></button>
+  <script>
+    (function () {
+      var btn = document.getElementById('toTop');
+      if (!btn) return;
+      function toggle() { btn.hidden = window.scrollY < 500; }
+      window.addEventListener('scroll', toggle, { passive: true });
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      btn.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' }); });
+      toggle();
+    })();
+  </script>
+
+
+  <script>
+  // 새 알림을 실시간으로 받아 종에 숫자를 올린다.
+  //
+  // 서버(/notifications/stream)는 진작 있었는데 브라우저에서 붙는 코드가 없어,
+  // 새로고침해야만 알림이 보이고 있었다.
+  //
+  // EventSource 를 못 쓰는 환경(구형 브라우저, 중간 서버가 스트림을 모아두는 경우)도
+  // 있어서, 몇 번 끊기면 60초마다 개수만 물어보는 쪽으로 갈아탄다.
+  (function () {
+    var badge = document.getElementById('bellBadge');
+    if (!badge) return;
+
+    function setCount(n) {
+      n = Number(n) || 0;
+      badge.textContent = n > 99 ? '99+' : String(n);
+      badge.hidden = n <= 0;
+    }
+    function say(text, link) {
+      var t = document.createElement('a');
+      t.className = 'toast toast-notify';
+      t.href = link || '/notifications';
+      t.textContent = text;
+      document.body.appendChild(t);
+      setTimeout(function () { t.classList.add('hide'); }, 4000);
+      setTimeout(function () { t.remove(); }, 4600);
+    }
+
+    var polling = null;
+    function startPolling() {
+      if (polling) return;
+      polling = setInterval(function () {
+        fetch('/notifications/count', { credentials: 'same-origin' })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (d) { if (d) setCount(d.unread); })
+          .catch(function () {});
+      }, 60000);
+    }
+
+    if (!window.EventSource) { startPolling(); return; }
+
+    var fails = 0;
+    var es = new EventSource('/notifications/stream');
+    es.addEventListener('ready', function (e) {
+      fails = 0;
+      try { setCount(JSON.parse(e.data).unread); } catch (err) {}
+    });
+    // 서버는 이름 붙은 이벤트(event: notify)로 보낸다.
+    // onmessage 는 이름 없는 것만 받으므로 이름으로 듣는다.
+    function onNotify(e) {
+      try {
+        var d = JSON.parse(e.data);
+        setCount(d.unread);
+        if (d.message) say(d.message, d.link);
+      } catch (err) {}
+    }
+    es.addEventListener('notify', onNotify);
+    es.onmessage = onNotify;   // 이름 없이 보내도 놓치지 않게
+    es.onerror = function () {
+      // 브라우저가 알아서 다시 붙지만, 계속 실패하면 물어보는 쪽으로 바꾼다
+      if (++fails >= 4) { es.close(); startPolling(); }
+    };
+    window.addEventListener('pagehide', function () { es.close(); });
+  })();
+  </script>
+
+
+  <!-- 모바일 하단 탭바 -->
+  <nav class="bottom-nav">
+    <a href="#board" class="bn-item ">
+      <span class="bn-ico"><svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.2 12 3l9 7.2"></path><path d="M5.5 9.5V20h13V9.5"></path></svg></span><span>홈</span>
+    </a>
+    <a href="#attendance" class="bn-item ">
+      <span class="bn-ico"><svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="16" rx="2.5"></rect><path d="M3.5 9.5h17"></path><path d="M8 3v4M16 3v4"></path><path d="M8.5 15l2.2 2.2L15.5 13"></path></svg></span><span>출석</span>
+    </a>
+    <a href="#board/new" class="bn-item bn-write">
+      <span class="bn-ico"><svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9a2 2 0 0 0-3-3L5 17z"></path><path d="M13.5 6.5l3 3"></path></svg></span><span>글쓰기</span>
+    </a>
+    <a href="#ranking" class="bn-item ">
+      <span class="bn-ico"><svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h10v4a5 5 0 0 1-10 0z"></path><path d="M7 5H4v1.5A3.5 3.5 0 0 0 7 10M17 5h3v1.5A3.5 3.5 0 0 1 17 10"></path><path d="M9.5 13h5l-.5 3h-4z"></path><path d="M8 20h8"></path><path d="M12 16v4"></path></svg></span><span>랭킹</span>
+    </a>
+    <a href="#profile" class="bn-item ">
+      <span class="bn-ico"><svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.5"></circle><path d="M5 20c0-3.6 3.1-5.5 7-5.5s7 1.9 7 5.5"></path></svg></span><span>MY</span>
+    </a>
+  </nav>
+
+
+
+</body></html>

@@ -1,0 +1,193 @@
+<%- include('partials/header', { title: '밤알바커뮤니티', active: 'board' }) %>
+
+<div class="board-head">
+  <div>
+    <h1>밤알바커뮤니티</h1>
+    <p class="muted">일상 이야기부터 고민까지 편하게 나누는 공간이에요.</p>
+  </div>
+  <a class="btn btn-primary" href="/board/new"><%- icon('pencil', 17) %> 글쓰기</a>
+</div>
+
+<% if (trending && trending.length > 0) { %>
+  <section class="trending" aria-label="지금 뜨는 글">
+    <h2 class="trending-head"><%- icon('flame', 15) %> 지금 뜨는 글</h2>
+    <ol class="trending-list">
+      <% trending.slice(0, 3).forEach(function (t, i) { %>
+        <li><a href="/board/<%= t.id %><%= listQS %>">
+          <span class="tr-rank"><%= i + 1 %></span>
+          <span class="tr-title"><%= t.title %></span>
+          <span class="tr-like"><%- icon('like', 14) %> <%= t.like_count %></span>
+        </a></li>
+      <% }) %>
+    </ol>
+  </section>
+<% } %>
+
+<%
+  // 지금 보고 있는 조건을 유지한 채 한 가지만 바꾼 주소를 만든다
+  const listHref = (over) => {
+    const p = new URLSearchParams();
+    const v = { category, sort, q, ...over };
+    if (v.category) p.set('category', v.category);
+    if (v.sort && v.sort !== 'latest') p.set('sort', v.sort);
+    if (v.q) p.set('q', v.q);
+    const s = p.toString();
+    return '/board' + (s ? '?' + s : '');
+  };
+%>
+
+<nav class="cat-tabs" aria-label="말머리">
+  <a class="cat-tab <%= !category ? 'on' : '' %>" href="<%= listHref({ category: '' }) %>"
+     <%= !category ? 'aria-current="page"' : '' %>>전체</a>
+  <% categories.forEach(function (c) { %>
+    <a class="cat-tab <%= category === c.id ? 'on' : '' %>" href="<%= listHref({ category: c.id }) %>"
+       <%= category === c.id ? 'aria-current="page"' : '' %>><%= c.id %></a>
+  <% }) %>
+</nav>
+
+<div class="list-tools">
+  <%# 검색창을 늘 펴두면 자리만 차지한다. 버튼으로 접어두고 누를 때만 펼친다. %>
+  <button class="icon-btn" type="button" id="searchBtn" aria-expanded="<%= q ? 'true' : 'false' %>"
+          aria-controls="searchBox" aria-label="검색">
+    <%- icon('search', 18) %>
+  </button>
+
+  <%# 정렬은 목록에 들어갈 글은 그대로 두고 순서만 바꾼다 — 선택 상자 하나로 충분하다 %>
+  <form class="sort-form" method="get" action="/board">
+    <% if (category) { %><input type="hidden" name="category" value="<%= category %>"><% } %>
+    <% if (q) { %><input type="hidden" name="q" value="<%= q %>"><% } %>
+    <label class="sr-only" for="sort">정렬 기준</label>
+    <select class="sort-select" id="sort" name="sort" onchange="this.form.submit()">
+      <% [['latest', '최신순'], ['likes', '추천순'], ['views', '조회순']].forEach(function (s) { %>
+        <option value="<%= s[0] %>" <%= sort === s[0] ? 'selected' : '' %>><%= s[1] %></option>
+      <% }) %>
+    </select>
+    <noscript><button class="btn btn-ghost btn-sm" type="submit">적용</button></noscript>
+  </form>
+</div>
+
+<form class="search" id="searchBox" method="get" action="/board" role="search" <%= q ? '' : 'hidden' %>>
+  <span class="search-ico"><%- icon('search', 17) %></span>
+  <label class="sr-only" for="q">검색어</label>
+  <input type="search" id="q" name="q" value="<%= q %>" enterkeyhint="search"
+         placeholder="제목이나 내용으로 검색">
+  <% if (sort !== 'latest') { %><input type="hidden" name="sort" value="<%= sort %>"><% } %>
+  <% if (category) { %><input type="hidden" name="category" value="<%= category %>"><% } %>
+  <button class="sr-only" type="submit">검색</button>
+</form>
+
+<div class="post-list card">
+  <% notices.forEach(function (p) { %>
+    <a class="post-row" href="/board/<%= p.id %><%= listQS %>">
+      <%- renderAvatar(p.avatar_id, p.border_id, 44) %>
+      <div class="post-mid">
+        <div class="post-title"><span class="badge badge-notice">공지</span> <%= p.title %></div>
+        <div class="post-meta"><%= p.nickname %> · <%= p.created_at.slice(0, 10) %></div>
+      </div>
+      <div class="post-stats"><span><%- icon('eye', 15) %> <%= p.views.toLocaleString() %></span></div>
+    </a>
+  <% }) %>
+
+  <% if (posts.length === 0) { %>
+    <div class="empty">
+      <% if (q) { %>
+        '<%= q %>' 검색 결과가 없어요.
+      <% } else if (category) { %>
+        아직 '<%= category %>' 글이 없어요. 첫 글을 써보세요!
+      <% } else { %>
+        아직 게시글이 없어요. 첫 글을 써보세요!
+      <% } %>
+    </div>
+  <% } %>
+
+  <% posts.forEach(function (p) { %>
+    <a class="post-row" href="/board/<%= p.id %><%= listQS %>">
+      <% if (p.is_anonymous) { %>
+        <%- renderAvatar('anon', null, 44) %>
+      <% } else { %>
+        <%- renderAvatar(p.avatar_id, p.border_id, 44) %>
+      <% } %>
+      <div class="post-mid">
+        <div class="post-title">
+          <%# 말머리 탭을 고른 상태에서는 같은 말머리가 줄마다 반복되므로 '전체'에서만 보여준다.
+              인기·운영자추천 뱃지는 목록에서 뺐다 (공지만 남긴다). %>
+          <% if (!category) { %><%- catTag(p.category) %><% } %>
+          <% if (p.is_hidden) { %><span class="badge badge-lock">숨김</span><% } %>
+          <%= p.title %>
+          <% if (p.image_count > 0) { %><span class="img-mark"><%- icon('image', 14) %></span><% } %>
+        </div>
+        <div class="post-meta">
+          <%= p.is_anonymous ? '익명' : p.nickname %> · <%= timeAgo(p.created_at) %>
+        </div>
+      </div>
+      <div class="post-stats">
+        <span><%- icon('comment', 15) %> <%= p.comment_count %></span>
+        <span><%- icon('like', 15) %> <%= p.like_count %></span>
+      </div>
+    </a>
+  <% }) %>
+</div>
+
+<% if (totalPages > 1) { %>
+  <%
+    // 페이지가 많아도 링크는 현재 위치 주변 몇 개만 보여준다.
+    // 전부 그리면 글이 늘어날수록 목록 아래가 숫자로 뒤덮인다.
+    const WINDOW = 2;
+    let from = Math.max(1, page - WINDOW);
+    let to = Math.min(totalPages, page + WINDOW);
+    if (page <= WINDOW + 1) to = Math.min(totalPages, WINDOW * 2 + 1);
+    if (page >= totalPages - WINDOW) from = Math.max(1, totalPages - WINDOW * 2);
+    const href = (n) => `/board?page=${n}&sort=${sort}`
+      + (category ? '&category=' + encodeURIComponent(category) : '')
+      + (q ? '&q=' + encodeURIComponent(q) : '');
+  %>
+  <nav class="pager" aria-label="페이지 이동">
+    <% if (page > 1) { %>
+      <a class="page page-nav" href="<%= href(1) %>" aria-label="첫 페이지">«</a>
+      <a class="page page-nav" href="<%= href(page - 1) %>" rel="prev" aria-label="이전 페이지">‹</a>
+    <% } %>
+
+    <% if (from > 1) { %><span class="page-gap">…</span><% } %>
+    <% for (let i = from; i <= to; i++) { %>
+      <a class="page <%= i === page ? 'on' : '' %>" href="<%= href(i) %>"
+         <%= i === page ? 'aria-current="page"' : '' %>><%= i %></a>
+    <% } %>
+    <% if (to < totalPages) { %><span class="page-gap">…</span><% } %>
+
+    <% if (page < totalPages) { %>
+      <a class="page page-nav" href="<%= href(page + 1) %>" rel="next" aria-label="다음 페이지">›</a>
+      <a class="page page-nav" href="<%= href(totalPages) %>" aria-label="마지막 페이지">»</a>
+    <% } %>
+    <span class="page-info muted"><%= page %> / <%= totalPages %></span>
+  </nav>
+<% } %>
+
+<%# 목록 끝까지 내려온 사람이 위로 다시 올라가지 않아도 되게 아래에도 둔다 %>
+<div class="list-bottom">
+  <button class="btn btn-ghost" type="button" id="searchBtnBottom" aria-controls="searchBox">
+    <%- icon('search', 16) %> 검색
+  </button>
+  <a class="btn btn-primary" href="/board/new"><%- icon('pencil', 16) %> 글쓰기</a>
+</div>
+
+<script>
+  // 검색 버튼을 누르면 목록 위의 검색창이 펼쳐지고 바로 입력할 수 있게 한다
+  (function () {
+    var box = document.getElementById('searchBox');
+    var input = document.getElementById('q');
+    if (!box) return;
+    function toggle(force) {
+      var open = force !== undefined ? force : box.hidden;
+      box.hidden = !open;
+      var top = document.getElementById('searchBtn');
+      if (top) top.setAttribute('aria-expanded', open ? 'true' : 'false');
+      if (open) { box.scrollIntoView({ block: 'center' }); input.focus(); }
+    }
+    var t = document.getElementById('searchBtn');
+    if (t) t.addEventListener('click', function () { toggle(); });
+    var b = document.getElementById('searchBtnBottom');
+    if (b) b.addEventListener('click', function () { toggle(true); });
+  })();
+</script>
+
+<%- include('partials/footer') %>

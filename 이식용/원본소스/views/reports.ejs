@@ -1,0 +1,74 @@
+<%- include('partials/header', { title: '신고 관리', active: null }) %>
+
+<div class="board-head">
+  <div>
+    <h1>신고 관리 <span class="badge badge-notice">운영자</span></h1>
+    <p class="muted">신고가 접수된 게시글이에요. 숨김 처리·삭제하거나, 문제없으면 반려하세요.</p>
+  </div>
+  <a class="btn btn-ghost" href="/admin/members"><%- icon('user', 16) %> 회원 관리</a>
+</div>
+
+<h2 class="section-title">신고된 게시글</h2>
+<div class="card post-list">
+  <% if (items.length === 0) { %>
+    <div class="empty">처리할 게시글 신고가 없어요.</div>
+  <% } else { %>
+    <% items.forEach(function (p) { %>
+      <div class="post-row report-row">
+        <span class="report-count"><%- icon('report', 16) %> <%= p.report_count %></span>
+        <a class="post-mid" href="/board/<%= p.id %>">
+          <div class="post-title"><%- catTag(p.category) %> <%= p.title %></div>
+          <div class="post-meta">
+            작성자 <%= p.is_anonymous ? '익명' : p.nickname %> · 최근 신고 <%= p.last_reported.slice(0, 16) %>
+          </div>
+        </a>
+        <div class="report-acts">
+          <form action="/board/<%= p.id %>/dismiss-reports" method="post" class="inline"
+                onsubmit="return confirm('신고를 반려하고 처리를 종료할까요?')"><%- csrfField() %>
+            <input type="hidden" name="back" value="reports">
+            <button class="btn btn-ghost btn-sm" type="submit">반려</button>
+          </form>
+          <form action="/board/<%= p.id %>/hide" method="post" class="inline"><%- csrfField() %>
+            <input type="hidden" name="back" value="reports">
+            <button class="btn btn-ghost btn-sm" type="submit">숨김</button>
+          </form>
+          <form action="/board/<%= p.id %>/delete" method="post" class="inline"
+                onsubmit="return confirm('이 게시글을 영구 삭제할까요?')"><%- csrfField() %>
+            <input type="hidden" name="back" value="reports">
+            <button class="btn btn-ghost btn-sm danger" type="submit">삭제</button>
+          </form>
+        </div>
+      </div>
+    <% }) %>
+  <% } %>
+</div>
+
+<h2 class="section-title">신고된 댓글</h2>
+<div class="card post-list">
+  <% if (commentItems.length === 0) { %>
+    <div class="empty">처리할 댓글 신고가 없어요.</div>
+  <% } else { %>
+    <% commentItems.forEach(function (c) { %>
+      <div class="post-row report-row">
+        <span class="report-count"><%- icon('report', 16) %> <%= c.report_count %></span>
+        <a class="post-mid" href="/board/<%= c.post_id %>#comment-<%= c.id %>">
+          <div class="post-title"><%= c.content %></div>
+          <div class="post-meta">작성자 <%= c.nickname %> · 최근 신고 <%= c.last_reported.slice(0, 16) %></div>
+        </a>
+        <div class="report-acts">
+          <form action="/board/comments/<%= c.id %>/dismiss-reports" method="post" class="inline"
+                onsubmit="return confirm('이 댓글 신고를 반려할까요?')"><%- csrfField() %>
+            <button class="btn btn-ghost btn-sm" type="submit">반려</button>
+          </form>
+          <form action="/board/comments/<%= c.id %>/delete" method="post" class="inline"
+                onsubmit="return confirm('이 댓글을 삭제할까요?')"><%- csrfField() %>
+            <input type="hidden" name="back" value="reports">
+            <button class="btn btn-ghost btn-sm danger" type="submit">삭제</button>
+          </form>
+        </div>
+      </div>
+    <% }) %>
+  <% } %>
+</div>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,44 @@
+<%- include('partials/header', { title: '회원 관리', active: null }) %>
+
+<div class="board-head">
+  <div>
+    <h1>회원 관리 <span class="badge badge-notice">운영자</span></h1>
+    <p class="muted">전체 회원 <%= members.length %>명. 부적절한 활동을 하는 회원을 제재할 수 있어요.</p>
+  </div>
+  <a class="btn btn-ghost" href="/reports"><%- icon('report', 16) %> 신고 관리</a>
+</div>
+
+<div class="card member-list">
+  <div class="member-row member-head">
+    <span class="m-user">회원</span>
+    <span class="m-stat">활동</span>
+    <span class="m-point">포인트</span>
+    <span class="m-act">관리</span>
+  </div>
+  <% members.forEach(function (u) { %>
+    <div class="member-row <%= u.is_banned ? 'banned' : '' %>">
+      <span class="m-user">
+        <strong><%= u.nickname %></strong> <%- levelBadge(u.points) %>
+        <% if (u.is_admin) { %><span class="badge badge-notice">운영자</span><% } %>
+        <% if (u.is_banned) { %><span class="badge badge-hot">제재됨</span><% } %>
+        <span class="muted m-id">@<%= u.username %> · 가입 <%= u.created_at.slice(0, 10) %></span>
+      </span>
+      <span class="m-stat muted">글 <%= u.post_count %> · 댓글 <%= u.comment_count %></span>
+      <span class="m-point accent"><%= u.points.toLocaleString() %>P</span>
+      <span class="m-act">
+        <% if (u.is_admin || u.id === me.id) { %>
+          <span class="muted">—</span>
+        <% } else { %>
+          <form action="/admin/members/<%= u.id %>/ban" method="post" class="inline"
+                onsubmit="return confirm('<%= u.is_banned ? u.nickname + " 제재를 해제할까요?" : u.nickname + " 회원을 제재할까요? (로그인·활동이 차단됩니다)" %>')"><%- csrfField() %>
+            <button class="btn btn-sm <%= u.is_banned ? 'btn-ghost' : 'btn-ghost danger' %>" type="submit">
+              <%= u.is_banned ? '제재 해제' : '제재' %>
+            </button>
+          </form>
+        <% } %>
+      </span>
+    </div>
+  <% }) %>
+</div>
+
+<%- include('partials/footer') %>
