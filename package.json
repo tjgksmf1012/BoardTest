@@ -8,7 +8,8 @@
     "test": "node --test",
     "persona": "node scripts/persona-test.js",
     "sweep": "node scripts/sweep.js",
-    "ring": "node scripts/check-ring.js"
+    "ring": "node scripts/check-ring.js",
+    "php51": "node scripts/check-php51.js"
   },
   "engines": {
     "node": ">=20.19 <21 || >=22.12 <23"

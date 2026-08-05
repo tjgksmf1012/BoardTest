@@ -103,6 +103,16 @@ foreach ($avatars as $a) {
 <p>SQL 은 <strong>반드시 값을 바인딩</strong>해 주세요. PDO·mysqli 가 없고 <code>mysql_*</code> 만 있는 서버라면 <code>mysql_real_escape_string()</code> 을 빠짐없이 거쳐야 합니다. 지금 Node 구현은 모든 쿼리를 바인딩하고 있어 그 부분만 옮기면 됩니다.</p>
 <h3 class="sub">SQLite → MySQL 로 바꿀 때 주의할 함수</h3>
 <table><thead><tr><th>지금 (SQLite)</th><th>MySQL</th></tr></thead><tbody><tr><td><code>datetime('now', 'localtime')</code></td><td><code>NOW()</code></td></tr><tr><td><code>date('now', 'localtime')</code></td><td><code>CURDATE()</code></td></tr><tr><td><code>datetime('now', 'localtime', '-7 days')</code></td><td><code>DATE_SUB(NOW(), INTERVAL 7 DAY)</code></td></tr><tr><td><code>strftime('%Y-%m-', 'now', 'localtime')</code></td><td><code>DATE_FORMAT(NOW(), '%Y-%m-')</code></td></tr><tr><td><code>AUTOINCREMENT</code></td><td><code>AUTO_INCREMENT</code></td></tr><tr><td>`a</td><td></td><td>b` (문자열 잇기)</td><td><code>CONCAT(a, b)</code></td></tr></tbody></table>
+<h2 class="sec">0-1. 이 문서가 <strong>확인한 것</strong>과 <strong>가정한 것</strong></h2>
+<p>솔직하게 갈라 적습니다. 저는 옮겨 갈 서버를 한 번도 못 봤습니다.</p>
+<h3 class="sub">확인한 것 (기계가 매번 검사합니다)</h3>
+<table><thead><tr><th></th><th>어떻게</th></tr></thead><tbody><tr><td>아래 DDL 의 쉼표·괄호가 맞는지</td><td>문서를 만들 때마다 훑습니다. 어긋나면 문서를 아예 안 씁니다</td></tr><tr><td>화면별 쿼리가 실제로 도는지</td><td>문서에 싣기 전에 한 번씩 실행해 봅니다</td></tr><tr><td>드리는 PHP 파일이 5.1 문법인지</td><td><code>node scripts/check-php51.js</code> 로 확인합니다</td></tr><tr><td>연동 토큰 예제가 맞는지</td><td>그 방식으로 만든 토큰이 통과하는지 테스트가 있습니다</td></tr></tbody></table>
+<h3 class="sub">가정한 것 (틀릴 수 있습니다)</h3>
+<table><thead><tr><th>가정</th><th>왜 이렇게 뒀나</th><th>다르면</th></tr></thead><tbody><tr><td>MySQL <strong>5.0</strong> 대</td><td>PHP 5.1 서버는 대개 그렇습니다</td><td>더 높으면 utf8mb4 를 쓰시는 게 낫습니다</td></tr><tr><td>기존 회원 표에 칸을 더할 수 있음</td><td>포인트·캐릭터를 매달 곳이 필요합니다</td><td>별도 표로 빼야 하면 알려 주세요</td></tr><tr><td>글 · 댓글 표가 이미 있음</td><td>커뮤니티가 이미 있다고 하셔서</td><td>없으면 2장의 DDL 을 그대로 쓰시면 됩니다</td></tr><tr><td>회원 id 가 정수</td><td>우리 쪽이 그렇습니다</td><td>문자열이면 외래키 타입을 맞춰야 합니다</td></tr></tbody></table>
+<h3 class="sub">⚠ 쿼리는 <strong>SQLite 에서</strong> 돌려 본 것입니다</h3>
+<p>4장의 쿼리는 지금 구현(SQLite)에서 한 번씩 실행해 확인한 것이고, MySQL 문법으로는 <strong>손으로 옮겨 적었습니다.</strong> MySQL 에서 직접 돌려 보지는 못했습니다. 날짜 함수처럼 바뀌는 부분은 표로 정리해 뒀지만, 옮기신 뒤 한 번씩 돌려 봐 주세요.</p>
+<h3 class="sub">서버를 알려 주시면 가정이 사라집니다</h3>
+<p><code>docs/check-server.php</code> 를 웹 폴더에 올리고 브라우저로 열면 PHP·MySQL 버전, 문자셋, 시간대, 필요한 확장이 있는지, 회원 표에 어떤 칸이 없는지를 한 화면에 보여 줍니다. 그 결과를 주시면 위 가정을 실제 값으로 바꾸겠습니다. (파일 자체가 PHP 4 문법으로만 쓰여 있어 아주 옛 서버에서도 돕니다.  <strong>확인 후에는 반드시 지워 주세요</strong> — 서버 정보가 드러납니다.)</p>
 <h2 class="sec">0-2. 기존 커뮤니티 시스템에 <strong>이식</strong>하실 때 — 여기부터 보세요</h2>
 <p>이 프로그램은 게시판을 <strong>처음부터</strong> 만든 것이라, 글·댓글·추천 같은 표가 다 들어 있습니다. 그런데 기존 사이트에 커뮤니티가 이미 있다면 그 표들은 <strong>쓰실 일이 없습니다.</strong> 새로 붙이셔야 하는 건 이 프로젝트의 고유 기능 — <strong>포인트 · 출석 · 캐릭터</strong> 뿐입니다.</p>
 <h3 class="sub">표를 세 갈래로 나누면</h3>
