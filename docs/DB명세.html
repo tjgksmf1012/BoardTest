@@ -103,6 +103,29 @@ foreach ($avatars as $a) {
 <p>SQL 은 <strong>반드시 값을 바인딩</strong>해 주세요. PDO·mysqli 가 없고 <code>mysql_*</code> 만 있는 서버라면 <code>mysql_real_escape_string()</code> 을 빠짐없이 거쳐야 합니다. 지금 Node 구현은 모든 쿼리를 바인딩하고 있어 그 부분만 옮기면 됩니다.</p>
 <h3 class="sub">SQLite → MySQL 로 바꿀 때 주의할 함수</h3>
 <table><thead><tr><th>지금 (SQLite)</th><th>MySQL</th></tr></thead><tbody><tr><td><code>datetime('now', 'localtime')</code></td><td><code>NOW()</code></td></tr><tr><td><code>date('now', 'localtime')</code></td><td><code>CURDATE()</code></td></tr><tr><td><code>datetime('now', 'localtime', '-7 days')</code></td><td><code>DATE_SUB(NOW(), INTERVAL 7 DAY)</code></td></tr><tr><td><code>strftime('%Y-%m-', 'now', 'localtime')</code></td><td><code>DATE_FORMAT(NOW(), '%Y-%m-')</code></td></tr><tr><td><code>AUTOINCREMENT</code></td><td><code>AUTO_INCREMENT</code></td></tr><tr><td>`a</td><td></td><td>b` (문자열 잇기)</td><td><code>CONCAT(a, b)</code></td></tr></tbody></table>
+<h2 class="sec">0-2. 기존 커뮤니티 시스템에 <strong>이식</strong>하실 때 — 여기부터 보세요</h2>
+<p>이 프로그램은 게시판을 <strong>처음부터</strong> 만든 것이라, 글·댓글·추천 같은 표가 다 들어 있습니다. 그런데 기존 사이트에 커뮤니티가 이미 있다면 그 표들은 <strong>쓰실 일이 없습니다.</strong> 새로 붙이셔야 하는 건 이 프로젝트의 고유 기능 — <strong>포인트 · 출석 · 캐릭터</strong> 뿐입니다.</p>
+<h3 class="sub">표를 세 갈래로 나누면</h3>
+<table><thead><tr><th>갈래</th><th>표</th><th>이식할 때</th></tr></thead><tbody><tr><td><strong>A. 이미 있으실 것</strong></td><td><code>users</code> <code>posts</code> <code>comments</code> <code>likes</code> <code>comment_likes</code> <code>reports</code> <code>comment_reports</code> <code>bookmarks</code> <code>post_images</code></td><td>기존 표를 그대로 쓰시고, 아래 '덧붙일 칸'만 보태 주세요</td></tr><tr><td><strong>B. 새로 만드셔야 할 것</strong></td><td><code>point_logs</code> <code>attendance</code> <code>user_items</code> <code>notifications</code></td><td><strong>이 넷이 핵심입니다.</strong> 기존 시스템에 없을 가능성이 큽니다</td></tr><tr><td><strong>C. 안 옮기셔도 되는 것</strong></td><td><code>posts_fts</code> (검색 색인)</td><td>기존 검색을 쓰시면 됩니다</td></tr></tbody></table>
+<h3 class="sub">A. 기존 회원 표에 덧붙일 칸</h3>
+<table><thead><tr><th>칸</th><th>타입</th><th>왜 필요한가</th></tr></thead><tbody><tr><td><code>points</code></td><td>INT NOT NULL DEFAULT 0</td><td>현재 보유 포인트</td></tr><tr><td><code>avatar_id</code></td><td>VARCHAR(40) NOT NULL DEFAULT ''</td><td>쓰고 있는 캐릭터 code</td></tr><tr><td><code>border_id</code></td><td>VARCHAR(40) NULL</td><td>쓰고 있는 테두리 code</td></tr><tr><td><code>member_type</code></td><td>VARCHAR(20) NOT NULL DEFAULT 'female'</td><td>여성/남성/업소 — 어떤 캐릭터를 줄지 가릅니다</td></tr></tbody></table>
+<p>글 표에는 인기글·운영자추천을 쓰실 거면 <code>is_popular</code> · <code>admin_picked</code> (둘 다 <code>TINYINT(1) NOT NULL DEFAULT 0</code>) 정도만 있으면 됩니다.</p>
+<h3 class="sub">포인트가 지급되는 지점 (기존 코드에 한 줄씩 넣으실 자리)</h3>
+<p>기존 게시판 코드에서 <strong>이 일들이 성공한 직후</strong> 포인트 지급 함수를 부르시면 됩니다.</p>
+<table><thead><tr><th>언제</th><th>reason</th><th>금액</th><th>몇 번까지 · 무엇으로 막는가</th></tr></thead><tbody><tr><td>커뮤니티 첫 방문(가입)</td><td><code>signup</code></td><td>1,000P</td><td>최초 1회 — 회원을 만들 때 한 번만 부른다 (따로 확인하지 않는다)</td></tr><tr><td>출석체크 버튼</td><td><code>attendance</code></td><td>10P</td><td>하루 1회 — attendance 표의 (user_id, day) UNIQUE 가 막는다</td></tr><tr><td>글 등록 (일반)</td><td><code>post</code></td><td>300P</td><td>하루 3개 — 오늘 point_logs 를 세어서 판정</td></tr><tr><td>글 등록 (익명)</td><td><code>anon_post</code></td><td>100P</td><td>하루 3개 — 오늘 point_logs 를 세어서 판정</td></tr><tr><td>댓글·대댓글 등록</td><td><code>comment</code></td><td>100P</td><td>하루 10개 — 오늘 point_logs 를 세어서 판정</td></tr><tr><td>내 글이 추천받음</td><td><code>like_received</code></td><td>10P</td><td>제한 없음 (추천 1개당)</td></tr><tr><td>내 글이 인기글이 됨 (추천 10개)</td><td><code>popular</code></td><td>1,000P</td><td>글당 1회 — posts.is_popular 를 세워 두 번 안 준다</td></tr><tr><td>내 글이 운영자 추천글이 됨</td><td><code>admin_pick</code></td><td>1,500P</td><td>글당 1회 — posts.admin_picked 를 세워 두 번 안 준다</td></tr><tr><td>연속 출석 7일</td><td><code>streak7</code></td><td>50P</td><td>연속 일수가 <strong>딱 그 날짜일 때만</strong> — 31일째에 또 주지 않는다</td></tr><tr><td>연속 출석 14일</td><td><code>streak14</code></td><td>100P</td><td>연속 일수가 <strong>딱 그 날짜일 때만</strong> — 31일째에 또 주지 않는다</td></tr><tr><td>연속 출석 21일</td><td><code>streak21</code></td><td>150P</td><td>연속 일수가 <strong>딱 그 날짜일 때만</strong> — 31일째에 또 주지 않는다</td></tr><tr><td>연속 출석 28일</td><td><code>streak28</code></td><td>200P</td><td>연속 일수가 <strong>딱 그 날짜일 때만</strong> — 31일째에 또 주지 않는다</td></tr><tr><td>연속 출석 30일 달성</td><td><code>streak30</code></td><td>100P</td><td>연속 일수가 <strong>딱 그 날짜일 때만</strong> — 31일째에 또 주지 않는다</td></tr></tbody></table>
+<p>연속 출석 보너스는 그날의 연속 일수가 <strong>정확히</strong> 7·14·21·28·30 일 때만 줍니다. 그래서 8일째에 또 주지 않고, 연속이 끊겼다가 다시 7일을 채우면 다시 받습니다 (재도전이 되게 일부러 그렇게 뒀습니다).</p>
+<p><strong>하루 한도는 활동 제한이 아닙니다.</strong> 한도를 넘겨도 글·댓글은 정상으로 써지고 포인트만 안 붙습니다. 판정은 <code>point_logs</code> 를 세어서 합니다.</p>
+<pre><code>-- 오늘 이 사유로 몇 번 받았나 (한도와 비교)
+SELECT COUNT(*) FROM point_logs
+ WHERE user_id = ? AND reason = ? AND DATE(created_at) = CURDATE();
+
+-- 지급 (두 문장을 한 트랜잭션으로)
+INSERT INTO point_logs (user_id, amount, reason, detail, created_at)
+VALUES (?, ?, ?, ?, NOW());
+UPDATE users SET points = points + ? WHERE id = ?;</code></pre>
+<h3 class="sub">관리자에서 게시판을 추가하실 수 있어야 한다면</h3>
+<p>지금 구현은 말머리(자유·질문·정보·이벤트)를 <strong>코드에 적어</strong> 두고 있습니다 (<code>src/categories.js</code>). 관리자에서 게시판을 늘리시는 구조라면 그쪽 게시판 표를 쓰시고, 우리 말머리 개념은 <strong>버리셔도 됩니다.</strong></p>
+<p>포인트 규칙은 게시판이 몇 개든 상관없이 그대로 돕니다. 다만 &quot;글 등록 300P&quot; 를 게시판마다 다르게 주고 싶으시면 <code>point_logs</code> 에 <code>board_id</code> 한 칸을 더 두시는 편이 나중에 편합니다.</p>
 <h2 class="sec">1. 표 한눈에 보기</h2>
 <table><thead><tr><th>테이블</th><th>설명</th></tr></thead><tbody><tr><td><code>attendance</code></td><td>출석 기록</td></tr><tr><td><code>bookmarks</code></td><td>스크랩</td></tr><tr><td><code>comment_likes</code></td><td>댓글 좋아요</td></tr><tr><td><code>comment_reports</code></td><td>댓글 신고</td></tr><tr><td><code>comments</code></td><td>댓글·답글 (parent_id 가 있으면 답글)</td></tr><tr><td><code>likes</code></td><td>글 추천 (취소 없음, 1인 1회)</td></tr><tr><td><code>notifications</code></td><td>알림</td></tr><tr><td><code>point_logs</code></td><td>포인트 적립·차감 내역</td></tr><tr><td><code>post_images</code></td><td>글에 첨부한 사진 (본문에 넣은 사진은 본문 HTML 안에 있고, 이 표는 옛 방식 첨부)</td></tr><tr><td><code>posts</code></td><td>게시글</td></tr><tr><td><code>reports</code></td><td>글 신고</td></tr><tr><td><code>user_items</code></td><td>포인트로 산 캐릭터·테두리</td></tr><tr><td><code>users</code></td><td>회원. 연동 모드에서는 아이디·비밀번호가 아니라 <strong>A사이트 회원번호에 매달린 커뮤니티 프로필</strong>이다.</td></tr></tbody></table>
 <h2 class="sec">2. 테이블 정의</h2>
@@ -413,8 +436,9 @@ FROM users u WHERE u.is_banned = 0 ORDER BY u.points DESC, u.id LIMIT 20</code><
 <table><thead><tr><th>방식</th><th>쓸 수 있는 조건</th><th>비고</th></tr></thead><tbody><tr><td><code>LIKE '%..%'</code></td><td>어디서나</td><td>지금 문서의 기본. 수천 건까지는 문제없음</td></tr><tr><td><code>FULLTEXT ... WITH PARSER ngram</code></td><td><strong>MySQL 5.7 이상</strong></td><td>한글 부분일치에 적합. 가능하면 이쪽 권장</td></tr><tr><td>별도 색인 테이블</td><td>어디서나</td><td>지금 Node 구현이 쓰는 방식 (두 글자씩 잘라 저장)</td></tr></tbody></table>
 <blockquote>현재 Node 구현은 SQLite FTS5 에 <strong>두 글자씩 잘라 넣는 색인</strong>을 씁니다. 기본 토크나이저는 띄어쓰기로 단어를 나눠 &quot;주말알바&quot;에서 &quot;알바&quot;를 못 찾고, trigram 은 세 글자 이상만 되기 때문입니다. MySQL 의 ngram 파서도 같은 이유로 <code>ngram_token_size=2</code> 로 두시길 권합니다.</blockquote>
 <h2 class="sec">8. 옮기실 때 놓치기 쉬운 것</h2>
-<ol><li><strong>하루 한도는 활동 제한이 아닙니다.</strong> 한도를 넘겨도 글·댓글은 정상으로 써지고,</li></ol>
-<p>   포인트만 지급되지 않습니다. (기획서 안내문에도 그렇게 적혀 있습니다)</p>
+<ol><li>연속 출석 보너스는 그날의 연속 일수가 <strong>정확히</strong> 7·14·21·28·30 일 때만 줍니다.</li></ol>
+<p>그래서 8일째에 또 주지 않고, 연속이 끊겼다가 다시 7일을 채우면 다시 받습니다 (재도전이 되게 일부러 그렇게 뒀습니다).</p>
+<p><strong>하루 한도는 활동 제한이 아닙니다.</strong> 한도를 넘겨도 글·댓글은 정상으로 써지고,    포인트만 지급되지 않습니다. (기획서 안내문에도 그렇게 적혀 있습니다)</p>
 <ol><li><strong>답글이 달린 댓글은 지우지 않습니다.</strong> <code>is_deleted = 1</code> 로 표시만 하고 내용을 비웁니다.</li></ol>
 <p>   통째로 지우면 남이 단 답글까지 함께 사라집니다.</p>
 <ol><li><strong>익명 글은 추천을 받을 수 없습니다.</strong> 추천 버튼이 비활성이고 추천 포인트도 적립되지 않습니다.</li><li><strong>제재된 회원</strong>(<code>is_banned = 1</code>)은 로그인·활동이 막히고, 로그인 상태여도 즉시 끊어야 합니다.</li><li><strong>조회수</strong>는 같은 세션에서 한 번만 올립니다. 새로고침마다 올리면 숫자가 의미를 잃습니다.</li><li><strong>캐릭터 이미지는 코드에 박지 않았습니다.</strong> <code>public/avatars/manifest.json</code> 에 목록이 있고,</li></ol>

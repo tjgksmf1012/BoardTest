@@ -42,6 +42,40 @@ const CATALOG = (() => {
   };
 })();
 
+// 포인트가 붙는 지점 표.
+// 금액·한도를 문서에 손으로 적어 두면 규칙이 바뀔 때 조용히 어긋난다.
+// src/points.js 의 RULES 에서 그대로 뽑는다. (WHEN 은 '기존 코드의 어느 자리인지'만 적는다)
+const HOOKS = (() => {
+  const WHEN = {
+    signup: '커뮤니티 첫 방문(가입)',
+    attendance: '출석체크 버튼',
+    post: '글 등록 (일반)',
+    anon_post: '글 등록 (익명)',
+    comment: '댓글·대댓글 등록',
+    like_received: '내 글이 추천받음',
+    popular: '내 글이 인기글이 됨 (추천 10개)',
+    admin_pick: '내 글이 운영자 추천글이 됨',
+    streak7: '연속 출석 7일', streak14: '연속 출석 14일', streak21: '연속 출석 21일',
+    streak28: '연속 출석 28일', streak30: '연속 출석 30일 달성',
+  };
+  // 한도는 '몇 번까지' 만 적으면 못 만드신다. **무엇으로 막는지**까지 적는다.
+  const HOW = {
+    signup: '최초 1회 — 회원을 만들 때 한 번만 부른다 (따로 확인하지 않는다)',
+    attendance: '하루 1회 — attendance 표의 (user_id, day) UNIQUE 가 막는다',
+    like_received: '제한 없음 (추천 1개당)',
+    popular: '글당 1회 — posts.is_popular 를 세워 두 번 안 준다',
+    admin_pick: '글당 1회 — posts.admin_picked 를 세워 두 번 안 준다',
+  };
+  const rows = Object.entries(RULES).map(([reason, r]) => {
+    const limit = r.dailyLimit ? `하루 ${r.dailyLimit}개 — 오늘 point_logs 를 세어서 판정`
+      : HOW[reason] || (/^streak/.test(reason)
+        ? '연속 일수가 **딱 그 날짜일 때만** — 31일째에 또 주지 않는다'
+        : '제한 없음');
+    return `| ${WHEN[reason] || r.label} | \`${reason}\` | ${r.amount.toLocaleString()}P | ${limit} |`;
+  });
+  return '| 언제 | reason | 금액 | 몇 번까지 · 무엇으로 막는가 |\n|---|---|---:|---|\n' + rows.join('\n');
+})();
+
 const OUT = path.join(__dirname, '..', 'docs', 'DB명세.md');
 
 // ---- SQLite 타입 → MySQL 타입 -------------------------------------------------
@@ -383,6 +417,68 @@ SQL 은 **반드시 값을 바인딩**해 주세요. PDO·mysqli 가 없고 \`my
 
 ---
 
+## 0-2. 기존 커뮤니티 시스템에 **이식**하실 때 — 여기부터 보세요
+
+이 프로그램은 게시판을 **처음부터** 만든 것이라, 글·댓글·추천 같은 표가 다 들어 있습니다.
+그런데 기존 사이트에 커뮤니티가 이미 있다면 그 표들은 **쓰실 일이 없습니다.**
+새로 붙이셔야 하는 건 이 프로젝트의 고유 기능 — **포인트 · 출석 · 캐릭터** 뿐입니다.
+
+### 표를 세 갈래로 나누면
+
+| 갈래 | 표 | 이식할 때 |
+|---|---|---|
+| **A. 이미 있으실 것** | \`users\` \`posts\` \`comments\` \`likes\` \`comment_likes\` \`reports\` \`comment_reports\` \`bookmarks\` \`post_images\` | 기존 표를 그대로 쓰시고, 아래 '덧붙일 칸'만 보태 주세요 |
+| **B. 새로 만드셔야 할 것** | \`point_logs\` \`attendance\` \`user_items\` \`notifications\` | **이 넷이 핵심입니다.** 기존 시스템에 없을 가능성이 큽니다 |
+| **C. 안 옮기셔도 되는 것** | \`posts_fts\` (검색 색인) | 기존 검색을 쓰시면 됩니다 |
+
+### A. 기존 회원 표에 덧붙일 칸
+
+| 칸 | 타입 | 왜 필요한가 |
+|---|---|---|
+| \`points\` | INT NOT NULL DEFAULT 0 | 현재 보유 포인트 |
+| \`avatar_id\` | VARCHAR(40) NOT NULL DEFAULT '' | 쓰고 있는 캐릭터 code |
+| \`border_id\` | VARCHAR(40) NULL | 쓰고 있는 테두리 code |
+| \`member_type\` | VARCHAR(20) NOT NULL DEFAULT 'female' | 여성/남성/업소 — 어떤 캐릭터를 줄지 가릅니다 |
+
+글 표에는 인기글·운영자추천을 쓰실 거면 \`is_popular\` · \`admin_picked\`
+(둘 다 \`TINYINT(1) NOT NULL DEFAULT 0\`) 정도만 있으면 됩니다.
+
+### 포인트가 지급되는 지점 (기존 코드에 한 줄씩 넣으실 자리)
+
+기존 게시판 코드에서 **이 일들이 성공한 직후** 포인트 지급 함수를 부르시면 됩니다.
+
+${HOOKS}
+
+연속 출석 보너스는 그날의 연속 일수가 **정확히** 7·14·21·28·30 일 때만 줍니다.
+그래서 8일째에 또 주지 않고, 연속이 끊겼다가 다시 7일을 채우면 다시 받습니다
+(재도전이 되게 일부러 그렇게 뒀습니다).
+
+**하루 한도는 활동 제한이 아닙니다.** 한도를 넘겨도 글·댓글은 정상으로 써지고
+포인트만 안 붙습니다. 판정은 \`point_logs\` 를 세어서 합니다.
+
+\`\`\`sql
+-- 오늘 이 사유로 몇 번 받았나 (한도와 비교)
+SELECT COUNT(*) FROM point_logs
+ WHERE user_id = ? AND reason = ? AND DATE(created_at) = CURDATE();
+
+-- 지급 (두 문장을 한 트랜잭션으로)
+INSERT INTO point_logs (user_id, amount, reason, detail, created_at)
+VALUES (?, ?, ?, ?, NOW());
+UPDATE users SET points = points + ? WHERE id = ?;
+\`\`\`
+
+### 관리자에서 게시판을 추가하실 수 있어야 한다면
+
+지금 구현은 말머리(자유·질문·정보·이벤트)를 **코드에 적어** 두고 있습니다
+(\`src/categories.js\`). 관리자에서 게시판을 늘리시는 구조라면 그쪽 게시판 표를
+쓰시고, 우리 말머리 개념은 **버리셔도 됩니다.**
+
+포인트 규칙은 게시판이 몇 개든 상관없이 그대로 돕니다.
+다만 "글 등록 300P" 를 게시판마다 다르게 주고 싶으시면
+\`point_logs\` 에 \`board_id\` 한 칸을 더 두시는 편이 나중에 편합니다.
+
+---
+
 ## 1. 표 한눈에 보기
 
 | 테이블 | 설명 |
@@ -536,7 +632,11 @@ UPDATE posts SET category = '자유' WHERE category IN ('알바후기', '구인�
 
 ## 8. 옮기실 때 놓치기 쉬운 것
 
-1. **하루 한도는 활동 제한이 아닙니다.** 한도를 넘겨도 글·댓글은 정상으로 써지고,
+1. 연속 출석 보너스는 그날의 연속 일수가 **정확히** 7·14·21·28·30 일 때만 줍니다.
+그래서 8일째에 또 주지 않고, 연속이 끊겼다가 다시 7일을 채우면 다시 받습니다
+(재도전이 되게 일부러 그렇게 뒀습니다).
+
+**하루 한도는 활동 제한이 아닙니다.** 한도를 넘겨도 글·댓글은 정상으로 써지고,
    포인트만 지급되지 않습니다. (기획서 안내문에도 그렇게 적혀 있습니다)
 2. **답글이 달린 댓글은 지우지 않습니다.** \`is_deleted = 1\` 로 표시만 하고 내용을 비웁니다.
    통째로 지우면 남이 단 답글까지 함께 사라집니다.
