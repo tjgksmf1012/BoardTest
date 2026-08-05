@@ -129,19 +129,36 @@ function makeSsoToken(member) {
 
 // 커뮤니티로 보낼 때
 res.redirect(`https://커뮤니티주소/board?sso=${makeSsoToken(req.user)}`);</code></pre>
-<h3 class="sub">예시 (PHP)</h3>
-<pre><code>function makeSsoToken($member) {
-  $payload = json_encode([
-    'uid'   =&gt; (string)$member['member_no'],
-    'nick'  =&gt; $member['nickname'],
-    'admin' =&gt; $member['is_admin'] == 1,
-    'iat'   =&gt; time(),
-  ], JSON_UNESCAPED_UNICODE);
-  $body = rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
-  $sig  = rtrim(strtr(base64_encode(
-            hash_hmac('sha256', $body, getenv('HOST_SSO_SECRET'), true)), '+/', '-_'), '=');
-  return $body . '.' . $sig;
-}</code></pre>
+<h3 class="sub">예시 (PHP) — <strong>PHP 5.1 에서도 도는 형태</strong></h3>
+<p><code>json_encode</code> 는 PHP <strong>5.2</strong> 부터라 5.1 서버에서는 못 씁니다 (<code>JSON_UNESCAPED_UNICODE</code> 는 5.4 부터입니다). payload 는 항목이 넷뿐이라 문자열로 직접 만들면 됩니다. JSON 은 UTF-8 을 그대로 담아도 되므로 한글 닉네임도 그냥 넣습니다.</p>
+<pre><code>&lt;?php
+// JSON 문자열 한 칸 만들기 (따옴표·역슬래시·줄바꿈만 피해 주면 됩니다)
+function sso_str($s) {
+    $s = str_replace(array('\\', '&quot;'), array('\\\\', '\\&quot;'), $s);
+    $s = str_replace(array(&quot;\r&quot;, &quot;\n&quot;, &quot;\t&quot;), array('\\r', '\\n', '\\t'), $s);
+    return '&quot;' . $s . '&quot;';
+}
+
+function sso_b64url($raw) {
+    return rtrim(strtr(base64_encode($raw), '+/', '-_'), '=');
+}
+
+function makeSsoToken($member, $secret) {
+    $payload = '{'
+        . '&quot;uid&quot;:'   . sso_str((string)$member['member_no'])
+        . ',&quot;nick&quot;:' . sso_str($member['nickname'])
+        . ',&quot;admin&quot;:' . ($member['is_admin'] == 1 ? 'true' : 'false')
+        . ',&quot;iat&quot;:'  . time()
+        . '}';
+    $body = sso_b64url($payload);
+    $sig  = sso_b64url(hash_hmac('sha256', $body, $secret, true));
+    return $body . '.' . $sig;
+}
+
+// 쓰는 곳
+$token = makeSsoToken($member, $HOST_SSO_SECRET);
+header('Location: https://커뮤니티주소/board?sso=' . urlencode($token));</code></pre>
+<blockquote><code>hash_hmac()</code> 은 hash 확장에 들어 있고 <strong>PHP 5.1.2 부터 기본 포함</strong>입니다. 혹시 서버에 없다면(<code>function_exists('hash_hmac')</code> 로 확인) 알려주세요 — 순수 PHP 로 된 HMAC-SHA256 을 함께 드리겠습니다.</blockquote>
 <h3 class="sub">규칙</h3>
 <ul><li>토큰은 <strong>한 번 이동할 때마다 새로 만들어</strong> 주세요. 기본 유효시간은 <strong>5분</strong>입니다.</li><li>공유 비밀키(<code>HOST_SSO_SECRET</code>)는 <strong>32자 이상 무작위 값</strong>으로, 서버 환경변수로만 보관해 주세요.</li><li>반드시 <strong>HTTPS</strong>로 이동해 주세요.</li></ul>
 <h2 class="sec">5. 커뮤니티 쪽 설정</h2>

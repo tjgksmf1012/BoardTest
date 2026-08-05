@@ -149,3 +149,55 @@ test('보고 있던 화면으로 그대로 들어온다', async () => {
   const res = await get(`/points?sso=${token({ uid: 'A-1500', nick: '경로유지' })}`, jar);
   assert.equal(res.headers.get('location'), '/points', '들어온 화면을 유지한다');
 });
+
+// ---- PHP 5.1 로 만든 토큰도 받아들이는지 ---------------------------------------
+//
+// 연동가이드의 PHP 예제는 json_encode(PHP 5.2+) 를 못 써서 payload 를 문자열로
+// 직접 짓는다. 그렇게 만든 것과 우리 sign() 이 만든 것이 같은지 확인한다.
+// (한글 닉네임을 이스케이프 없이 UTF-8 그대로 담는 것도 여기서 검증된다)
+test('PHP 5.1 방식으로 손수 지은 토큰도 통과한다', () => {
+  const crypto = require('crypto');
+  const secret = process.env.HOST_SSO_SECRET;
+
+  // 가이드의 sso_str() 과 같은 규칙
+  const ssoStr = (v) => '"' + String(v)
+    .replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+    .replace(/\r/g, '\\r').replace(/\n/g, '\\n').replace(/\t/g, '\\t') + '"';
+  const b64url = (buf) => Buffer.from(buf).toString('base64')
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+  const nick = '민트소다';                 // 한글 · 이스케이프 없이 그대로
+  const payload = '{'
+    + '"uid":' + ssoStr('A-100')
+    + ',"nick":' + ssoStr(nick)
+    + ',"admin":false'
+    + ',"iat":' + Math.floor(Date.now() / 1000)
+    + '}';
+  const body = b64url(Buffer.from(payload, 'utf8'));
+  const sig = b64url(crypto.createHmac('sha256', secret).update(body).digest());
+
+  const got = identity.verify(`${body}.${sig}`);
+  assert.ok(got, 'PHP 5.1 방식으로 만든 토큰이 거절됐다');
+  assert.equal(got.uid, 'A-100');
+  assert.equal(got.nick, nick, '한글 닉네임이 깨졌다');
+  assert.equal(got.admin, false);
+});
+
+test('따옴표·역슬래시가 든 닉네임도 깨지지 않는다', () => {
+  const crypto = require('crypto');
+  const secret = process.env.HOST_SSO_SECRET;
+  const ssoStr = (v) => '"' + String(v)
+    .replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+    .replace(/\r/g, '\\r').replace(/\n/g, '\\n').replace(/\t/g, '\\t') + '"';
+  const b64url = (buf) => Buffer.from(buf).toString('base64')
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+  const nick = '따"옴\\표';
+  const payload = `{"uid":${ssoStr('A-2')},"nick":${ssoStr(nick)},"admin":false,"iat":${Math.floor(Date.now() / 1000)}}`;
+  const body = b64url(Buffer.from(payload, 'utf8'));
+  const sig = b64url(crypto.createHmac('sha256', secret).update(body).digest());
+
+  const got = identity.verify(`${body}.${sig}`);
+  assert.ok(got, '이스케이프가 필요한 닉네임에서 토큰이 깨졌다');
+  assert.equal(got.nick, nick);
+});
