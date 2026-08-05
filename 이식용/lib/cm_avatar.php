@@ -81,10 +81,19 @@ function cm_buy($user_id, $code) {
     $owned = cm_owned($user_id);
     if (isset($owned[$code])) { return true; }          // 이미 샀으면 또 받지 않는다
 
-    if (!cm_spend($user_id, $price, $it['name'] . ' 구매')) { return false; }
+    // 보유 목록에 먼저 넣습니다. 표에 UNIQUE (user_id, item_code) 가 걸려 있어서,
+    // 두 요청이 겹쳐 들어와도 두 번째는 여기서 실패합니다.
+    // 포인트를 먼저 빼면 그 실패한 요청도 이미 돈을 낸 뒤라 되돌릴 곳이 없습니다.
+    // 그래서 '자리 잡기 → 돈 내기' 순서로 두고, 돈 내기가 실패하면 자리를 도로 뺍니다.
+    $ok = cm_q("INSERT INTO `" . $CM['t_user_item'] . "` (user_id, item_code, price, created_at)
+                VALUES (?, ?, ?, NOW())", array($user_id, $code, $price));
+    if (!$ok) { return false; }                        // 이미 갖고 있다 (UNIQUE 가 막았다)
 
-    cm_q("INSERT INTO `" . $CM['t_user_item'] . "` (user_id, item_code, price, created_at)
-          VALUES (?, ?, ?, NOW())", array($user_id, $code, $price));
+    if (!cm_spend($user_id, $price, $it['name'] . ' 구매')) {
+        cm_q("DELETE FROM `" . $CM['t_user_item'] . "`
+               WHERE user_id = ? AND item_code = ?", array($user_id, $code));
+        return false;
+    }
     return true;
 }
 

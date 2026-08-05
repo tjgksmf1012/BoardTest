@@ -146,6 +146,49 @@ for ($i = 6; $i >= 1; $i--) {
 $r5 = cm_check_attendance(1);
 t('끊겼다 다시 7일을 채우면 보너스를 다시 받는다', $r5['awarded'] === 60, $r5['awarded']);
 
+echo "\n== 잔액과 내역이 어긋나지 않는다 ==\n";
+// UPDATE 는 한 줄도 안 바꿔도 '성공' 으로 돌아온다. 그걸 그대로 믿으면
+// 포인트는 안 빠졌는데 구매 기록만 남는다.
+cm_q("UPDATE users SET points = 0 WHERE id = 1");
+$r = cm_q("UPDATE users SET points = points - ? WHERE id = ? AND points >= ?",
+          array(2000, 1, 2000));
+t('잔액이 모자란 UPDATE 도 성공으로 돌아온다 (그래서 확인이 필요하다)', $r ? true : false);
+t('그때 바뀐 줄 수는 0 이다', cm_affected() === 0, cm_affected());
+
+$logs_before = (int)cm_one("SELECT COUNT(*) FROM cm_point_logs");
+t('포인트가 0이면 못 산다', cm_spend(1, 2000, '테스트') === false);
+t('실패했으면 내역도 안 남는다',
+    (int)cm_one("SELECT COUNT(*) FROM cm_point_logs") === $logs_before,
+    (int)cm_one("SELECT COUNT(*) FROM cm_point_logs"));
+
+/* 두 요청이 겹친 상황을 진짜로 만든다.
+ *
+ * cm_spend 는 잔액을 먼저 읽고 통과시킨 뒤에 UPDATE 를 때린다. 그 사이에 다른 요청이
+ * 먼저 돈을 빼 가면, UPDATE 의 `AND points >= ?` 가 한 줄도 못 바꾼다.
+ * 그런데 UPDATE 는 그래도 '성공' 으로 돌아온다.
+ *
+ * 한 프로세스에서는 그 틈을 만들 수가 없어서, 내역이 들어가는 순간 잔액을 0으로
+ * 만드는 트리거를 걸어 흉내 낸다. cm_spend 입장에서는 남이 끼어든 것과 똑같다.
+ */
+cm_q("UPDATE users SET points = 5000 WHERE id = 1");
+$pdo->exec("CREATE TRIGGER 끼어들기 AFTER INSERT ON cm_point_logs
+            BEGIN UPDATE users SET points = 0 WHERE id = 1; END");
+$before_logs = (int)cm_one("SELECT COUNT(*) FROM cm_point_logs");
+$r = cm_spend(1, 2000, '겹친 요청');
+$pdo->exec("DROP TRIGGER 끼어들기");
+t('읽은 뒤에 남이 먼저 빼 가면 실패로 끝난다', $r === false, $r ? 'true' : 'false');
+t('그때 구매 내역이 남지 않는다',
+    (int)cm_one("SELECT COUNT(*) FROM cm_point_logs") === $before_logs,
+    (int)cm_one("SELECT COUNT(*) FROM cm_point_logs") . ' (전 ' . $before_logs . ')');
+
+cm_q("UPDATE users SET points = 3000 WHERE id = 1");
+$sum_before = (int)cm_one("SELECT COALESCE(SUM(amount),0) FROM cm_point_logs");
+cm_spend(1, 2000, '테스트 구매');
+t('잔액과 내역 증감이 맞는다',
+    cm_points(1) === 1000
+    && (int)cm_one("SELECT COALESCE(SUM(amount),0) FROM cm_point_logs") === $sum_before - 2000,
+    cm_points(1));
+
 echo "\n== 캐릭터 그리기 ==\n";
 $html = cm_render_avatar($paid['code'], 'border-gold', 44);
 t('고리 크기가 요소에 직접 붙는다 (134%)', strpos($html, 'width:134%') !== false);

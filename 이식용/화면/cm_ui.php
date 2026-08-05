@@ -73,7 +73,14 @@ function cm_close() {
     if (cm_standalone()) { echo '</body></html>'; }
 }
 
-// 로그인 안 했을 때
+/* 로그인 안 했을 때.
+ *
+ * 여기에는 두 가지가 섞여 있습니다. 진짜로 로그인을 안 한 것과, 로그인은 했는데
+ * cm_current_user_id() 가 그 사람을 못 찾은 것입니다. 붙이시는 동안에는 뒤쪽이 훨씬
+ * 흔한데 화면만 봐서는 구별이 안 돼서 한참 헤매게 됩니다.
+ * 그래서 세션은 있는데 회원번호만 못 찾은 경우에는 그렇다고 적어 둡니다.
+ * 이 안내는 개발하실 때만 보이게 $CM['debug'] 로 막아 뒀습니다.
+ */
 function cm_need_login() {
     global $CM;
     $url = isset($CM['login_url']) ? $CM['login_url'] : '';
@@ -81,6 +88,13 @@ function cm_need_login() {
     echo '<p class="muted">로그인하시면 이용하실 수 있어요.</p>';
     if ($url !== '') {
         echo '<p style="margin-top:16px"><a class="btn btn-primary" href="' . cm_h($url) . '">로그인</a></p>';
+    }
+    if (!empty($CM['debug']) && session_id() !== '' && count($_SESSION)) {
+        echo '<p class="muted" style="margin-top:20px;font-size:12px">'
+           . '세션은 있는데 회원번호를 못 찾았습니다. '
+           . 'lib/cm_config.php 의 cm_current_user_id() 를 맞춰 주세요.<br>'
+           . '지금 세션에 있는 이름: ' . cm_h(implode(', ', array_keys($_SESSION)))
+           . '</p>';
     }
     echo '</div>';
 }

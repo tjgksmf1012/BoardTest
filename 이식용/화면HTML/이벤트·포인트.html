@@ -3,19 +3,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>이벤트 · 포인트 · 밤알바커뮤니티</title>
   
-  <meta name="csrf-token" content="d2rmAW_K7ovSHqDvix_1daSJv3Fwf_kW">
+  <meta name="csrf-token" content="o9DfmkGQehVn2gss0HwSUGGL8SuhSfzA">
   <meta name="description" content="활동할수록 포인트가 쌓이고, 포인트로 아바타가 성장하는 커뮤니티 게시판이에요.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="밤알바커뮤니티">
   <meta property="og:title" content="이벤트 · 포인트">
   <meta property="og:description" content="활동할수록 포인트가 쌓이고, 포인트로 아바타가 성장하는 커뮤니티 게시판이에요.">
-  <meta property="og:url" content="./points">
+  <meta property="og:url" content="http://127.0.0.1:3390/points">
   
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="이벤트 · 포인트">
   <meta name="twitter:description" content="활동할수록 포인트가 쌓이고, 포인트로 아바타가 성장하는 커뮤니티 게시판이에요.">
   
-  <link rel="canonical" href="./points">
+  <link rel="canonical" href="http://127.0.0.1:3390/points">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%2300a99d'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white'%3EP%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="css/style.css">
   <script>
@@ -43,11 +43,11 @@
             <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 9a5.5 5.5 0 0 1 11 0c0 4.5 2 6 2 6H4.5s2-1.5 2-6z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span class="bell-badge" id="bellBadge" hidden="">0</span>
           </a>
           <a href="#profile" class="me-chip">
-            <span class="avatar" style="width:34px;height:34px"><img class="avatar-face" src="../img/avatars/admin-t.png" alt="" loading="lazy"></span>
-            <span class="me-name">운영자</span>
-            <span class="me-points">25,000P</span>
+            <span class="avatar has-ring" style="width:34px;height:34px"><img class="avatar-face" src="../img/avatars/female-glamgold-2-2-t.png" style="width:92%;height:92%;margin:3.9999999999999982%" alt="" loading="lazy"><img class="avatar-ring" src="../img/avatars/border-gold-t.png" style="width:134%;height:134%" alt="" loading="lazy"></span>
+            <span class="me-name">골드웨이브</span>
+            <span class="me-points">12,500P</span>
           </a>
-          <form action="/logout" method="post" class="inline logout-form"><input type="hidden" name="_csrf" value="d2rmAW_K7ovSHqDvix_1daSJv3Fwf_kW">
+          <form action="#logout" method="post" class="inline logout-form"><input type="hidden" name="_csrf" value="o9DfmkGQehVn2gss0HwSUGGL8SuhSfzA">
             <button class="btn btn-ghost btn-sm" type="submit">로그아웃</button>
           </form>
         
@@ -123,7 +123,7 @@
 <div class="point-summary">
   <div class="card stat">
     <span class="muted">내 포인트</span>
-    <strong class="accent">25,000P</strong>
+    <strong class="accent">12,500P</strong>
   </div>
   <div class="card stat">
     <span class="muted">오늘 적립</span>
@@ -133,8 +133,11 @@
 
 <div class="card next-unlock">
   
-    <div class="nu-head"><span>🏆 모든 아바타를 해금했어요!</span></div>
-    <div class="progress"><div class="progress-fill" style="width: 100%"></div></div>
+    <div class="nu-head">
+      <span>다음 해금: <strong>테두리 구매</strong> 까지 <strong class="accent">7,500P</strong></span>
+      <a href="#profile" class="muted">아바타 보러가기 →</a>
+    </div>
+    <div class="progress"><div class="progress-fill" style="width: 58%"></div></div>
   
 </div>
 
@@ -174,96 +177,24 @@
         
           <li>
             <div>
-              <strong>출석체크</strong>
-              <span class="muted">2026-08-05 14:35</span>
+              <strong>골드 구매</strong>
+              <span class="muted">2026-08-05 16:54</span>
             </div>
-            <span class="accent">+10P</span>
+            <span class="minus">−20,000P</span>
           </li>
         
           <li>
             <div>
-              <strong>출석체크</strong>
-              <span class="muted">2026-08-04 14:35</span>
+              <strong>글램 골드 2-2 구매</strong>
+              <span class="muted">2026-08-05 16:54</span>
             </div>
-            <span class="accent">+10P</span>
+            <span class="minus">−2,000P</span>
           </li>
         
           <li>
             <div>
-              <strong>출석체크</strong>
-              <span class="muted">2026-08-03 14:35</span>
-            </div>
-            <span class="accent">+10P</span>
-          </li>
-        
-          <li>
-            <div>
-              <strong>출석체크</strong>
-              <span class="muted">2026-08-02 14:35</span>
-            </div>
-            <span class="accent">+10P</span>
-          </li>
-        
-          <li>
-            <div>
-              <strong>출석체크</strong>
-              <span class="muted">2026-08-01 14:35</span>
-            </div>
-            <span class="accent">+10P</span>
-          </li>
-        
-          <li>
-            <div>
-              <strong>출석체크</strong>
-              <span class="muted">2026-07-31 14:35</span>
-            </div>
-            <span class="accent">+10P</span>
-          </li>
-        
-          <li>
-            <div>
-              <strong>출석체크</strong>
-              <span class="muted">2026-07-30 14:35</span>
-            </div>
-            <span class="accent">+10P</span>
-          </li>
-        
-          <li>
-            <div>
-              <strong>출석체크</strong>
-              <span class="muted">2026-07-29 14:35</span>
-            </div>
-            <span class="accent">+10P</span>
-          </li>
-        
-          <li>
-            <div>
-              <strong>출석체크</strong>
-              <span class="muted">2026-07-28 14:35</span>
-            </div>
-            <span class="accent">+10P</span>
-          </li>
-        
-          <li>
-            <div>
-              <strong>출석체크</strong>
-              <span class="muted">2026-07-27 14:35</span>
-            </div>
-            <span class="accent">+10P</span>
-          </li>
-        
-          <li>
-            <div>
-              <strong>출석체크</strong>
-              <span class="muted">2026-07-26 14:35</span>
-            </div>
-            <span class="accent">+10P</span>
-          </li>
-        
-          <li>
-            <div>
-              <strong>출석체크</strong>
-              <span class="muted">2026-07-25 14:35</span>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-08-05 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -271,7 +202,31 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-07-24 14:35</span>
+              <span class="muted">2026-08-04 16:54</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-08-03 16:54</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-08-02 16:54</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-08-01 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -279,7 +234,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-07-23 14:35</span>
+              <span class="muted">2026-07-31 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -287,7 +242,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-07-22 14:35</span>
+              <span class="muted">2026-07-30 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -295,7 +250,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-07-21 14:35</span>
+              <span class="muted">2026-07-29 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -303,7 +258,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-07-20 14:35</span>
+              <span class="muted">2026-07-28 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -311,7 +266,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-07-19 14:35</span>
+              <span class="muted">2026-07-27 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -319,7 +274,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-07-18 14:35</span>
+              <span class="muted">2026-07-26 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -327,7 +282,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-07-17 14:35</span>
+              <span class="muted">2026-07-25 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -335,7 +290,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-07-16 14:35</span>
+              <span class="muted">2026-07-24 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -343,7 +298,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-07-15 14:35</span>
+              <span class="muted">2026-07-23 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -351,7 +306,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-07-14 14:35</span>
+              <span class="muted">2026-07-22 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -359,7 +314,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-07-13 14:35</span>
+              <span class="muted">2026-07-21 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -367,7 +322,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-07-12 14:35</span>
+              <span class="muted">2026-07-20 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -375,7 +330,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-07-11 14:35</span>
+              <span class="muted">2026-07-19 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -383,7 +338,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-07-10 14:35</span>
+              <span class="muted">2026-07-18 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -391,7 +346,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-07-09 14:35</span>
+              <span class="muted">2026-07-17 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -399,7 +354,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-07-08 14:35</span>
+              <span class="muted">2026-07-16 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -407,7 +362,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-07-07 14:35</span>
+              <span class="muted">2026-07-15 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -415,7 +370,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-07-06 14:35</span>
+              <span class="muted">2026-07-14 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -423,7 +378,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-07-05 14:35</span>
+              <span class="muted">2026-07-13 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -431,7 +386,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-07-04 14:35</span>
+              <span class="muted">2026-07-12 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -439,7 +394,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-07-03 14:35</span>
+              <span class="muted">2026-07-11 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -447,7 +402,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-07-02 14:35</span>
+              <span class="muted">2026-07-10 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -455,7 +410,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-07-01 14:35</span>
+              <span class="muted">2026-07-09 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -463,7 +418,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-06-30 14:35</span>
+              <span class="muted">2026-07-08 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -471,7 +426,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-06-29 14:35</span>
+              <span class="muted">2026-07-07 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -479,7 +434,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-06-28 14:35</span>
+              <span class="muted">2026-07-06 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -487,7 +442,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-06-27 14:35</span>
+              <span class="muted">2026-07-05 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -495,7 +450,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-06-26 14:35</span>
+              <span class="muted">2026-07-04 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -503,7 +458,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-06-25 14:35</span>
+              <span class="muted">2026-07-03 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -511,7 +466,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-06-24 14:35</span>
+              <span class="muted">2026-07-02 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -519,7 +474,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-06-23 14:35</span>
+              <span class="muted">2026-07-01 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -527,7 +482,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-06-22 14:35</span>
+              <span class="muted">2026-06-30 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -535,7 +490,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-06-21 14:35</span>
+              <span class="muted">2026-06-29 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -543,7 +498,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-06-20 14:35</span>
+              <span class="muted">2026-06-28 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -551,7 +506,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-06-19 14:35</span>
+              <span class="muted">2026-06-27 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -559,7 +514,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-06-18 14:35</span>
+              <span class="muted">2026-06-26 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -567,7 +522,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-06-17 14:35</span>
+              <span class="muted">2026-06-25 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -575,7 +530,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-06-16 14:35</span>
+              <span class="muted">2026-06-24 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -583,7 +538,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-06-15 14:35</span>
+              <span class="muted">2026-06-23 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -591,7 +546,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-06-14 14:35</span>
+              <span class="muted">2026-06-22 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -599,7 +554,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-06-13 14:35</span>
+              <span class="muted">2026-06-21 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -607,7 +562,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-06-12 14:35</span>
+              <span class="muted">2026-06-20 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -615,7 +570,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-06-11 14:35</span>
+              <span class="muted">2026-06-19 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -623,7 +578,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-06-10 14:35</span>
+              <span class="muted">2026-06-18 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -631,7 +586,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-06-09 14:35</span>
+              <span class="muted">2026-06-17 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -639,7 +594,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-06-08 14:35</span>
+              <span class="muted">2026-06-16 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -647,7 +602,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-06-07 14:35</span>
+              <span class="muted">2026-06-15 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -655,7 +610,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-06-06 14:35</span>
+              <span class="muted">2026-06-14 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -663,7 +618,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-06-05 14:35</span>
+              <span class="muted">2026-06-13 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -671,7 +626,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-06-04 14:35</span>
+              <span class="muted">2026-06-12 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -679,7 +634,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-06-03 14:35</span>
+              <span class="muted">2026-06-11 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -687,7 +642,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-06-02 14:35</span>
+              <span class="muted">2026-06-10 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -695,7 +650,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-06-01 14:35</span>
+              <span class="muted">2026-06-09 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -703,7 +658,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-05-31 14:35</span>
+              <span class="muted">2026-06-08 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -711,7 +666,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-05-30 14:35</span>
+              <span class="muted">2026-06-07 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -719,7 +674,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-05-29 14:35</span>
+              <span class="muted">2026-06-06 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -727,7 +682,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-05-28 14:35</span>
+              <span class="muted">2026-06-05 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -735,7 +690,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-05-27 14:35</span>
+              <span class="muted">2026-06-04 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -743,7 +698,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-05-26 14:35</span>
+              <span class="muted">2026-06-03 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -751,7 +706,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-05-25 14:35</span>
+              <span class="muted">2026-06-02 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -759,7 +714,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-05-24 14:35</span>
+              <span class="muted">2026-06-01 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -767,7 +722,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-05-23 14:35</span>
+              <span class="muted">2026-05-31 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -775,7 +730,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-05-22 14:35</span>
+              <span class="muted">2026-05-30 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -783,7 +738,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-05-21 14:35</span>
+              <span class="muted">2026-05-29 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -791,7 +746,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-05-20 14:35</span>
+              <span class="muted">2026-05-28 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -799,7 +754,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-05-19 14:35</span>
+              <span class="muted">2026-05-27 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -807,7 +762,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-05-18 14:35</span>
+              <span class="muted">2026-05-26 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -815,7 +770,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-05-17 14:35</span>
+              <span class="muted">2026-05-25 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -823,7 +778,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-05-16 14:35</span>
+              <span class="muted">2026-05-24 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -831,7 +786,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-05-15 14:35</span>
+              <span class="muted">2026-05-23 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -839,7 +794,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-05-14 14:35</span>
+              <span class="muted">2026-05-22 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -847,7 +802,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-05-13 14:35</span>
+              <span class="muted">2026-05-21 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -855,7 +810,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-05-12 14:35</span>
+              <span class="muted">2026-05-20 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -863,7 +818,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-05-11 14:35</span>
+              <span class="muted">2026-05-19 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -871,7 +826,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-05-10 14:35</span>
+              <span class="muted">2026-05-18 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -879,7 +834,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-05-09 14:35</span>
+              <span class="muted">2026-05-17 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -887,7 +842,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-05-08 14:35</span>
+              <span class="muted">2026-05-16 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -895,7 +850,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-05-07 14:35</span>
+              <span class="muted">2026-05-15 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -903,7 +858,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-05-06 14:35</span>
+              <span class="muted">2026-05-14 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -911,7 +866,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-05-05 14:35</span>
+              <span class="muted">2026-05-13 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -919,7 +874,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-05-04 14:35</span>
+              <span class="muted">2026-05-12 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -927,7 +882,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-05-03 14:35</span>
+              <span class="muted">2026-05-11 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -935,7 +890,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-05-02 14:35</span>
+              <span class="muted">2026-05-10 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -943,7 +898,7 @@
           <li>
             <div>
               <strong>일반 게시글 작성</strong>
-              <span class="muted">2026-05-01 14:35</span>
+              <span class="muted">2026-05-09 16:54</span>
             </div>
             <span class="accent">+300P</span>
           </li>
@@ -951,7 +906,7 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-04-30 14:35</span>
+              <span class="muted">2026-05-08 16:54</span>
             </div>
             <span class="accent">+100P</span>
           </li>
@@ -959,7 +914,7 @@
           <li>
             <div>
               <strong>일반 게시글 추천받기</strong>
-              <span class="muted">2026-04-29 14:35</span>
+              <span class="muted">2026-05-07 16:54</span>
             </div>
             <span class="accent">+10P</span>
           </li>
@@ -967,9 +922,57 @@
           <li>
             <div>
               <strong>댓글·대댓글 작성</strong>
-              <span class="muted">2026-04-28 14:35</span>
+              <span class="muted">2026-05-06 16:54</span>
             </div>
             <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-05-05 16:54</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-05-04 16:54</span>
+            </div>
+            <span class="accent">+300P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-05-03 16:54</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 추천받기</strong>
+              <span class="muted">2026-05-02 16:54</span>
+            </div>
+            <span class="accent">+10P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>댓글·대댓글 작성</strong>
+              <span class="muted">2026-05-01 16:54</span>
+            </div>
+            <span class="accent">+100P</span>
+          </li>
+        
+          <li>
+            <div>
+              <strong>일반 게시글 작성</strong>
+              <span class="muted">2026-04-30 16:54</span>
+            </div>
+            <span class="accent">+300P</span>
           </li>
         
       </ul>

@@ -12,7 +12,10 @@
     "php51": "node scripts/check-php51.js",
     "php": "php 이식용/test/run.php && php 이식용/test/render.php && node scripts/check-php51.js",
     "docs": "node scripts/check-docs.js",
-    "css": "node scripts/make-port-css.js"
+    "css": "node scripts/make-port-css.js",
+    "screens": "node scripts/make-screens.js",
+    "portsrc": "node scripts/make-port-src.js",
+    "port": "node scripts/make-port-css.js && node scripts/make-screens.js --check && node scripts/make-port-src.js --check && php 이식용/test/run.php && php 이식용/test/render.php && node scripts/check-php51.js"
   },
   "engines": {
     "node": ">=20.19 <21 || >=22.12 <23"

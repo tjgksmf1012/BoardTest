@@ -74,7 +74,16 @@ function cm_spend($user_id, $amount, $detail) {
                     SET points = points - ?
                   WHERE `" . $CM['user_pk'] . "` = ? AND points >= ?",
                 array($amount, $user_id, $amount));
-    if (!$ok1 || !$ok2) { cm_rollback(); return false; }
+
+    // UPDATE 가 '성공' 이라고 돌아와도 한 줄도 안 바뀌었을 수 있습니다.
+    // 위 문장은 잔액이 모자라면 아무것도 안 바꾸는데 결과는 true 입니다.
+    // 두 요청이 겹쳐 들어오면 (버튼 두 번 누르기 등) 둘 다 잔액을 읽고 통과한 뒤
+    // 뒤쪽 UPDATE 만 빈손으로 끝납니다. 그때 그냥 commit 해 버리면
+    // 포인트는 한 번만 빠졌는데 구매 기록은 두 번 남습니다.
+    // 그래서 실제로 바뀐 줄 수까지 봅니다.
+    $n = cm_affected();
+    if (!$ok1 || !$ok2 || $n === 0) { cm_rollback(); return false; }
+
     cm_commit();
     return true;
 }

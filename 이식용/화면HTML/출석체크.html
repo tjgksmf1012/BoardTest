@@ -3,19 +3,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>출석체크 · 밤알바커뮤니티</title>
   
-  <meta name="csrf-token" content="d2rmAW_K7ovSHqDvix_1daSJv3Fwf_kW">
+  <meta name="csrf-token" content="o9DfmkGQehVn2gss0HwSUGGL8SuhSfzA">
   <meta name="description" content="활동할수록 포인트가 쌓이고, 포인트로 아바타가 성장하는 커뮤니티 게시판이에요.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="밤알바커뮤니티">
   <meta property="og:title" content="출석체크">
   <meta property="og:description" content="활동할수록 포인트가 쌓이고, 포인트로 아바타가 성장하는 커뮤니티 게시판이에요.">
-  <meta property="og:url" content="./attendance">
+  <meta property="og:url" content="http://127.0.0.1:3390/attendance">
   
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="출석체크">
   <meta name="twitter:description" content="활동할수록 포인트가 쌓이고, 포인트로 아바타가 성장하는 커뮤니티 게시판이에요.">
   
-  <link rel="canonical" href="./attendance">
+  <link rel="canonical" href="http://127.0.0.1:3390/attendance">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%2300a99d'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle' fill='white'%3EP%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="css/style.css">
   <script>
@@ -43,11 +43,11 @@
             <svg class="ico" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6.5 9a5.5 5.5 0 0 1 11 0c0 4.5 2 6 2 6H4.5s2-1.5 2-6z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span class="bell-badge" id="bellBadge" hidden="">0</span>
           </a>
           <a href="#profile" class="me-chip">
-            <span class="avatar" style="width:34px;height:34px"><img class="avatar-face" src="../img/avatars/admin-t.png" alt="" loading="lazy"></span>
-            <span class="me-name">운영자</span>
-            <span class="me-points">25,000P</span>
+            <span class="avatar has-ring" style="width:34px;height:34px"><img class="avatar-face" src="../img/avatars/female-glamgold-2-2-t.png" style="width:92%;height:92%;margin:3.9999999999999982%" alt="" loading="lazy"><img class="avatar-ring" src="../img/avatars/border-gold-t.png" style="width:134%;height:134%" alt="" loading="lazy"></span>
+            <span class="me-name">골드웨이브</span>
+            <span class="me-points">12,500P</span>
           </a>
-          <form action="/logout" method="post" class="inline logout-form"><input type="hidden" name="_csrf" value="d2rmAW_K7ovSHqDvix_1daSJv3Fwf_kW">
+          <form action="#logout" method="post" class="inline logout-form"><input type="hidden" name="_csrf" value="o9DfmkGQehVn2gss0HwSUGGL8SuhSfzA">
             <button class="btn btn-ghost btn-sm" type="submit">로그아웃</button>
           </form>
         
@@ -93,7 +93,7 @@
   <div class="asum">
     <span class="asum-ico gold"><svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M14.5 9.5a3 3 0 0 0-2.5-1.2c-1.5 0-2.5.8-2.5 2s1 1.7 2.5 2 2.5.8 2.5 2-1 2-2.5 2a3 3 0 0 1-2.5-1.2"></path><path d="M12 6.5v11"></path></svg></span>
     <span class="asum-label">보유 포인트</span>
-    <strong class="asum-value">25,000P</strong>
+    <strong class="asum-value">12,500P</strong>
   </div>
   <a class="asum-link" href="#points"><svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h.01M4 12h.01M4 18h.01"></path><path d="M9 6h11M9 12h11M9 18h11"></path></svg> 포인트 내역 <span aria-hidden="true">›</span></a>
 </section>
@@ -272,7 +272,7 @@
   </ol>
 
   
-    <form action="/attendance/check" method="post"><input type="hidden" name="_csrf" value="d2rmAW_K7ovSHqDvix_1daSJv3Fwf_kW">
+    <form action="#attendance/check" method="post"><input type="hidden" name="_csrf" value="o9DfmkGQehVn2gss0HwSUGGL8SuhSfzA">
       <input type="hidden" name="next" value="/attendance">
       <button class="btn btn-primary btn-block att-check-btn" type="submit">
         <svg class="ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="16" rx="2.5"></rect><path d="M3.5 9.5h17"></path><path d="M8 3v4M16 3v4"></path><path d="M8.5 15l2.2 2.2L15.5 13"></path></svg> 오늘 출석체크 하기 (10P 적립)

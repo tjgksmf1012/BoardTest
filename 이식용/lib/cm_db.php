@@ -17,6 +17,7 @@
 $CM_LINK = null;   // mysqli 링크 또는 mysql_* 링크
 $CM_PDO  = null;   // PDO 객체
 $CM_KIND = '';     // 'mysqli' | 'mysql' | 'pdo'
+$CM_LAST = null;   // 마지막 쿼리 결과 (cm_affected() 가 씁니다)
 
 function cm_use_link($link) {
     global $CM_LINK, $CM_KIND;
@@ -111,16 +112,33 @@ if (!function_exists('cm_dialect')) {
 
 // 쿼리 실행. 성공하면 결과(또는 true), 실패하면 false.
 function cm_q($sql, $params = null) {
-    global $CM_LINK, $CM_PDO, $CM_KIND;
+    global $CM_LINK, $CM_PDO, $CM_KIND, $CM_LAST;
     if ($CM_KIND === '') { cm_connect(); }
     $full = cm_bind(cm_dialect($sql), $params);
-    if ($CM_KIND === 'mysqli') { return mysqli_query($CM_LINK, $full); }
-    if ($CM_KIND === 'mysql')  { return mysql_query($full, $CM_LINK); }
+    if ($CM_KIND === 'mysqli') { return $CM_LAST = mysqli_query($CM_LINK, $full); }
+    if ($CM_KIND === 'mysql')  { return $CM_LAST = mysql_query($full, $CM_LINK); }
     if ($CM_KIND === 'pdo') {
         $st = $CM_PDO->query($full);
+        $CM_LAST = $st;
         return $st ? $st : false;
     }
     return false;
+}
+
+/* 방금 UPDATE·DELETE 로 실제로 몇 줄이 바뀌었나
+ *
+ * 이게 왜 필요하냐면, UPDATE 는 한 줄도 안 바꿔도 '성공' 으로 돌아옵니다.
+ *   UPDATE users SET points = points - 2000 WHERE id = ? AND points >= 2000
+ * 이 문장은 잔액이 모자라면 아무것도 안 바꾸는데, 결과는 true 입니다.
+ * 그래서 결과만 보고 commit 하면 '포인트는 안 빠졌는데 구매 기록은 남는' 상태가 됩니다.
+ * 몇 줄이 바뀌었는지까지 봐야 합니다.
+ */
+function cm_affected() {
+    global $CM_LINK, $CM_PDO, $CM_KIND, $CM_LAST;
+    if ($CM_KIND === 'mysqli') { return mysqli_affected_rows($CM_LINK); }
+    if ($CM_KIND === 'mysql')  { return mysql_affected_rows($CM_LINK); }
+    if ($CM_KIND === 'pdo' && is_object($CM_LAST)) { return $CM_LAST->rowCount(); }
+    return -1;   // 알 수 없음
 }
 
 // 한 줄을 이름 붙은 배열로 (없으면 null)

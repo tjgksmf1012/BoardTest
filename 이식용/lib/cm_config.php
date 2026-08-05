@@ -58,6 +58,12 @@ $CM['rules'] = array(
 $CM['streak_days'] = array(7 => 'streak7', 14 => 'streak14', 21 => 'streak21',
                            28 => 'streak28', 30 => 'streak30');
 
+// ---- 5-1) 붙이는 동안만 켜 두실 것 --------------------------------------------
+// true 로 두면 화면이 안 나올 때 왜 그런지 힌트를 같이 보여 줍니다.
+// 다 붙이시고 나면 반드시 false 로 돌려 주세요. 세션에 무엇이 들어 있는지가
+// 화면에 그대로 드러나기 때문에, 켜 둔 채로 두시면 안 됩니다.
+$CM['debug'] = false;
+
 // ---- 6) 상점 값 --------------------------------------------------------------
 $CM['price_character'] = 2000;
 $CM['price_border']    = 20000;
@@ -98,9 +104,13 @@ function cm_current_user_id() {
     }
     if (!empty($_SESSION['ss_mb_id'])) { return $_SESSION['ss_mb_id']; }
 
-    // 흔히 쓰는 세션 이름들
-    $keys = array('mb_no', 'mb_id', 'member_no', 'member_id', 'user_no',
-                  'user_id', 'userid', 'uid', 'idx', 'no');
+    // 회원을 가리키는 것이 분명한 이름만 봅니다.
+    //
+    // 처음에는 'no', 'idx', 'uid' 도 넣었다가 뺐습니다. 이런 이름은 회원번호가 아니라
+    // 페이지 번호나 게시판 번호를 담고 있을 수도 있습니다. 그러면 엉뚱한 사람에게
+    // 포인트가 붙는데, 오류가 안 나서 한참 뒤에나 알게 됩니다.
+    // 못 찾으면 0 을 주는 편이 낫습니다. 화면이 '설정해 주세요' 라고 알려 줍니다.
+    $keys = array('mb_no', 'mb_id', 'member_no', 'member_id', 'user_no', 'member_idx');
     for ($i = 0; $i < count($keys); $i++) {
         if (!empty($_SESSION[$keys[$i]])) { return $_SESSION[$keys[$i]]; }
     }
