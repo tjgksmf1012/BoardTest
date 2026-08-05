@@ -64,3 +64,58 @@ $CM['price_border']    = 20000;
 
 // 가입할 때 무료로 주는 캐릭터 수 (여성회원은 캐릭터목록.php 의 free 표시를 따릅니다)
 $CM['free_per_type'] = 5;
+
+
+// ---- 7) 지금 로그인한 사람이 누구인가 -----------------------------------------
+//
+// ★ 여기가 이 꾸러미에서 선배님이 고치셔야 하는 유일한 자리입니다. ★
+//
+// 화면 파일(화면/출석체크.php 등)은 이 함수를 불러서 "누구 것을 보여 줄까" 를 정합니다.
+// 저희는 기존 사이트가 로그인을 어떻게 잡고 있는지 알 수가 없어서, 아래에 흔한 방식
+// 몇 가지를 넣어 두고 되는 것을 골라 쓰게 해 뒀습니다.
+//
+// 아래 자동 찾기가 맞으면 아무것도 안 하셔도 됩니다.
+// 안 맞으면 함수 맨 위에 한 줄만 적어 주세요. 예를 들면 이런 식입니다.
+//
+//     function cm_current_user_id() {
+//         return isset($_SESSION['user_no']) ? (int)$_SESSION['user_no'] : 0;
+//     }
+//
+// 로그인 안 한 사람에게는 0 을 돌려주시면 됩니다. 화면이 알아서 '로그인해 주세요' 를 띄웁니다.
+//
+// 주의: 여기서 돌려주는 값이 그대로 회원 표의 기본키로 쓰입니다.
+// 절대로 주소창이나 폼에서 온 값($_GET·$_POST)을 그대로 돌려주지 마세요.
+// 그러면 아무나 남의 번호를 적어 넣고 남의 포인트를 쓰게 됩니다.
+
+if (!function_exists('cm_current_user_id')) {
+function cm_current_user_id() {
+    if (session_id() === '') { @session_start(); }
+
+    // 그누보드 4·5 (PHP 5.1 시절 국내 게시판은 대개 이쪽입니다)
+    if (isset($GLOBALS['member']) && is_array($GLOBALS['member'])) {
+        if (!empty($GLOBALS['member']['mb_no'])) { return (int)$GLOBALS['member']['mb_no']; }
+        if (!empty($GLOBALS['member']['mb_id'])) { return $GLOBALS['member']['mb_id']; }
+    }
+    if (!empty($_SESSION['ss_mb_id'])) { return $_SESSION['ss_mb_id']; }
+
+    // 흔히 쓰는 세션 이름들
+    $keys = array('mb_no', 'mb_id', 'member_no', 'member_id', 'user_no',
+                  'user_id', 'userid', 'uid', 'idx', 'no');
+    for ($i = 0; $i < count($keys); $i++) {
+        if (!empty($_SESSION[$keys[$i]])) { return $_SESSION[$keys[$i]]; }
+    }
+    return 0;
+}
+}
+
+// 회원 유형(여성·남성·업소). 어떤 캐릭터를 보여 줄지 가르는 값입니다.
+// install.sql 로 회원 표에 member_type 칸을 넣으셨으면 그대로 두시면 됩니다.
+if (!function_exists('cm_current_member_type')) {
+function cm_current_member_type($user_id) {
+    global $CM;
+    if (!$user_id) { return 'female'; }
+    $t = cm_one("SELECT member_type FROM `" . $CM['user_table'] . "`
+                  WHERE `" . $CM['user_pk'] . "` = ?", array($user_id));
+    return $t ? $t : 'female';
+}
+}

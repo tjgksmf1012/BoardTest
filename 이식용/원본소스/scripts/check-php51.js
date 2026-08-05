@@ -22,6 +22,13 @@ const TARGETS = [
   '이식용/lib/cm_points.php',
   '이식용/lib/cm_attendance.php',
   '이식용/lib/cm_avatar.php',
+  '이식용/화면/cm_boot.php',
+  '이식용/화면/cm_ui.php',
+  '이식용/화면/출석체크.php',
+  '이식용/화면/캐릭터상점.php',
+  '이식용/화면/마이페이지.php',
+  '이식용/test/run.php',
+  '이식용/test/render.php',
 ];
 
 // 문자열·주석 안의 내용은 문법이 아니다. 대충이라도 걷어내고 본다.

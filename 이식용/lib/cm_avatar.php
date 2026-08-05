@@ -149,7 +149,13 @@ function cm_avatar_url($file) {
     return $CM['avatar_url'] . '/' . rawurlencode($file);
 }
 
-function cm_render_avatar($avatar_code, $border_code, $size = 44) {
+/* 캐릭터 하나를 그린다.
+ *
+ * 넷째 값 $ring_slot 은 '테두리 자리는 비워 두되 얼굴 크기는 테두리 낀 것과 똑같이' 그릴 때
+ * 씁니다. 상점의 '사용 안 함' 칸이 그렇습니다. 이게 없으면 그 칸만 얼굴이 커 보여서
+ * 옆 칸들과 눈높이가 안 맞습니다.
+ */
+function cm_render_avatar($avatar_code, $border_code, $size = 44, $ring_slot = false) {
     $a = cm_item($avatar_code);
     if ($a === null) {
         $items = cm_items();
@@ -157,6 +163,7 @@ function cm_render_avatar($avatar_code, $border_code, $size = 44) {
     }
     $b = ($border_code !== '' && $border_code !== null) ? cm_item($border_code) : null;
     $ringed = ($b !== null && $b['kind'] === 'border');
+    $shrink = ($ringed || $ring_slot);        // 얼굴을 칸보다 작게 그릴 것인가
 
     // 96px 이하로 그릴 자리에는 썸네일을 씁니다.
     // 원본(256px)을 25칸짜리 상점에 그대로 내보내면 1MB 가까이 나갑니다.
@@ -165,12 +172,12 @@ function cm_render_avatar($avatar_code, $border_code, $size = 44) {
     $html = '<span class="cm-avatar' . ($ringed ? ' has-ring' : '') . '"'
           . ' style="position:relative;display:inline-block;'
           . 'width:' . (int)$size . 'px;height:' . (int)$size . 'px;'
-          . ($ringed ? 'overflow:visible' : 'overflow:hidden;border-radius:50%') . '">';
+          . ($shrink ? 'overflow:visible' : 'overflow:hidden;border-radius:50%') . '">';
 
     if ($a !== null) {
         $file = $small ? $a['thumb'] : $a['file'];
         $st = 'display:block;border-radius:50%;';
-        if ($ringed) {
+        if ($shrink) {
             $m = (100 - CM_FACE) / 2;
             $st .= 'width:' . CM_FACE . '%;height:' . CM_FACE . '%;margin:' . $m . '%;';
         } else {
