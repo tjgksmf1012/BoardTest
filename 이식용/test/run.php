@@ -1,12 +1,15 @@
 <?php
 /*
- * 드리는 PHP 가 실제로 도는지 확인 (SQLite 로 돌립니다)
+ * 드린 PHP 가 실제로 도는지 확인하는 파일입니다.
  *
  *   php 이식용/test/run.php
  *
- * MySQL 없이 확인하려고 SQLite 를 씁니다. SQL 은 거의 같지만 몇 가지가 달라서
- * 아래 cm_bind_sqlite() 에서 바꿔 줍니다 (NOW() → datetime('now','localtime') 등).
- * 로직(하루 한도·연속 출석·구매·부호 표기)은 그대로라 여기서 확인이 됩니다.
+ * MySQL 을 안 띄우고도 확인할 수 있게 SQLite 로 돌립니다. SQL 은 거의 같은데 날짜
+ * 함수 몇 개가 달라서 아래 cm_dialect() 에서 바꿔 줍니다. NOW() 를
+ * datetime('now','localtime') 로 바꾸는 식입니다.
+ *
+ * 하루 한도, 연속 출석, 구매, 포인트 부호 같은 것들은 DB 종류하고 상관없이 똑같이
+ * 돌아가는 부분이라 여기서 확인이 됩니다.
  */
 
 $ok = 0; $fail = 0;

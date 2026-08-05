@@ -1,18 +1,19 @@
 <?php
 /*
- * 캐릭터·테두리
+ * 캐릭터와 테두리
  *
- *   목록 · 글 · 댓글에 캐릭터 그리기:
+ *   목록이나 글, 댓글에 캐릭터 그리기:
  *     echo cm_render_avatar($row['avatar_id'], $row['border_id'], 44);
  *
  *   상점:
  *     cm_shop_characters($user_id, 'female')   살 수 있는 캐릭터 목록
  *     cm_shop_borders($user_id)                테두리 목록
- *     cm_buy($user_id, $code)                  구매 (포인트 차감 + 보유 등록)
- *     cm_equip($user_id, $code)                장착
+ *     cm_buy($user_id, $code)                  사기. 포인트를 빼고 보유 목록에 넣습니다
+ *     cm_equip($user_id, $code)                장착하기
  *
- * 캐릭터 목록은 캐릭터목록.php 에 배열로 들어 있습니다 (246종).
- * PHP 5.1 에는 json_decode 가 없어서 JSON 대신 배열 파일로 뒀습니다.
+ * 캐릭터 246종은 캐릭터목록.php 에 배열로 들어 있습니다.
+ * 원래는 JSON 파일이었는데 PHP 5.1 에는 그걸 읽는 json_decode 가 없어서
+ * 같은 내용을 PHP 배열 파일로 다시 뽑아 뒀습니다.
  */
 
 $CM_ITEMS = null;

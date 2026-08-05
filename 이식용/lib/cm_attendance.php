@@ -3,18 +3,18 @@
  * 출석체크
  *
  *   출석 버튼을 눌렀을 때:  $r = cm_check_attendance($user_id);
- *     $r['already']  이미 오늘 출석했으면 true
- *     $r['streak']   오늘 기준 연속 출석 일수
- *     $r['awarded']  이번에 받은 포인트 합계 (출석 10P + 보너스)
+ *     $r['already']  오늘 이미 출석했으면 true
+ *     $r['streak']   오늘까지 며칠 연속으로 출석했는지
+ *     $r['awarded']  이번에 받은 포인트 합계. 출석 10P 에 보너스를 더한 값입니다
  *     $r['bonus']    받은 보너스 이름들
  *
- * 화면 값
- *   cm_streak($user_id)        연속 출석 일수 (오늘 안 했으면 어제까지)
- *   cm_month_count($user_id)   이번 달 출석 횟수
+ * 화면에 뿌릴 값들
+ *   cm_streak($user_id)        연속 출석 일수. 오늘 아직 안 했으면 어제까지 셉니다
+ *   cm_month_count($user_id)   이번 달에 몇 번 출석했는지
  *   cm_checked_today($user_id) 오늘 했는지
  *
- * 하루 한 번은 표의 UNIQUE (user_id, day) 가 막습니다.
- * 버튼을 두 번 눌러도, 두 창에서 동시에 눌러도 두 번 쌓이지 않습니다.
+ * 하루에 한 번만 되는 건 표에 걸어 둔 UNIQUE (user_id, day) 가 막아 줍니다.
+ * 버튼을 두 번 누르셔도, 창 두 개에서 동시에 누르셔도 기록은 하나만 들어갑니다.
  */
 
 function cm_today() { return date('Y-m-d'); }

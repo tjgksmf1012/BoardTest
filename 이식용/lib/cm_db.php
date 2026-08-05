@@ -1,15 +1,17 @@
 <?php
 /*
- * DB 접근 — 서버에 있는 방식으로 알아서 붙습니다.
+ * DB 붙는 부분입니다. 서버에 있는 방식으로 알아서 연결합니다.
  *
- * 기존 사이트에 이미 연결이 있으면 그걸 그대로 쓰는 게 좋습니다.
- *   cm_use_link($conn);          // mysqli 또는 mysql_* 링크
+ * 기존 사이트에 이미 연결이 있으면 그걸 그대로 쓰시는 게 좋습니다.
+ *   cm_use_link($conn);          // mysqli 나 mysql_* 연결
  *   cm_use_pdo($pdo);            // PDO
- * 안 넘기시면 cm_config.php 의 접속 정보로 직접 붙습니다.
+ * 안 넘겨 주시면 cm_config.php 에 적힌 접속 정보로 직접 붙습니다.
  *
- * 값은 반드시 cm_q() 의 두 번째 인자로 넘겨 주세요. 문자열에 붙이지 마시고요.
+ * 값은 SQL 문자열에 그냥 붙이지 마시고 cm_q() 의 두 번째 자리로 넘겨 주세요.
  *   cm_q("SELECT * FROM t WHERE id = ?", array($id))
- * 그래야 SQL 인젝션이 막힙니다. 서버에 mysql_* 밖에 없어도 안에서 이스케이프합니다.
+ * 그러면 따옴표 같은 위험한 글자를 안전한 형태로 바꿔서 넣습니다. 이걸 안 하면
+ * 남이 주소창에 SQL 을 적어 넣어서 DB 를 통째로 읽어 갈 수 있습니다.
+ * 서버에 옛날 mysql_* 함수밖에 없어도 똑같이 처리합니다.
  */
 
 $CM_LINK = null;   // mysqli 링크 또는 mysql_* 링크
@@ -98,10 +100,10 @@ function cm_bind($sql, $params) {
     return $out;
 }
 
-/* SQL 문법 바꾸는 자리.
- * 기본은 MySQL 이라 아무것도 안 바꿉니다.
- * 다른 DB(SQLite 등)로 돌리실 일이 있으면 이 파일을 읽기 **전에** 같은 이름의 함수를
- * 미리 정의해 두시면 그쪽이 쓰입니다. (테스트가 그렇게 돌아갑니다)
+/* SQL 문법을 바꿔 끼우는 자리입니다.
+ * 기본은 MySQL 이라 아무것도 안 바꾸고 그대로 내보냅니다.
+ * SQLite 같은 다른 DB 로 돌리실 일이 있으면, 이 파일을 읽기 전에 같은 이름의 함수를
+ * 먼저 만들어 두시면 그쪽이 쓰입니다. 같이 드린 테스트가 그런 식으로 돌아갑니다.
  */
 if (!function_exists('cm_dialect')) {
     function cm_dialect($sql) { return $sql; }
@@ -152,9 +154,9 @@ function cm_one($sql, $params = null, $default = null) {
     return $default;
 }
 
-// ---- 트랜잭션 ----------------------------------------------------------------
+// ---- 두 문장을 하나로 묶기 (트랜잭션) ------------------------------------------
 // 포인트는 '내역 남기기' 와 '잔액 더하기' 가 한 몸이라 반드시 묶어야 합니다.
-// 중간에 끊기면 내역과 잔액이 어긋나 영영 안 맞습니다.
+// 하나만 되고 중간에 끊기면 내역과 잔액이 어긋나서 영영 안 맞게 됩니다.
 function cm_begin()    { cm_q('START TRANSACTION'); }
 function cm_commit()   { cm_q('COMMIT'); }
 function cm_rollback() { cm_q('ROLLBACK'); }
