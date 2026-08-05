@@ -10,8 +10,8 @@
 //  2) 캐릭터는 정사각 256px(본문)·96px(썸네일)로 줄여 저장
 //  3) 여성회원 캐릭터는 낱장이 아니라 '헤어 5종 × 의상 5종' 모아찍기 한 장으로 왔다.
 //     테마 9장 = 225종이므로 격자를 찾아 25칸으로 잘라 낸다 (아래 sliceSheet)
-//  4) 테두리는 '검은 배경 위 빛나는 고리'로 와서 그대로 씌우면 검은 사각형이 된다.
-//     밝기를 그대로 투명도로 바꿔(alpha = max(r,g,b)) 어떤 배경 위에도 얹히게 만든다
+//  4) 테두리는 두 가지 형태로 온다. 이미 투명 배경이면 그대로 쓰고,
+//     '검은 배경 위 빛나는 고리'면 밝기를 투명도로 바꿔 어떤 배경에도 얹히게 만든다
 //  5) 무엇이 들어왔는지 manifest.json 으로 남긴다 (코드는 이 파일만 읽는다)
 const fs = require('fs');
 const path = require('path');
@@ -83,9 +83,34 @@ async function saveCharacter(src, code) {
   }
 }
 
-// 테두리: 검은 배경을 투명으로. 빛나는 고리라 밝기가 곧 불투명도다.
+// 테두리 저장.
+//
+// 받은 그림이 이미 투명 배경이면 **그대로** 쓴다.
+// 예전에는 형태를 안 보고 무조건 밝기로 알파를 다시 만들었는데(removeAlpha 후 max(r,g,b)),
+// 그러면 투명했던 곳이 일단 검게 칠해졌다가 다시 뚫리면서
+//   - 원본의 부드러운 가장자리가 뭉개지고
+//   - 압축 잡티(빨강·파랑 점)까지 불투명해져 고리가 알록달록 지저분해졌다.
+// 실제로 받은 1024px 원본은 처음부터 투명 배경이었는데, 그걸 버리고 있었다.
+async function hasRealAlpha(src) {
+  const meta = await sharp(src).metadata();
+  if (!meta.hasAlpha) return false;
+  // 알파 채널이 있어도 전부 불투명이면 '투명 배경' 이 아니다. 줄여서 훑어 확인한다.
+  const { data, info } = await sharp(src).resize(64, 64, { fit: 'fill' })
+    .ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  let clear = 0;
+  for (let i = 3; i < data.length; i += info.channels) if (data[i] < 16) clear++;
+  return clear > (info.width * info.height) * 0.05;
+}
+
 async function saveBorder(src, code) {
+  const keep = await hasRealAlpha(src);
   for (const [size, suffix] of [[SIZE, ''], [THUMB, '-t']]) {
+    const dst = path.join(OUT, `${code}${suffix}.png`);
+    if (keep) {
+      await sharp(src).resize(size, size, { fit: 'cover' })
+        .png({ compressionLevel: 9 }).toFile(dst);
+      continue;
+    }
     const { data, info } = await sharp(src)
       .resize(size, size, { fit: 'cover' })
       .removeAlpha()
@@ -94,14 +119,15 @@ async function saveBorder(src, code) {
 
     const rgba = Buffer.alloc(info.width * info.height * 4);
     for (let i = 0, j = 0; i < data.length; i += 3, j += 4) {
-      const r = data[i], g = data[i + 1], b = data[i + 2];
+      const r = data[i]; const g = data[i + 1]; const b = data[i + 2];
       const a = Math.max(r, g, b);          // 검은 곳은 0 → 완전히 투명
       rgba[j] = r; rgba[j + 1] = g; rgba[j + 2] = b; rgba[j + 3] = a;
     }
     await sharp(rgba, { raw: { width: info.width, height: info.height, channels: 4 } })
       .png({ compressionLevel: 9 })
-      .toFile(path.join(OUT, `${code}${suffix}.png`));
+      .toFile(dst);
   }
+  return keep;
 }
 
 // ---- 모아찍기 한 장을 25칸으로 자르기 ---------------------------------------
@@ -218,6 +244,13 @@ async function importFemale(srcRoot, items) {
   }
 }
 
+// 다른 스크립트가 이 파일의 도구만 빌려 쓸 수 있게 열어 둔다
+// (scripts/import-borders.js 가 테두리만 바꿔 끼울 때 쓴다)
+module.exports = { saveBorder, BORDER_NAMES, OUT, SIZE, THUMB, listImages };
+
+// 직접 실행했을 때만 전체를 들여온다
+if (require.main !== module) return;
+
 (async () => {
   const srcRoot = process.argv[2];
   if (!srcRoot || !fs.existsSync(srcRoot)) {
@@ -267,7 +300,8 @@ async function importFemale(srcRoot, items) {
     const known = BORDER_NAMES[base];
     const [slug, label] = known || [`etc${++etc}`, `테두리 ${etc}`];
     const code = `border-${slug}`;
-    await saveBorder(path.join(borderDir, f), code);
+    const kept = await saveBorder(path.join(borderDir, f), code);
+    if (!kept) console.log(`    · ${label}: 검은 배경이라 밝기로 투명도를 만들었어요`);
     items.push({
       code, kind: 'border', memberType: null, name: label,
       file: `${code}.png`, thumb: `${code}-t.png`, sort: items.length,
