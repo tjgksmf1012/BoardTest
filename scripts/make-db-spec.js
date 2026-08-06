@@ -19,7 +19,7 @@ process.env.DB_PATH = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'dbspec-')
 const db = require('../src/db');
 require('../src/seed')();   // 쿼리를 실제로 돌려보려면 데이터가 조금 필요하다
 const { RULES, MILESTONES } = require('../src/points');
-const { CATEGORIES } = require('../src/categories');
+const { CATEGORIES, RETIRED } = require('../src/categories');
 const { CHARACTER_PRICE, BORDER_PRICE } = require('../src/avatars');
 
 // 카탈로그 요약 (이미지가 늘면 문서도 같이 늘어난다)
@@ -510,7 +510,7 @@ UPDATE users SET points = points + ? WHERE id = ?;
 
 ### 관리자에서 게시판을 늘릴 수 있어야 한다면
 
-지금은 말머리(자유, 질문, 정보, 이벤트)를 코드 안에 적어 두고 있습니다.
+지금은 말머리(${CATEGORIES.map((c) => c.id).join(', ')})를 코드 안에 적어 두고 있습니다.
 \`src/categories.js\` 파일입니다. 관리자 화면에서 게시판을 늘리시는 구조라면 그쪽 게시판 표를
 쓰시고 저희 말머리 개념은 버리셔도 됩니다.
 
@@ -649,12 +649,18 @@ ${CATALOG.rows}
 ## 6. 말머리
 
 지금 쓰는 말머리는 ${CATEGORIES.map((c) => c.id).join(', ')} 입니다.
+${CATEGORIES.filter((c) => c.adminOnly).length
+  ? CATEGORIES.filter((c) => c.adminOnly).map((c) => c.id).join(', ')
+    + ' 말머리는 운영자만 글을 쓸 수 있습니다.\n'
+    + '읽는 건 누구나 됩니다. 화면에서 감추는 것만으로는 못 막습니다.\n'
+    + '폼 값은 얼마든지 고쳐 보낼 수 있어서 서버에서 한 번 더 봐야 합니다.'
+  : ''}
 
-예전에 쓰던 알바후기와 구인구직은 없앴습니다. 그런데 그 말머리로 저장된 글은 어느 탭에도
-안 걸려서 사라진 것처럼 보입니다. 그래서 아래 SQL 로 자유 말머리로 옮겼습니다.
+예전에 쓰던 말머리 ${Object.keys(RETIRED).join(', ')} 는 이제 없습니다. 그런데 그 말머리로 저장된 글은
+어느 탭에도 안 걸려서 사라진 것처럼 보입니다. 그래서 아래 SQL 로 자유 말머리로 옮겼습니다.
 
 \`\`\`sql
-UPDATE posts SET category = '자유' WHERE category IN ('알바후기', '구인구직');
+UPDATE posts SET category = '자유' WHERE category IN (${Object.keys(RETIRED).map((k) => `'${k}'`).join(', ')});
 \`\`\`
 
 ---
