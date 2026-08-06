@@ -175,9 +175,9 @@ if (addColumn('posts', 'like_count', 'INTEGER NOT NULL DEFAULT 0')) {
   db.exec('UPDATE posts SET like_count = (SELECT COUNT(*) FROM likes WHERE likes.post_id = posts.id)');
 }
 
-// 없어진 말머리(알바후기·구인구직)로 저장된 옛 글을 '자유'로 옮긴다.
+// 없어진 말머리(알바후기·구인구직·정보)로 저장된 옛 글을 '자유'로 옮긴다.
 // 그대로 두면 어느 탭에도 걸리지 않아 화면에서 사라진다.
-db.exec("UPDATE posts SET category = '자유' WHERE category IN ('알바후기', '구인구직')");
+db.exec("UPDATE posts SET category = '자유' WHERE category IN ('알바후기', '구인구직', '정보')");
 
 // 회원 유형(여성·남성·업소). 어떤 캐릭터를 배정·판매할지 가른다.
 // 연동 모드에서는 A사이트가 알려주고, 혼자 띄울 때는 가입 화면에서 고른다.

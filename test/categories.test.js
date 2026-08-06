@@ -12,8 +12,26 @@ test('정의된 말머리만 유효하다', () => {
   assert.equal(isValid(undefined), false);
 });
 
-test('말머리는 자유·질문·정보·이벤트 4종이다', () => {
-  assert.deepEqual(CATEGORIES.map((c) => c.id), ['자유', '질문', '정보', '이벤트']);
+test('말머리는 자유·질문·이벤트 3종이다', () => {
+  assert.deepEqual(CATEGORIES.map((c) => c.id), ['자유', '질문', '이벤트']);
+});
+
+test('이벤트는 운영자만 쓸 수 있다', () => {
+  const { writable, canWrite } = require('../src/categories');
+  assert.deepEqual(writable(false).map((c) => c.id), ['자유', '질문'],
+    '회원에게는 이벤트가 안 보여야 한다');
+  assert.deepEqual(writable(true).map((c) => c.id), ['자유', '질문', '이벤트']);
+
+  // 화면에서 감추는 것만으로는 못 막는다. 폼 값을 고쳐 보내면 그만이다.
+  assert.equal(canWrite('이벤트', false), false, '회원이 이벤트로 보내면 막아야 한다');
+  assert.equal(canWrite('이벤트', true), true);
+  assert.equal(canWrite('자유', false), true);
+  assert.equal(canWrite('없는말머리', true), false);
+});
+
+test("없앤 '정보' 로 쓰인 글은 사라지지 않고 자유로 읽힌다", () => {
+  // 말머리를 그냥 빼면 그 글이 어느 탭에도 안 걸려 사라진 것처럼 보인다
+  assert.equal(normalize('정보'), '자유');
 });
 
 test('없앤 말머리로 저장된 옛 글은 자유로 읽는다', () => {

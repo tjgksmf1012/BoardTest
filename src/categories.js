@@ -5,17 +5,25 @@
 const CATEGORIES = [
   { id: '자유',   cls: 'cat-free',  color: '#0b7a70' },  // 4.54:1
   { id: '질문',   cls: 'cat-q',     color: '#2a71ae' },  // 4.52:1
-  { id: '정보',   cls: 'cat-info',  color: '#6a4ff0' },  // 4.59:1
-  { id: '이벤트', cls: 'cat-event', color: '#bf421b' },  // 4.54:1
+  { id: '이벤트', cls: 'cat-event', color: '#bf421b', adminOnly: true },  // 4.54:1
 ];
 
-// 없어진 말머리로 저장된 옛 글은 '자유'로 읽는다 (데이터는 그대로 두고 표시만 옮긴다)
-const RETIRED = { '알바후기': '자유', '구인구직': '자유' };
+// 없어진 말머리로 저장된 옛 글은 '자유'로 읽는다 (데이터는 그대로 두고 표시만 옮긴다).
+// '정보' 는 선배님 요청으로 뺐다. 그 말머리로 쓴 글이 이미 있어서, 지우지 않고 '자유' 로 옮긴다.
+const RETIRED = { '알바후기': '자유', '구인구직': '자유', '정보': '자유' };
 
-// 이벤트 글은 상단의 '이벤트·포인트' 메뉴에서 따로 본다.
-// 그래서 게시판 말머리 줄에는 안 넣지만, 글을 쓸 때는 고를 수 있고 '전체'에도 그대로 나온다.
-const OWN_TAB = new Set(['이벤트']);
-const BOARD_TABS = CATEGORIES.filter((c) => !OWN_TAB.has(c.id));
+// 이벤트는 운영자만 글을 쓸 수 있다. 회원에게는 글쓰기 화면의 말머리 목록에 안 보인다.
+// 목록에서는 누구나 볼 수 있다 (읽기는 막지 않는다).
+const ADMIN_ONLY = new Set(CATEGORIES.filter((c) => c.adminOnly).map((c) => c.id));
+const BOARD_TABS = CATEGORIES;
+
+// 글쓰기 화면에서 고를 수 있는 말머리
+function writable(isAdmin) {
+  return CATEGORIES.filter((c) => isAdmin || !ADMIN_ONLY.has(c.id));
+}
+function canWrite(id, isAdmin) {
+  return isValid(id) && (isAdmin || !ADMIN_ONLY.has(id));
+}
 
 const byId = new Map(CATEGORIES.map((c) => [c.id, c]));
 
@@ -36,4 +44,5 @@ function catTag(id) {
   return `<span class="cat-tag ${c.cls}">${c.id}</span>`;
 }
 
-module.exports = { CATEGORIES, BOARD_TABS, OWN_TAB, RETIRED, isValid, normalize, catTag };
+module.exports = { CATEGORIES, BOARD_TABS, ADMIN_ONLY, RETIRED,
+  isValid, normalize, catTag, writable, canWrite };

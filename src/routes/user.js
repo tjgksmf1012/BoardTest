@@ -192,7 +192,12 @@ router.get('/ranking', (req, res) => {
     SELECT u.id, u.nickname, u.points, u.avatar_id, u.border_id, u.is_admin,
       (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id AND p.is_notice = 0) AS post_count,
       (SELECT COUNT(*) FROM comments c WHERE c.user_id = u.id) AS comment_count
-    FROM users u ORDER BY u.points DESC, u.id LIMIT 20`).all();
+    FROM users u
+    -- 랭킹은 여성회원끼리만 겨룬다 (선배님 요청).
+    -- 남성·업소 회원과 운영자는 성격이 달라서 같이 줄 세우면 뜻이 없다.
+    -- 제재된 회원도 뺀다.
+    WHERE u.is_admin = 0 AND u.is_banned = 0 AND u.member_type = 'female'
+    ORDER BY u.points DESC, u.id LIMIT 20`).all();
   res.render('ranking', { users });
 });
 

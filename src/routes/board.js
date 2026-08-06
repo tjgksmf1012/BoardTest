@@ -7,7 +7,8 @@ const multer = require('multer');
 const db = require('../db');
 const { award, unlockMessage } = require('../points');
 const { notify } = require('../notify');
-const { CATEGORIES, isValid: isValidCategory, BOARD_TABS } = require('../categories');
+const { CATEGORIES, isValid: isValidCategory, BOARD_TABS,
+  writable: writableCategories, canWrite: canWriteCategory } = require('../categories');
 const { sanitizePostHtml, htmlToText, textToHtml, usedUploadFiles } = require('../richtext');
 const { toMatchQuery, indexPost, unindexPost } = require('../search');
 const { storeUpload } = require('../images');
@@ -124,7 +125,7 @@ function commentPageQuery(postId, rootCommentId) {
   return page > 1 ? `?cpage=${page}` : '';
 }
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 15;   // 한 쪽에 보여줄 글 수 (선배님 요청으로 10 → 15)
 // 같은 사람이 글을 연달아 올릴 때의 최소 간격(초).
 // 짧으면 도배를 못 막고, 길면 연달아 두 글 올리는 보통 사람이 걸린다.
 const POST_INTERVAL_SEC = 30;
@@ -230,7 +231,8 @@ function guidePostId() {
 }
 
 router.get('/new', requireLogin, (req, res) => {
-  res.render('write', { post: null, images: [], error: null, categories: CATEGORIES,
+  res.render('write', { post: null, images: [], error: null,
+    categories: writableCategories(res.locals.me && res.locals.me.is_admin),
     initialHtml: '', guideId: guidePostId() });
 });
 
@@ -273,7 +275,10 @@ router.post('/upload-image', requireLogin, (req, res) => {
 router.post('/', requireLogin, (req, res) => {
   const title = (req.body.title || '').trim();
   const body = prepareContent(req.body);
-  const category = isValidCategory(req.body.category) ? req.body.category : '자유';
+  // 이벤트 말머리는 운영자만 쓸 수 있다. 화면에서 안 보이게 해 뒀지만
+  // 폼 값은 얼마든지 고쳐 보낼 수 있으므로 서버에서 한 번 더 막는다.
+  const category = canWriteCategory(req.body.category, res.locals.me.is_admin)
+    ? req.body.category : '자유';
   const isAnonymous = req.body.is_anonymous ? 1 : 0;
   const blockComments = req.body.block_comments ? 1 : 0;
   const isNotice = req.body.is_notice && res.locals.me.is_admin ? 1 : 0;
@@ -377,10 +382,17 @@ router.get('/:id(\\d+)', (req, res) => {
     ? db.prepare('SELECT 1 FROM bookmarks WHERE post_id = ? AND user_id = ?').get(post.id, req.session.userId)
     : null;
 
+  // 이전글·다음글은 '지금 보고 있는 게시판 안에서' 찾는다.
+  // 전체에서 찾으면 자유게시판 글을 보다가 다음글을 눌렀는데 질문게시판 글이 나온다.
+  // 목록에서 말머리를 골라 들어오셨으면 그 말머리, 아니면 이 글의 말머리를 기준으로 한다.
+  const navCat = isValidCategory(req.query.category) ? req.query.category : post.category;
+  const navWhere = 'is_notice = 0 AND is_hidden = 0 AND category = @cat';
   const prev = db.prepare(
-    'SELECT id, title FROM posts WHERE is_notice = 0 AND id < ? ORDER BY id DESC LIMIT 1').get(post.id);
+    `SELECT id, title FROM posts WHERE ${navWhere} AND id < @id ORDER BY id DESC LIMIT 1`
+  ).get({ id: post.id, cat: navCat });
   const next = db.prepare(
-    'SELECT id, title FROM posts WHERE is_notice = 0 AND id > ? ORDER BY id LIMIT 1').get(post.id);
+    `SELECT id, title FROM posts WHERE ${navWhere} AND id > @id ORDER BY id LIMIT 1`
+  ).get({ id: post.id, cat: navCat });
 
   // 링크를 공유했을 때 보일 미리보기 (익명글은 작성자·본문이 드러나지 않게 최소한만)
   const firstImage = post.content_format === 'html'
@@ -596,7 +608,12 @@ router.get('/:id(\\d+)/edit', requireLogin, (req, res) => {
   if (!post || post.user_id !== req.session.userId) return res.redirect('/board');
   const images = db.prepare('SELECT * FROM post_images WHERE post_id = ? ORDER BY sort, id').all(post.id);
   res.render('write', {
-    post, images, error: null, categories: CATEGORIES,
+    post, images, error: null,
+    // 이미 이벤트로 쓰인 글을 회원이 수정할 때 말머리가 사라지면 자유로 바뀌어 버린다.
+    // 그래서 지금 글의 말머리는 고를 수 있게 남겨 둔다.
+    categories: writableCategories(res.locals.me && res.locals.me.is_admin)
+      .concat(CATEGORIES.filter((c) => c.id === post.category
+        && !writableCategories(res.locals.me && res.locals.me.is_admin).some((w) => w.id === c.id))),
     initialHtml: editableHtml(post, images), guideId: guidePostId(),
   });
 });
@@ -607,7 +624,9 @@ router.post('/:id(\\d+)/edit', requireLogin, (req, res) => {
 
   const title = (req.body.title || '').trim();
   const body = prepareContent(req.body);
-  const category = isValidCategory(req.body.category) ? req.body.category : post.category;
+  const category = canWriteCategory(req.body.category, res.locals.me.is_admin)
+    ? req.body.category
+    : (req.body.category === post.category ? post.category : '자유');
   const fail = (msg) => res.render('write', {
     post, images: db.prepare('SELECT * FROM post_images WHERE post_id = ? ORDER BY sort, id').all(post.id),
     error: msg, categories: CATEGORIES, initialHtml: body.content, guideId: guidePostId(),
