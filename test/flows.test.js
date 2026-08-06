@@ -1227,3 +1227,48 @@ test('이전글·다음글은 들어온 탭을 따라간다', async () => {
 
   for (const id of [a, b, c, d, e, notice]) db.prepare('DELETE FROM posts WHERE id = ?').run(id);
 });
+
+// 검색·정렬까지 따라가는지.
+// 목록을 거르는 조건과 이전글·다음글의 조건이 어긋나면
+// '목록에는 있는데 다음글로는 안 넘어가는' 글이 생긴다. 오류가 안 나서 알기 어렵다.
+test('이전글·다음글이 검색어와 정렬도 따라간다', async () => {
+  const ins = db.prepare(
+    `INSERT INTO posts (user_id, category, title, content, content_text, like_count, views, is_notice)
+     VALUES (?, '자유', ?, ?, ?, ?, ?, 0)`);
+  const uid = db.prepare('SELECT id FROM users LIMIT 1').get().id;
+  // 검색어 '깐깐이' 가 든 글 셋과, 안 든 글 둘을 사이사이에 끼운다
+  const mk = (t, body, likes, views) => {
+    const id = ins.run(uid, t, body, body, likes, views).lastInsertRowid;
+    require('../src/search').indexPost(id, t, body);
+    return id;
+  };
+  const a = mk('깐깐이 첫째', '깐깐이 본문', 1, 100);
+  const x = mk('상관없는 글1', '아무 내용', 50, 5000);
+  const b = mk('깐깐이 둘째', '깐깐이 본문', 9, 300);
+  const y = mk('상관없는 글2', '아무 내용', 60, 6000);
+  const c = mk('깐깐이 셋째', '깐깐이 본문', 5, 200);
+
+  const navOf = async (id, qs) => {
+    const html = await (await fetch(`${base}/board/${id}${qs || ''}`)).text();
+    const box = (html.match(/<nav class="prev-next"[\s\S]*?<\/nav>/) || [''])[0];
+    return [...box.matchAll(/href="\/board\/(\d+)/g)].map((m) => Number(m[1]));
+  };
+
+  // 검색 결과 안에서만 이어져야 한다 — 사이에 낀 x·y 는 건너뛴다
+  assert.deepEqual(await navOf(b, '?q=' + encodeURIComponent('깐깐이')), [a, c],
+    '검색해서 들어오면 검색 결과 안에서만 이어져야 한다');
+  // 검색 없이 들어오면 바로 옆 글(x·y)이 나온다
+  assert.deepEqual(await navOf(b), [x, y], '검색이 없으면 번호 순으로 바로 옆 글');
+
+  // 추천순: 추천 수가 큰 순서 (b 9 > y 60? 아니다 — 검색을 걸어 셋만 놓고 본다)
+  // 깐깐이 글의 추천은 a 1 · c 5 · b 9 → 추천순 목록은 b, c, a
+  // c 에서 보면 '한 칸 아래(추천 적은 쪽)' 는 a, '한 칸 위' 는 b
+  assert.deepEqual(await navOf(c, '?q=' + encodeURIComponent('깐깐이') + '&sort=likes'), [a, b],
+    '추천순이면 추천 수 차례로 이어져야 한다');
+
+  // 조회순: a 100 · c 200 · b 300 → 목록은 b, c, a. c 의 아래는 a, 위는 b
+  assert.deepEqual(await navOf(c, '?q=' + encodeURIComponent('깐깐이') + '&sort=views'), [a, b],
+    '조회순이면 조회 수 차례로 이어져야 한다');
+
+  for (const id of [a, b, c, x, y]) db.prepare('DELETE FROM posts WHERE id = ?').run(id);
+});

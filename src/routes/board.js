@@ -150,23 +150,23 @@ function listQuery(src = {}) {
   return s ? '?' + s : '';
 }
 
-// ---- 목록 ----------------------------------------------------------------
-router.get('/', (req, res) => {
-  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-  const q = (req.query.q || '').trim();
-  const sort = ['latest', 'likes', 'views'].includes(req.query.sort) ? req.query.sort : 'latest';
-  const hot = req.query.filter === 'hot';
-  const category = isValidCategory(req.query.category) ? req.query.category : null;
+/* 목록을 거르는 조건을 여기 한 곳에서만 만든다.
+ *
+ * 이전글·다음글도 이걸 그대로 쓴다. 조건을 양쪽에 따로 적어 두면 언젠가 한쪽만 고쳐서
+ * '목록에는 있는데 다음글로는 안 넘어가는' 글이 생긴다. 오류가 안 나서 알기도 어렵다.
+ *
+ * 돌려주는 것
+ *   where    p 라는 별칭을 쓴 조건절 (앞에 AND 가 붙어 있다)
+ *   params   그 조건에 넣을 값들
+ *   orderBy  줄 세우는 기준
+ *   sortKey  번호 말고 다른 값으로 줄 세울 때 그 칸 이름 (추천순·조회순). 최신순이면 null
+ */
+function listFilter(query, isAdmin) {
+  const q = String(query.q || '').trim();
+  const sort = ['latest', 'likes', 'views'].includes(query.sort) ? query.sort : 'latest';
+  const hot = query.filter === 'hot';
+  const category = isValidCategory(query.category) ? query.category : null;
 
-  // 공지는 기본 목록에서만 상단 고정 (검색·인기글 필터 중엔 결과에 집중하도록 숨김)
-  const notices = (q || hot) ? [] : db.prepare(`
-    SELECT p.*, u.nickname, u.avatar_id, u.border_id,
-      (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id AND c.is_deleted = 0) AS comment_count
-    FROM posts p JOIN users u ON u.id = p.user_id
-    WHERE p.is_notice = 1 ORDER BY p.id DESC`).all();
-
-  // 숨김 처리된 글은 일반 사용자에겐 안 보이고, 운영자에겐 목록에 표시(배지로 구분)
-  const isAdmin = res.locals.me && res.locals.me.is_admin ? 1 : 0;
   // 검색: 전문검색(FTS5) 색인으로 후보를 좁힌 뒤, 실제 문자열이 들어 있는지 한 번 더 확인한다.
   // 두 글자 미만이면 색인으로 좁힐 수 없어 예전처럼 훑는다(그런 검색은 드물다).
   // LIKE의 와일드카드(% _)는 이스케이프해 글자 그대로 찾게 한다.
@@ -184,11 +184,31 @@ router.get('/', (req, res) => {
     + (category ? ' AND p.category = @category' : '')
     + rankWindow
     + ' AND (p.is_hidden = 0 OR @admin = 1)';
-  const orderBy = sort === 'likes' ? 'p.like_count DESC, p.id DESC'
-    : sort === 'views' ? 'p.views DESC, p.id DESC'
-    : 'p.id DESC';
+  const sortKey = sort === 'likes' ? 'p.like_count' : sort === 'views' ? 'p.views' : null;
+  const orderBy = sortKey ? `${sortKey} DESC, p.id DESC` : 'p.id DESC';
   const escapeLike = (v) => v.replace(/[\\%_]/g, (m) => '\\' + m);
-  const params = { like: `%${escapeLike(q)}%`, fts: match, category, admin: isAdmin, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
+  return {
+    q, sort, hot, category, where, orderBy, sortKey,
+    params: { like: `%${escapeLike(q)}%`, fts: match, category, admin: isAdmin },
+  };
+}
+
+// ---- 목록 ----------------------------------------------------------------
+router.get('/', (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  // 숨김 처리된 글은 일반 사용자에겐 안 보이고, 운영자에겐 목록에 표시(배지로 구분)
+  const isAdmin = res.locals.me && res.locals.me.is_admin ? 1 : 0;
+  const f = listFilter(req.query, isAdmin);
+  const { q, sort, hot, category, where, orderBy } = f;
+
+  // 공지는 기본 목록에서만 상단 고정 (검색·인기글 필터 중엔 결과에 집중하도록 숨김)
+  const notices = (q || hot) ? [] : db.prepare(`
+    SELECT p.*, u.nickname, u.avatar_id, u.border_id,
+      (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.id AND c.is_deleted = 0) AS comment_count
+    FROM posts p JOIN users u ON u.id = p.user_id
+    WHERE p.is_notice = 1 ORDER BY p.id DESC`).all();
+
+  const params = { ...f.params, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE };
   const total = db.prepare(
     `SELECT COUNT(*) AS c FROM posts p WHERE p.is_notice = 0 ${where}`
   ).get(params).c;
@@ -384,31 +404,44 @@ router.get('/:id(\\d+)', (req, res) => {
 
   /* 이전글·다음글은 '방금 보던 목록에서 내 윗줄·아랫줄' 이다.
    *
-   * 그래서 어느 탭에서 들어왔는지를 그대로 따라간다.
-   *   자유 탭에서 들어왔으면  자유 안에서
-   *   질문 탭에서 들어왔으면  질문 안에서
-   *   전체 탭에서 들어왔으면  전체에서
+   * 그래서 목록을 거르던 조건을 그대로 가져다 쓴다 (listFilter).
+   * 말머리·검색어·인기글 필터·정렬이 전부 따라온다.
+   *   자유 탭에서 들어왔으면      자유 안에서
+   *   전체 탭에서 들어왔으면      전체에서
+   *   '알바' 로 검색해서 들어왔으면 그 검색 결과 안에서
+   *   추천순으로 보다가 들어왔으면  추천순 차례대로
    *
-   * 처음에는 탭 정보가 없으면 그 글의 말머리로 가뒀는데, 그러면 전체 목록에서
-   * 들어왔을 때 목록의 윗줄·아랫줄과 다른 글로 튄다. 전체에서 2번째 글을 눌렀는데
-   * 이전글이 8번째 글로 가는 식이다. 주소에 말머리가 없으면 전체로 본다.
+   * 조건을 목록과 따로 적어 두면 언젠가 한쪽만 고쳐서 어긋난다. 그래서 같은 함수를 쓴다.
    *
    * 공지는 뺀다. 목록 맨 위에 따로 고정되는 안내문이라 읽는 흐름에 끼면 어색하다.
    * (다른 커뮤니티도 대개 공지는 이전글·다음글에서 뺀다)
    *
-   * 검색어와 정렬까지는 안 따라간다. 추천순으로 보다가 다음글을 누르면 번호 순으로
-   * 넘어간다. 흔한 길이 아니라 일부러 단순하게 뒀다.
+   * '이전글' 은 목록에서 한 칸 아래(먼저 쓴 글), '다음글' 은 한 칸 위다.
+   * 최신순이면 번호만 견주면 되지만, 추천순·조회순은 값이 같은 글이 수두룩해서
+   * 번호까지 같이 봐야 한 칸씩 정확히 움직인다.
+   *   아래로: (추천, 번호) 가 지금 것보다 작은 것 중 제일 큰 것
+   *   위로  : (추천, 번호) 가 지금 것보다 큰 것 중 제일 작은 것
    */
-  const navCat = isValidCategory(req.query.category) ? req.query.category : null;
-  const navWhere = 'is_notice = 0 AND is_hidden = 0'
-    + (navCat ? ' AND category = @cat' : '');
-  const navParams = { id: post.id, cat: navCat };
-  const prev = db.prepare(
-    `SELECT id, title FROM posts WHERE ${navWhere} AND id < @id ORDER BY id DESC LIMIT 1`
-  ).get(navParams);
-  const next = db.prepare(
-    `SELECT id, title FROM posts WHERE ${navWhere} AND id > @id ORDER BY id LIMIT 1`
-  ).get(navParams);
+  const isAdminViewer = res.locals.me && res.locals.me.is_admin ? 1 : 0;
+  const navF = listFilter(req.query, isAdminViewer);
+  const navKeyValue = navF.sortKey === 'p.like_count' ? post.like_count
+    : navF.sortKey === 'p.views' ? post.views : null;
+  function navStep(down) {
+    const cond = !navF.sortKey
+      ? (down ? ' AND p.id < @navId' : ' AND p.id > @navId')
+      : down
+        ? ` AND (${navF.sortKey} < @navKey OR (${navF.sortKey} = @navKey AND p.id < @navId))`
+        : ` AND (${navF.sortKey} > @navKey OR (${navF.sortKey} = @navKey AND p.id > @navId))`;
+    const order = !navF.sortKey
+      ? (down ? 'p.id DESC' : 'p.id ASC')
+      : down ? `${navF.sortKey} DESC, p.id DESC` : `${navF.sortKey} ASC, p.id ASC`;
+    return db.prepare(
+      `SELECT p.id, p.title FROM posts p WHERE p.is_notice = 0 ${navF.where}${cond}`
+      + ` ORDER BY ${order} LIMIT 1`
+    ).get({ ...navF.params, navId: post.id, navKey: navKeyValue });
+  }
+  const prev = navStep(true);
+  const next = navStep(false);
 
   // 링크를 공유했을 때 보일 미리보기 (익명글은 작성자·본문이 드러나지 않게 최소한만)
   const firstImage = post.content_format === 'html'
