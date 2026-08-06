@@ -9,7 +9,7 @@
       <% if (user.is_admin) { %><span class="badge badge-notice">운영자</span><% } %>
       <% if (user.is_banned) { %><span class="badge badge-lock">이용 제한</span><% } %>
     </h1>
-    <p class="accent big"><%= user.points.toLocaleString() %>P <span class="muted">· 랭킹 <%= rank %>위</span></p>
+    <p class="accent big"><%= user.points.toLocaleString() %>P<% if (rank) { %> <span class="muted">· 랭킹 <%= rank %>위</span><% } %></p>
     <div class="profile-stats">
       <span>게시글 <strong><%= stats.posts %></strong></span>
       <span>댓글 <strong><%= stats.comments %></strong></span>

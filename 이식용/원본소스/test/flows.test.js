@@ -1272,3 +1272,66 @@ test('이전글·다음글이 검색어와 정렬도 따라간다', async () => 
 
   for (const id of [a, b, c, x, y]) db.prepare('DELETE FROM posts WHERE id = ?').run(id);
 });
+
+// ---- 랭킹 --------------------------------------------------------------------
+// 목록에서 빼는 조건과 프로필의 '랭킹 N위' 를 세는 조건이 어긋나면,
+// 랭킹 1위인 사람 프로필에 2위라고 적히고 랭킹에 없는 사람한테도 등수가 찍힌다.
+// 실제로 그랬다 — 운영자를 세고 있어서 목록 1위가 프로필에서 2위였다.
+//
+// 목록은 TOP 20 까지만 보여 준다. 그래서 '자격이 있는가' 와 '상위 20위 안인가' 는 다르다.
+// 21위인 사람은 목록에 없어도 순위는 있어야 한다.
+const rankEligible = (u) => !u.is_admin && !u.is_banned && u.member_type === 'female';
+
+async function rankedIds() {
+  const html = await (await fetch(`${base}/ranking`)).text();
+  return [...new Set([...html.matchAll(/class="author-link" href="\/users\/(\d+)">/g)]
+    .map((m) => Number(m[1])))];
+}
+
+test('랭킹 목록에 나오는 사람은 자격이 있는 사람뿐이다', async () => {
+  const ids = await rankedIds();
+  assert.ok(ids.length >= 2, '랭킹에 사람이 너무 적어 견줄 수가 없다');
+  const byId = new Map(db.prepare(
+    'SELECT id, nickname, is_admin, is_banned, member_type FROM users').all().map((u) => [u.id, u]));
+  for (const id of ids) {
+    const u = byId.get(id);
+    assert.ok(rankEligible(u),
+      `${u.nickname}(${u.member_type}${u.is_admin ? '·운영자' : ''}${u.is_banned ? '·제재' : ''})`
+      + ' 가 랭킹에 나온다');
+  }
+  // 자격 있는 사람 중 포인트 1등은 반드시 목록 1위여야 한다
+  const top = db.prepare(
+    `SELECT id, nickname FROM users u
+      WHERE u.is_admin = 0 AND u.is_banned = 0 AND u.member_type = 'female'
+      ORDER BY u.points DESC, u.id LIMIT 1`).get();
+  assert.strictEqual(ids[0], top.id, `목록 1위가 ${top.nickname} 이어야 한다`);
+});
+
+test('프로필의 랭킹 순위가 목록과 어긋나지 않는다', async () => {
+  const ids = await rankedIds();
+  const users = db.prepare(
+    'SELECT id, nickname, is_admin, is_banned, member_type FROM users').all();
+  let checkedIn = 0;
+  let checkedOut = 0;
+  for (const u of users) {
+    const html = await (await fetch(`${base}/users/${u.id}`)).text();
+    if (!html.includes('profile-stats')) continue;      // 내 프로필은 /profile 로 넘어간다
+    const shown = (html.match(/랭킹 (\d+)위/) || [])[1];
+    const pos = ids.indexOf(u.id);
+    if (pos >= 0) {
+      assert.strictEqual(shown, String(pos + 1),
+        `${u.nickname}: 목록 ${pos + 1}위인데 프로필은 ${shown || '순위 없음'}`);
+      checkedIn++;
+    } else if (rankEligible(u)) {
+      // 상위 20위 밖 — 목록에는 없지만 순위는 있어야 하고, 20보다 뒤여야 한다
+      assert.ok(shown && Number(shown) > ids.length,
+        `${u.nickname}: 상위 20위 밖인데 프로필 순위가 ${shown || '없음'}`);
+    } else {
+      assert.strictEqual(shown, undefined,
+        `${u.nickname}: 랭킹 자격이 없는데 프로필에 ${shown}위라고 적힌다`);
+      checkedOut++;
+    }
+  }
+  assert.ok(checkedIn >= 2, '목록에 든 사람을 못 견줬다');
+  assert.ok(checkedOut >= 1, '자격 없는 사람을 한 명도 못 견줬다');
+});

@@ -186,6 +186,18 @@ router.post('/admin/members/:id(\\d+)/ban', requireLogin, (req, res) => {
   res.redirect('/admin/members');
 });
 
+/* 랭킹에 들어가는 사람의 조건.
+ *
+ * 랭킹은 여성회원끼리만 겨룬다 (선배님 요청).
+ * 남성·업소 회원과 운영자는 성격이 달라서 같이 줄 세우면 뜻이 없다. 제재된 회원도 뺀다.
+ *
+ * 조건을 한 곳에만 둔다. 목록에서만 빼고 프로필의 '랭킹 N위' 는 그대로 두면
+ * 랭킹 1위인 사람 프로필에 '2위' 라고 적히고, 랭킹에 없는 사람한테도 순위가 찍힌다.
+ * 실제로 그랬다 — 목록 1위 골드웨이브의 프로필이 2위였다 (운영자를 세고 있었다).
+ */
+const RANK_WHERE = "u.is_admin = 0 AND u.is_banned = 0 AND u.member_type = 'female'";
+const inRanking = (u) => !u.is_admin && !u.is_banned && u.member_type === 'female';
+
 // ---- 포인트 랭킹 -------------------------------------------------------------
 router.get('/ranking', (req, res) => {
   const users = db.prepare(`
@@ -193,10 +205,7 @@ router.get('/ranking', (req, res) => {
       (SELECT COUNT(*) FROM posts p WHERE p.user_id = u.id AND p.is_notice = 0) AS post_count,
       (SELECT COUNT(*) FROM comments c WHERE c.user_id = u.id) AS comment_count
     FROM users u
-    -- 랭킹은 여성회원끼리만 겨룬다 (선배님 요청).
-    -- 남성·업소 회원과 운영자는 성격이 달라서 같이 줄 세우면 뜻이 없다.
-    -- 제재된 회원도 뺀다.
-    WHERE u.is_admin = 0 AND u.is_banned = 0 AND u.member_type = 'female'
+    WHERE ${RANK_WHERE}
     ORDER BY u.points DESC, u.id LIMIT 20`).all();
   res.render('ranking', { users });
 });
@@ -206,7 +215,7 @@ router.get('/ranking', (req, res) => {
 // 스크랩·알림처럼 남에게 보일 이유가 없는 정보도 넣지 않는다.
 router.get('/users/:id(\\d+)', (req, res) => {
   const user = db.prepare(
-    'SELECT id, nickname, points, avatar_id, border_id, is_admin, is_banned, created_at FROM users WHERE id = ?'
+    'SELECT id, nickname, points, avatar_id, border_id, is_admin, is_banned, member_type, created_at FROM users WHERE id = ?'
   ).get(req.params.id);
   if (!user) return res.status(404).render('error', { message: '존재하지 않는 회원이에요.' });
 
@@ -234,9 +243,14 @@ router.get('/users/:id(\\d+)', (req, res) => {
     WHERE user_id = ? AND is_notice = 0 AND is_anonymous = 0 AND is_hidden = 0
     ORDER BY id DESC LIMIT 10`).all(user.id);
 
-  const rank = db.prepare(
-    'SELECT COUNT(*) + 1 AS r FROM users WHERE points > ? OR (points = ? AND id < ?)'
-  ).get(user.points, user.points, user.id).r;
+  // 랭킹에 안 들어가는 사람에게는 순위를 안 보여 준다 (목록에 없는데 등수만 있으면 이상하다).
+  // 순위를 셀 때도 랭킹에 들어가는 사람만 센다.
+  const rank = inRanking(user)
+    ? db.prepare(
+      `SELECT COUNT(*) + 1 AS r FROM users u
+        WHERE ${RANK_WHERE} AND (u.points > ? OR (u.points = ? AND u.id < ?))`
+    ).get(user.points, user.points, user.id).r
+    : null;
 
   res.render('user-profile', {
     title: `${user.nickname}님`,
