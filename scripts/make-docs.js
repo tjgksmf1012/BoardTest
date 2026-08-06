@@ -150,7 +150,7 @@ const CHAPTERS = [
       ['.board-head .btn-primary', '글쓰기 (+300P, 하루 3개까지)'],
       ['.cat-tabs', '말머리로 걸러보기'],
       ['#searchBtn', '검색 (누르면 아래로 검색창이 펼쳐져요)'],
-      ['.sort-form', '정렬 (최신 · 추천 · 조회 — 최근 일주일 기준)'],
+      ['.sort-form', '정렬 (최신 · 추천 · 조회 — 전체 기간)'],
       ['.post-list', '글 목록'],
     ],
   },

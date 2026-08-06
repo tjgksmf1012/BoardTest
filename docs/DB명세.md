@@ -610,13 +610,12 @@ ORDER BY p.id DESC LIMIT 10 OFFSET 0
 ```
 
 ### 목록 (추천순 / 조회순)
-수정사항 4번: 최근 일주일 안에서만 줄을 세운다. MySQL 은 datetime(...) 대신 `p.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)` 를 쓴다.
+전체 기간으로 줄을 세운다. 인덱스 idx_posts_likes 가 그대로 받아 주므로 따로 줄 세우는 일 없이 앞에서 몇 건만 읽고 끝난다.
 
 ```sql
 SELECT p.id, p.title, p.like_count, p.views
 FROM posts p
 WHERE p.is_notice = 0 AND p.is_hidden = 0
-  AND p.created_at >= datetime('now', 'localtime', '-7 days')
 ORDER BY p.like_count DESC, p.id DESC LIMIT 10
 ```
 

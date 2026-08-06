@@ -176,13 +176,15 @@ function listFilter(query, isAdmin) {
     : match
       ? ` AND p.id IN (SELECT rowid FROM posts_fts WHERE g MATCH @fts) AND ${likeCond}`
       : ` AND ${likeCond}`;
-  // 추천순·조회순은 '최근 일주일' 안에서만 줄을 세운다.
-  // 전체 기간으로 세우면 오래전 인기글이 계속 위에 붙어 새 글이 묻힌다.
-  const rankWindow = sort !== 'latest' ? " AND p.created_at >= datetime('now', 'localtime', '-7 days')" : '';
+  // 추천순·조회순은 전체 기간으로 줄을 세운다.
+  //
+  // 한동안 '최근 일주일' 로 잘라 뒀었다. 오래전 인기글이 계속 위에 붙어 새 글이 묻히지
+  // 않게 하려던 것인데, 추천순을 눌렀는데 일주일 전 글에서 끊기는 게 더 이상하다고 하셔서
+  // 다시 전체로 돌렸다. 시간 기준으로 보고 싶으실 때는 '지금 뜨는 글' 이 따로 있다
+  // (그건 이름 그대로 최근 7일만 본다).
   const where = searchCond
     + (hot ? ' AND p.is_popular = 1' : '')
     + (category ? ' AND p.category = @category' : '')
-    + rankWindow
     + ' AND (p.is_hidden = 0 OR @admin = 1)';
   const sortKey = sort === 'likes' ? 'p.like_count' : sort === 'views' ? 'p.views' : null;
   const orderBy = sortKey ? `${sortKey} DESC, p.id DESC` : 'p.id DESC';
