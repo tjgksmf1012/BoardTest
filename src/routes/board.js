@@ -382,17 +382,33 @@ router.get('/:id(\\d+)', (req, res) => {
     ? db.prepare('SELECT 1 FROM bookmarks WHERE post_id = ? AND user_id = ?').get(post.id, req.session.userId)
     : null;
 
-  // 이전글·다음글은 '지금 보고 있는 게시판 안에서' 찾는다.
-  // 전체에서 찾으면 자유게시판 글을 보다가 다음글을 눌렀는데 질문게시판 글이 나온다.
-  // 목록에서 말머리를 골라 들어오셨으면 그 말머리, 아니면 이 글의 말머리를 기준으로 한다.
-  const navCat = isValidCategory(req.query.category) ? req.query.category : post.category;
-  const navWhere = 'is_notice = 0 AND is_hidden = 0 AND category = @cat';
+  /* 이전글·다음글은 '방금 보던 목록에서 내 윗줄·아랫줄' 이다.
+   *
+   * 그래서 어느 탭에서 들어왔는지를 그대로 따라간다.
+   *   자유 탭에서 들어왔으면  자유 안에서
+   *   질문 탭에서 들어왔으면  질문 안에서
+   *   전체 탭에서 들어왔으면  전체에서
+   *
+   * 처음에는 탭 정보가 없으면 그 글의 말머리로 가뒀는데, 그러면 전체 목록에서
+   * 들어왔을 때 목록의 윗줄·아랫줄과 다른 글로 튄다. 전체에서 2번째 글을 눌렀는데
+   * 이전글이 8번째 글로 가는 식이다. 주소에 말머리가 없으면 전체로 본다.
+   *
+   * 공지는 뺀다. 목록 맨 위에 따로 고정되는 안내문이라 읽는 흐름에 끼면 어색하다.
+   * (다른 커뮤니티도 대개 공지는 이전글·다음글에서 뺀다)
+   *
+   * 검색어와 정렬까지는 안 따라간다. 추천순으로 보다가 다음글을 누르면 번호 순으로
+   * 넘어간다. 흔한 길이 아니라 일부러 단순하게 뒀다.
+   */
+  const navCat = isValidCategory(req.query.category) ? req.query.category : null;
+  const navWhere = 'is_notice = 0 AND is_hidden = 0'
+    + (navCat ? ' AND category = @cat' : '');
+  const navParams = { id: post.id, cat: navCat };
   const prev = db.prepare(
     `SELECT id, title FROM posts WHERE ${navWhere} AND id < @id ORDER BY id DESC LIMIT 1`
-  ).get({ id: post.id, cat: navCat });
+  ).get(navParams);
   const next = db.prepare(
     `SELECT id, title FROM posts WHERE ${navWhere} AND id > @id ORDER BY id LIMIT 1`
-  ).get({ id: post.id, cat: navCat });
+  ).get(navParams);
 
   // 링크를 공유했을 때 보일 미리보기 (익명글은 작성자·본문이 드러나지 않게 최소한만)
   const firstImage = post.content_format === 'html'

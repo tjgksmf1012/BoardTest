@@ -1180,3 +1180,50 @@ test('다른 유형의 캐릭터는 사지지 않는다', async () => {
   await post('/profile/buy', { code: female.code }, jar);
   assert.equal(db.prepare('SELECT COUNT(*) AS c FROM user_items WHERE user_id = ?').get(id).c, 0);
 });
+
+// ---- 이전글·다음글 -----------------------------------------------------------
+// 규칙: '방금 보던 목록에서 내 윗줄·아랫줄' 이다.
+// 어느 탭에서 들어왔는지를 그대로 따라가고, 공지는 뺀다.
+//
+// 이 검사가 왜 있냐면, 처음에는 탭 정보가 없을 때 그 글의 말머리로 가뒀다.
+// 그래서 전체 목록에서 2번째 글을 눌렀는데 이전글이 8번째 글로 튀었다.
+// 화면에는 오류가 없고 링크도 멀쩡해서 눌러 보기 전에는 모른다.
+test('이전글·다음글은 들어온 탭을 따라간다', async () => {
+  const ins = db.prepare(
+    "INSERT INTO posts (user_id, category, title, content, is_notice) VALUES (?, ?, ?, 'x', ?)");
+  const uid = db.prepare('SELECT id FROM users LIMIT 1').get().id;
+  // 자유 · 질문 · 자유 · 질문 순으로 번갈아 넣는다
+  const a = ins.run(uid, '자유', 'nav-자유-1', 0).lastInsertRowid;
+  const b = ins.run(uid, '질문', 'nav-질문-1', 0).lastInsertRowid;
+  const c = ins.run(uid, '자유', 'nav-자유-2', 0).lastInsertRowid;
+  const d = ins.run(uid, '질문', 'nav-질문-2', 0).lastInsertRowid;
+  const notice = ins.run(uid, '자유', 'nav-공지', 1).lastInsertRowid;
+  const e = ins.run(uid, '자유', 'nav-자유-3', 0).lastInsertRowid;
+
+  const navOf = async (id, qs) => {
+    const html = await (await fetch(`${base}/board/${id}${qs || ''}`)).text();
+    const box = (html.match(/<nav class="prev-next"[\s\S]*?<\/nav>/) || [''])[0];
+    return [...box.matchAll(/href="\/board\/(\d+)/g)].map((m) => Number(m[1]));
+  };
+
+  // 전체 탭 (말머리 없음) — 번호 순으로 바로 앞뒤
+  assert.deepEqual(await navOf(c), [b, d],
+    '전체에서 들어오면 말머리와 상관없이 목록의 윗줄·아랫줄이어야 한다');
+
+  // 자유 탭 — 자유끼리
+  assert.deepEqual(await navOf(c, '?category=' + encodeURIComponent('자유')), [a, e],
+    '자유 탭에서 들어오면 자유 글끼리 이어져야 한다');
+
+  // 질문 탭 — 질문끼리.
+  // d 는 방금 넣은 것 중 제일 나중이라 '다음글' 이 없고 이전글만 b 가 나와야 한다.
+  // (b 에서 재면 데모 데이터의 옛 질문 글이 이전글로 걸려서 기대값이 지저분해진다)
+  assert.deepEqual(await navOf(d, '?category=' + encodeURIComponent('질문')), [b],
+    '질문 탭에서 들어오면 질문 글끼리 이어져야 한다');
+
+  // 공지는 어느 쪽에서도 안 끼어든다
+  assert.ok(!(await navOf(e)).includes(notice), '공지가 이전글로 나오면 안 된다');
+  assert.ok(!(await navOf(c, '?category=' + encodeURIComponent('자유'))).includes(notice),
+    '말머리 탭에서도 공지는 빠져야 한다');
+
+  for (const id of [a, b, c, d, e, notice]) db.prepare('DELETE FROM posts WHERE id = ?').run(id);
+});
