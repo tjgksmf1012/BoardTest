@@ -1407,3 +1407,34 @@ test('답글은 베스트로 떼어 올리지 않는다', async () => {
 
   db.prepare('DELETE FROM posts WHERE id = ?').run(pid);
 });
+
+test('베스트는 상위 2개까지만 올라간다', async () => {
+  // 처음 만들었을 때도 상위 2개였다 (에브리타임식).
+  // 기준만 넘으면 전부 올리면 댓글 많은 글에서 절반이 '베스트' 가 되어 뱃지가 뜻을 잃는다.
+  const uid = db.prepare('SELECT id FROM users LIMIT 1').get().id;
+  const pid = db.prepare(
+    "INSERT INTO posts (user_id, category, title, content) VALUES (?, '자유', '베스트 개수 시험', 'x')")
+    .run(uid).lastInsertRowid;
+  const likers = db.prepare('SELECT id FROM users LIMIT 9').all().map((r) => r.id);
+  assert.ok(likers.length >= 8, '좋아요 눌러 줄 사람이 모자라 시험을 못 한다');
+
+  const like = db.prepare('INSERT OR IGNORE INTO comment_likes (comment_id, user_id) VALUES (?, ?)');
+  const ids = [];
+  // 좋아요 8·7·6·5 개짜리 넷 — 전부 기준(5)을 넘는다
+  [8, 7, 6, 5].forEach((n, i) => {
+    const cid = db.prepare(
+      'INSERT INTO comments (post_id, user_id, parent_id, content) VALUES (?, ?, NULL, ?)')
+      .run(pid, uid, `좋아요 ${n}개짜리`).lastInsertRowid;
+    likers.slice(0, n).forEach((u) => like.run(cid, u));
+    ids.push(cid);
+  });
+
+  const html = await (await fetch(`${base}/board/${pid}`)).text();
+  const bestIds = [...html.matchAll(/<div class="comment[^"]*\bbest\b[^"]*" id="comment-(\d+)"/g)]
+    .map((m) => Number(m[1]));
+  assert.strictEqual(bestIds.length, 2,
+    `기준을 넘은 댓글이 4개인데 베스트가 ${bestIds.length}개다 — 상위 2개까지만이어야 한다`);
+  assert.deepEqual(bestIds, [ids[0], ids[1]], '좋아요가 많은 순으로 두 개여야 한다');
+
+  db.prepare('DELETE FROM posts WHERE id = ?').run(pid);
+});

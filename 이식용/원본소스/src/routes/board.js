@@ -131,11 +131,18 @@ const PAGE_SIZE = 15;   // 한 쪽에 보여줄 글 수 (선배님 요청으로 
 const POST_INTERVAL_SEC = 30;
 const COMMENT_PAGE_SIZE = 20; // 한 화면에 보여줄 최상위 댓글 수
 
-/* 베스트댓글이 되는 좋아요 수.
- * 선배님 요청: "좋아요 4개 이하는 지정 안 되게" → 5개부터.
- * 숫자를 화면에도 그대로 보여 주므로(안내문) 여기 한 곳만 고치면 된다.
+/* 베스트댓글 기준.
+ *
+ * 좋아요 수 — 요청이 "좋아요 4개 이하는 지정 안 되게" 라서 5개부터다.
+ *   처음 만들었을 때는 3개였다. 그때 화면에 베스트로 보이던 댓글이 좋아요 4개짜리라
+ *   "4개면 올라갔다" 로 기억하시는 분이 있는데, 기준은 3이고 그 댓글이 4개였던 것이다.
+ *
+ * 개수 — 처음 만들었을 때도 상위 2개까지만 올렸다 (에브리타임식).
+ *   기준만 넘으면 전부 올리면, 댓글이 많은 글에서는 절반이 '베스트' 가 되어
+ *   뱃지가 아무 뜻도 없어지고 순서도 거의 안 바뀐다.
  */
 const BEST_COMMENT_LIKES = 5;
+const BEST_COMMENT_MAX = 2;
 
 // 지금 보고 있는 목록의 상태(몇 쪽 · 어떤 말머리 · 정렬 · 검색어)를 주소 조각으로 만든다.
 //
@@ -406,12 +413,13 @@ router.get('/:id(\\d+)', (req, res) => {
   let roots = rows.filter((c) => !c.parent_id);
   if (csort === 'like') roots.sort((a, b) => b.like_count - a.like_count || a.id - b.id);
 
-  // 좋아요가 기준에 닿은 댓글을 맨 위로 (지운 댓글 자리는 제외)
-  for (const c of roots) {
-    c.is_best = !c.is_deleted && c.like_count >= BEST_COMMENT_LIKES;
-  }
-  const bests = roots.filter((c) => c.is_best)
-    .sort((a, b) => b.like_count - a.like_count || a.id - b.id);
+  // 좋아요가 기준에 닿은 댓글 중 상위 몇 개만 맨 위로 (지운 댓글 자리는 제외)
+  const bests = roots
+    .filter((c) => !c.is_deleted && c.like_count >= BEST_COMMENT_LIKES)
+    .sort((a, b) => b.like_count - a.like_count || a.id - b.id)
+    .slice(0, BEST_COMMENT_MAX);
+  const bestIds = new Set(bests.map((c) => c.id));
+  for (const c of roots) { c.is_best = bestIds.has(c.id); }
   roots = bests.concat(roots.filter((c) => !c.is_best));
   const cTotalPages = Math.max(1, Math.ceil(roots.length / COMMENT_PAGE_SIZE));
   const cPage = Math.min(cTotalPages, Math.max(1, parseInt(req.query.cpage, 10) || 1));
