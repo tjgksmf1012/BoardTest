@@ -123,22 +123,64 @@ test('고리가 칸 밖으로 나가지 않는다 (목록에서 글 제목을 �
   }
 });
 
-test('얼굴이 고리 바깥으로 삐져나오지 않는다', async () => {
-  // 이번에 놓친 것이 이것이다.
-  //
-  // 위 검사들은 고리 바깥선의 **가운뎃값·최댓값**만 봤다. 그래서 '고리가 칸을 꽉 채운다'는
-  // 통과했는데, 고리가 **가장 가늘어지는 쪽**에서는 바깥선이 얼굴보다 안쪽이었다.
-  // 그 각도에서 캐릭터의 머리와 어깨가 고리 밖으로 새어 나왔다.
-  // 상점에서 72px 로 크게 놓고 보니 눈에 띄었다.
-  //
-  // 가운뎃값이 아니라 **최솟값**으로 봐야 한다.
+// 얼굴을 동그랗게 자른 자국이 금색에 가려지는가
+//
+// 이 검사는 두 번 갈아엎었다. 두 번 다 '고리 그림 하나만' 재서 기준을 세웠기 때문이다.
+//
+//   처음  바깥선의 가운뎃값으로 → RING 1.20 → "캐릭터가 테두리 밖으로 삐져나온다"
+//   다음  바깥선의 최솟값으로   → RING 1.34 → "테두리가 아직도 안 맞는다"
+//
+// 최솟값으로 바꾼 게 이 자리에 있던 검사였다. 그 검사는 '어느 각도에서도 얼굴이
+// 고리 바깥을 넘지 않을 것' 을 요구했고, 그러려면 고리를 1.34 까지 키워야 했다.
+// 그랬더니 이번엔 고리가 얼굴에서 떨어져 흰 틈이 생겼다. 한쪽을 0 으로 만들려다
+// 반대쪽을 키운 것이다.
+//
+// 그리고 '안쪽 ~ 바깥 사이에 있으면 가려진다' 는 생각 자체가 틀렸다.
+// 이 고리는 실이 여러 가닥이라 가닥 사이가 비어 있다.
+//
+// 그래서 묻는 것을 바꿨다 — **얼굴 자른 자국 자리(±3px)에 금색이 실제로 있는가.**
+// 각도 360개를 세어, 안 가려진 각도가 '고리가 떠서' 인지 '얼굴이 삐져서' 인지 나눈다.
+// 둘은 서로 반대라 동시에 0 이 될 수 없다. 그래서 어느 쪽도 너무 커지지 않게만 본다.
+async function 가려짐세기(file, ringMul, faceMul) {
+  const { data, info } = await sharp(path.join(DIR, file))
+    .ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const { width: W, height: H, channels: C } = info;
+  const cx = W / 2, cy = H / 2;
+  const A = (x, y) => {
+    x = Math.round(x); y = Math.round(y);
+    if (x < 0 || y < 0 || x >= W || y >= H) return 0;
+    return data[(y * W + x) * C + 3];
+  };
+  // 고리 그림의 반지름(W/2)이 칸의 ringMul/2 배다. 얼굴 반지름을 같은 자로 옮긴다.
+  const faceR = (W / 2) * (faceMul / ringMul);
+  const 여유 = W * 0.005;                      // 화면의 ±3px 에 해당
+  let 가려짐 = 0, 떠있음 = 0, 삐짐 = 0;
+  for (let deg = 0; deg < 360; deg++) {
+    const t = (deg * Math.PI) / 180, dx = Math.cos(t), dy = Math.sin(t);
+    let 덮였나 = false;
+    for (let d = -여유; d <= 여유; d += 여유 / 6) {
+      if (A(cx + dx * (faceR + d), cy + dy * (faceR + d)) > 60) { 덮였나 = true; break; }
+    }
+    if (덮였나) { 가려짐++; continue; }
+    let 밖금색 = false;
+    for (let r = faceR + 여유; r <= W / 2; r += 1) {
+      if (A(cx + dx * r, cy + dy * r) > 60) { 밖금색 = true; break; }
+    }
+    if (밖금색) 떠있음++; else 삐짐++;
+  }
+  return { 가려짐, 떠있음, 삐짐 };
+}
+
+test('얼굴 자른 자국이 고리에 가려진다 (떠도 안 되고 삐져도 안 된다)', async () => {
   const { RING, FACE } = avatars;
   for (const b of borders) {
-    const { edgeMin } = await holeRatio(b.file);
-    const 고리바깥_가장가는쪽 = RING * edgeMin;
-    assert.ok(FACE <= 고리바깥_가장가는쪽,
-      `${b.code}: 고리가 가장 가는 쪽 바깥선이 칸의 ${(고리바깥_가장가는쪽 * 100).toFixed(0)}% 인데`
-      + ` 얼굴이 ${(FACE * 100).toFixed(0)}% 라 그만큼 밖으로 나온다`);
+    const r = await 가려짐세기(b.file, RING, FACE);
+    const 말 = `${b.code}: 가려짐 ${r.가려짐} · 고리가 뜸 ${r.떠있음} · 얼굴이 삐짐 ${r.삐짐}`;
+    // 지적받은 두 값이 1.20(삐짐 117) 과 1.34(뜸 140) 다. 지금 값 1.26 은 최악 72.
+    // 90 으로 그으면 그 둘은 잡히고 지금 값은 여유가 남는다.
+    assert.ok(r.떠있음 <= 90, `${말} — 고리가 얼굴에서 떨어져 흰 틈이 보입니다`);
+    assert.ok(r.삐짐 <= 90, `${말} — 얼굴이 고리 밖으로 나옵니다`);
+    assert.ok(r.가려짐 >= 180, `${말} — 자른 자국이 절반도 안 가려집니다`);
   }
 });
 
@@ -165,11 +207,18 @@ test('실측한 구멍 비율이 코드에 적어둔 값과 맞는다', async ()
 test('크기는 CSS 가 아니라 요소에 직접 붙는다 (우선순위에 지지 않게)', () => {
   const chars = avatars.characters ? avatars.characters() : avatars.items().filter((i) => i.kind !== 'border');
   const html = avatars.renderAvatar(chars[0].code, borders[0].code, 44);
-  assert.match(html, /class="avatar-ring"[^>]*style="width:134%/, '고리 크기가 붙어 있어야 한다');
-  assert.match(html, /class="avatar-face"[^>]*style="width:92%/, '얼굴 크기가 붙어 있어야 한다');
+  // 숫자를 여기 박아 두면 RING 을 고칠 때마다 이 검사가 같이 틀린다.
+  // 실제로 1.34 가 박혀 있어서, 값을 바꾸자마자 엉뚱한 곳이 빨개졌다.
+  // 보려는 것은 '몇 퍼센트인가' 가 아니라 'CSS 말고 요소에 직접 붙었는가' 다.
+  const 고리 = Math.round(avatars.RING * 100);
+  const 얼굴 = Math.round(avatars.FACE * 100);
+  assert.match(html, new RegExp(`class="avatar-ring"[^>]*style="width:${고리}%`),
+    '고리 크기가 붙어 있어야 한다');
+  assert.match(html, new RegExp(`class="avatar-face"[^>]*style="width:${얼굴}%`),
+    '얼굴 크기가 붙어 있어야 한다');
   // 테두리를 안 낀 아바타는 예전처럼 칸을 꽉 채운다
   const plain = avatars.renderAvatar(chars[0].code, null, 44);
-  assert.ok(!plain.includes('style="width:92%'), '고리가 없으면 얼굴을 줄이지 않는다');
+  assert.ok(!plain.includes(`style="width:${얼굴}%`), '고리가 없으면 얼굴을 줄이지 않는다');
 });
 
 test('테두리 칸에 나란히 놓을 때는 고리가 없어도 얼굴 크기를 맞춘다', () => {

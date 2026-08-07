@@ -213,13 +213,15 @@ function seedInner() {
 
   // 댓글 좋아요 (베스트댓글 데모용)
   //
-  // 기준이 5개라, 경계가 눈에 보이게 같은 글에 두 개를 둔다.
-  //   c2  좋아요 5개 → 베스트로 맨 위에 올라간다
-  //   cm1 좋아요 4개 → 하나 모자라서 안 올라간다
+  // 기준이 4개라, 경계가 눈에 보이게 같은 글에 셋을 둔다.
+  //   c2  좋아요 5개 → 베스트 (1등)
+  //   cm1 좋아요 4개 → 베스트 (딱 기준을 채운 경우 — 여기가 경계다)
+  //   cm3 좋아요 0개 → 그대로
+  // 상위 2개까지만 올리므로 c2·cm1 둘만 올라간다.
   // 자기 댓글에는 좋아요를 안 누르게 글쓴이는 빼고 넣는다.
   const insertClike = db.prepare('INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)');
   [[c2, cherry], [c2, mint], [c2, street], [c2, admin], [c2, nightcat],   // 5개 → 베스트
-   [cm1, gold], [cm1, cherry], [cm1, admin], [cm1, street],               // 4개 → 하나 모자람
+   [cm1, gold], [cm1, cherry], [cm1, admin], [cm1, street],               // 4개 → 베스트(경계)
    [cm4, mint], [cm4, gold], [cm4, street]]
     .forEach(([c, u]) => insertClike.run(c, u));
 

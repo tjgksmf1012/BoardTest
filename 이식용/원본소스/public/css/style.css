@@ -482,11 +482,19 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 .post-actions { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--line); padding-top: 14px; flex-wrap: wrap; }
 
 .comments { margin-top: 16px; }
-.comment { display: flex; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
-.comment:last-of-type { border-bottom: none; }
+.comment { display: flex; gap: 10px; padding: 12px 0; }
+/* 댓글 사이 구분선.
+   원래는 댓글마다 '아래'에 그었는데, 그러면 마지막 댓글 밑에도 줄이 하나 남는다.
+   그걸 지우려고 .comment:last-of-type { border-bottom: none } 을 두고 있었지만
+   이 규칙은 실제로 아무것도 안 골랐다. :last-of-type 은 class 가 아니라 태그 이름으로
+   세는데, 댓글 뒤에는 늘 다른 div(댓글 없음 안내 · 입력칸)가 따라오기 때문이다.
+   그래서 줄을 '위'에 긋는 방식으로 바꿨다. 앞에 형제 댓글이 있을 때만 그으므로
+   마지막 밑에는 아무것도 안 남는다.
+   답글은 원래 상자 모양이라 빼고, 베스트댓글은 제 테두리가 있으니 뺀다. */
+.comment + .comment:not(.reply):not(.best) { border-top: 1px solid var(--line); }
 .comment-body { flex: 1; min-width: 0; font-size: 14.5px; }
 .comment-head { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
-.comment.reply { border-bottom: none; margin: 8px 0 0 32px; background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.comment.reply { margin: 8px 0 0 32px; background: var(--bg); border-radius: 10px; padding: 10px 12px; }
 /* 베스트댓글. 복사본을 위에 하나 더 그리지 않고 원래 자리에서 옮겨 오기 때문에,
    왜 맨 위에 있는지 알 수 있게 테두리를 둘러 한 칸으로 떼어 놓는다.
    border 를 네 면에 통째로 주면 위 .comment 의 아래 실선까지 덮여서 네모 상자가 된다.

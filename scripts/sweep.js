@@ -184,6 +184,20 @@ async function inspect(pg) {
       }
     }
 
+    // 11) 마지막 댓글 밑에 남는 줄
+    //     댓글마다 아래에 줄을 그으면 맨 끝에도 하나 남아서, 아래 입력칸과의 사이에
+    //     쓸데없는 선이 생긴다. 지우려던 규칙이 있었지만 실제로는 아무것도 안 골랐다.
+    //     베스트댓글은 제 테두리가 있는 상자라 빼고 본다.
+    out.tailLine = [];
+    const cs = [...document.querySelectorAll('.comments .comment')];
+    if (cs.length) {
+      const last = cs[cs.length - 1];
+      const w = parseFloat(getComputedStyle(last).borderBottomWidth);
+      if (!last.classList.contains('best') && w > 0) {
+        out.tailLine.push(`${w}px`);
+      }
+    }
+
     return out;
   });
 }
@@ -235,6 +249,7 @@ async function crawl(ctx, who, seeds) {
     if (r.nameless.length) add(w, '이름 없는 링크·버튼이 있다', r.nameless.join(', '));
     if (r.noEdge.length) add(w, '베스트댓글에 테두리가 안 그려졌다', r.noEdge.join(' / '));
     if (r.offRail.length) add(w, '베스트댓글이 다른 댓글과 세로줄이 안 맞는다', r.offRail.join(' · '));
+    if (r.tailLine.length) add(w, '마지막 댓글 밑에 줄이 남아 있다', r.tailLine.join(', '));
 
     // 같은 사이트 안의 링크만 따라간다
     const links = await pg.$$eval('a[href]', (as) => as.map((a) => a.getAttribute('href')));

@@ -154,7 +154,7 @@ function cm_shop_borders($user_id) {
  * 예전에 CSS 로 뒀다가 다른 규칙에 우선순위로 져서 통째로 무시된 적이 있습니다.
  * 화면에는 오류 없이 잘 그려져서 아무도 알아채지 못했습니다.
  */
-define('CM_RING', 134);   // 고리 그림 크기 (%)
+define('CM_RING', 126);   // 고리 그림 크기 (%)
 define('CM_FACE', 92);    // 캐릭터 크기 (%)
 
 function cm_avatar_url($file) {

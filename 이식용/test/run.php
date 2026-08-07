@@ -191,12 +191,17 @@ t('잔액과 내역 증감이 맞는다',
 
 echo "\n== 캐릭터 그리기 ==\n";
 $html = cm_render_avatar($paid['code'], 'border-gold', 44);
-t('고리 크기가 요소에 직접 붙는다 (134%)', strpos($html, 'width:134%') !== false);
-t('캐릭터 크기가 요소에 직접 붙는다 (92%)', strpos($html, 'width:92%') !== false);
+// 숫자를 여기 박아 두면 CM_RING 을 고칠 때마다 이 검사가 같이 틀린다.
+// 실제로 134 가 박혀 있어서 값을 바꾸자마자 엉뚱한 곳이 빨개졌다.
+// 보려는 것은 '몇 퍼센트인가' 가 아니라 'CSS 말고 요소에 직접 붙었는가' 다.
+t('고리 크기가 요소에 직접 붙는다 (' . CM_RING . '%)',
+    strpos($html, 'width:' . CM_RING . '%') !== false);
+t('캐릭터 크기가 요소에 직접 붙는다 (' . CM_FACE . '%)',
+    strpos($html, 'width:' . CM_FACE . '%') !== false);
 t('고리를 끼면 잘라내기를 푼다', strpos($html, 'overflow:visible') !== false);
 $plain = cm_render_avatar($paid['code'], null, 44);
 t('고리가 없으면 칸을 꽉 채운다', strpos($plain, 'width:100%') !== false
-    && strpos($plain, 'width:92%') === false);
+    && strpos($plain, 'width:' . CM_FACE . '%') === false);
 t('작게 그릴 때는 썸네일을 쓴다', strpos($html, $paid['thumb']) !== false);
 $big = cm_render_avatar($paid['code'], 'border-gold', 200);
 t('크게 그릴 때는 원본을 쓴다', strpos($big, $paid['file']) !== false);
