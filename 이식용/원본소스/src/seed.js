@@ -3,7 +3,22 @@ const db = require('./db');
 const { hashPassword } = require('./routes/auth');
 const { htmlToText } = require('./richtext');
 
+// 데모 데이터 넣기.
+//
+// 밖에서 감싼 이유
+//   같은 DB 파일을 서버 두 개가 동시에 열면, 둘 다 '아직 비었네' 를 보고 둘 다 넣으려 든다.
+//   그러면 뒤에 온 쪽이 UNIQUE constraint failed: users.nickname 으로 죽는다.
+//   페르소나 검사가 실제로 이걸 밟았다 — 보통 서버와 연동(host) 서버를 같은 파일로
+//   나란히 띄우기 때문이다. 서버가 아예 안 떠서 검사 세 개가 통째로 못 돌았다.
+//
+//   BEGIN IMMEDIATE 로 쓰기 자리를 먼저 잡고, 그 안에서 다시 세어 본다.
+//   늦게 온 쪽은 앞사람이 끝날 때까지 기다렸다가 다시 세어 보고 그냥 돌아간다.
+//   (한 대만 띄우는 평소에는 하는 일이 똑같다.)
 function seed() {
+  db.transaction(seedInner).immediate();
+}
+
+function seedInner() {
   if (db.prepare('SELECT COUNT(*) AS c FROM users').get().c > 0) return;
 
   const insertUser = db.prepare(`

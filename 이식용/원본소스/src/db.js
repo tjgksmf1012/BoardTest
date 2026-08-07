@@ -9,7 +9,25 @@ const DB_PATH = process.env.DB_PATH || path.join(DATA_DIR, 'board.db');
 if (!fs.existsSync(path.dirname(DB_PATH))) fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
 const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
+
+// 남이 쓰는 중이면 곧바로 포기하지 말고 기다린다.
+// 이 줄이 제일 먼저 와야 한다 — 아래 journal_mode 부터가 이미 기다려야 하는 일이다.
+db.pragma('busy_timeout = 5000');
+
+// WAL 로 바꾸는 것은 파일을 잠깐 독차지해야 하는 일이라, 다른 연결이 쓰는 중이면 안 된다.
+// busy_timeout 이 있어도 journal_mode 만은 SQLite 가 그냥 SQLITE_BUSY 를 돌려주기도 한다.
+// 서버 두 대를 같은 파일로 동시에 띄우면 실제로 여기서 죽었다 (페르소나 검사가 그렇게 띄운다).
+// 이미 WAL 이면 할 일이 없고, 아니면 잠깐씩 쉬며 몇 번 더 해 본다.
+for (let i = 0; i < 20; i++) {
+  try {
+    if (String(db.pragma('journal_mode', { simple: true })).toLowerCase() === 'wal') break;
+    db.pragma('journal_mode = WAL');
+    break;
+  } catch (e) {
+    if (e.code !== 'SQLITE_BUSY' || i === 19) throw e;
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);   // 50ms 쉬기
+  }
+}
 db.pragma('foreign_keys = ON');
 
 db.exec(`
@@ -148,10 +166,18 @@ CREATE INDEX IF NOT EXISTS idx_useritems_user   ON user_items(user_id);
 
 // ---- 마이그레이션 (기존 DB에 새 컬럼 추가) ------------------------------------
 // CREATE TABLE IF NOT EXISTS는 이미 있는 테이블에 컬럼을 더해주지 않으므로 직접 확인한다.
+// '있나 보고 → 없으면 넣는다' 는 두 동작이라, 서버 두 대가 같이 뜨면 둘 다 '없다' 를 보고
+// 둘 다 넣으려 든다. 뒤에 온 쪽은 duplicate column name 으로 죽는다.
+// ALTER TABLE 에는 IF NOT EXISTS 가 없으므로, 넣어 보고 '이미 있다' 는 대답이면 넘어간다.
 function addColumn(table, column, definition) {
   const has = db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
   if (has) return false;
-  db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  try {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  } catch (e) {
+    if (/duplicate column name/i.test(e.message)) return false;   // 남이 먼저 넣었다
+    throw e;
+  }
   return true;
 }
 

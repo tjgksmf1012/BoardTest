@@ -12,7 +12,9 @@ const path = require('path');
 process.env.DB_PATH = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'boardtest-host-')), 'test.db');
 process.env.NODE_ENV = 'test';
 process.env.AUTH_MODE = 'host';
-process.env.HOST_SSO_SECRET = 'test-secret-for-host-mode';
+// 연동가이드가 '32자 이상' 이라고 안내하므로 검사에서도 그 길이를 쓴다.
+// (전에는 25자였다. 검사가 안내문과 다른 값을 쓰면 짧은 키 경고가 늘 켜져 있게 된다.)
+process.env.HOST_SSO_SECRET = 'test-secret-for-host-mode-0123456789';
 process.env.HOST_LOGIN_URL = 'https://a-site.example.com/login';
 
 const app = require('../server');
@@ -200,4 +202,39 @@ test('따옴표·역슬래시가 든 닉네임도 깨지지 않는다', () => {
   const got = identity.verify(`${body}.${sig}`);
   assert.ok(got, '이스케이프가 필요한 닉네임에서 토큰이 깨졌다');
   assert.equal(got.nick, nick);
+});
+
+// 짧은 비밀키 경고
+//
+// 연동가이드에는 '32자 이상' 이라고 적어 두었는데 아무도 확인하지 않고 있었다.
+// 키가 아예 없으면 아무도 못 들어와서 바로 티가 나지만, 짧으면 화면은 멀쩡하고
+// 남이 키를 맞히면 아무 회원으로나 들어올 수 있다. 조용한 쪽이 더 위험하다.
+//
+// 비밀키는 파일을 읽는 순간 한 번만 읽으므로 이 프로세스 안에서는 바꿀 수 없다.
+// 그래서 짧은 키를 쥐여 준 서버를 따로 띄워서 경고가 나오는지 본다.
+test('비밀키가 짧으면 뜰 때 경고한다', async () => {
+  const { spawn } = require('child_process');
+  const 띄우기 = (secret) => new Promise((resolve) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'boardtest-secret-'));
+    const p = spawn(process.execPath, ['-e', "require('./server');"], {
+      cwd: path.join(__dirname, '..'),
+      env: { ...process.env, NODE_ENV: 'test', PORT: '0',
+        DB_PATH: path.join(dir, 'x.db'), AUTH_MODE: 'host', HOST_SSO_SECRET: secret },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let out = '';
+    p.stdout.on('data', (d) => { out += d; });
+    p.stderr.on('data', (d) => { out += d; });
+    setTimeout(() => {
+      p.kill();
+      fs.rmSync(dir, { recursive: true, force: true });
+      resolve(out);
+    }, 1500);
+  });
+
+  assert.match(await 띄우기('짧은키'), /너무 짧습니다/,
+    '짧은 비밀키를 쥐여 줬는데 아무 말이 없어요');
+  const 긴키 = await 띄우기('a'.repeat(identity.SECRET_MIN));
+  assert.ok(!/너무 짧습니다/.test(긴키),
+    `${identity.SECRET_MIN}자인데 짧다고 합니다`);
 });

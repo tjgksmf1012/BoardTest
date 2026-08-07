@@ -349,7 +349,7 @@ persona('P2', '지훈 (31) · 눈팅족', 'Android 360×780 · 비로그인', as
 });
 
 // P3 — 업소회원이 글 쓰고 댓글 관리
-persona('P3', '루노 사장 (45) · 업소회원', '데스크톱 1440×900', async (browser) => {
+persona('P3', '루노 사장 (45) · 업소회원', '데스크톱 1440×900', async (browser, db) => {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const pg = await ctx.newPage();
   await login(pg, 'luno', 'test1234');
@@ -362,20 +362,54 @@ persona('P3', '루노 사장 (45) · 업소회원', '데스크톱 1440×900', as
   want(names.length > 0, 'BUG', '업소회원에게 캐릭터가 하나도 안 보인다');
   await shot(pg, '1-업소캐릭터');
 
-  // 이벤트 글 쓰기
+  // 이벤트 말머리는 운영자만 쓸 수 있다 (선배님 확인 사항).
+  // 예전에는 업소회원도 쓸 수 있어서 여기서 이벤트 글을 썼다. 규칙이 바뀌었으니
+  // 이제는 '안 보이는지' 와 '몰래 보내도 안 먹히는지' 를 본다.
   await pg.goto(BASE + '/board/new');
   const cats = await pg.$$eval('select[name=category] option', (o) => o.map((e) => e.value));
-  want(cats.includes('이벤트'), 'BUG', '이벤트 말머리가 없다', cats.join(', '));
-  await pg.selectOption('select[name=category]', '이벤트');
-  await pg.fill('input[name=title]', '이번 주 신규 이벤트 안내드립니다');
+  want(!cats.includes('이벤트'), 'BUG', '업소회원에게 이벤트 말머리가 보인다', cats.join(', '));
+
+  // 목록에 없다고 못 보내는 게 아니다. 주소로 바로 찔러 본다.
+  const tk = await pg.evaluate(() => document.querySelector('meta[name=csrf-token]')?.content || '');
+  await pg.evaluate(async ([url, t]) => {
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRF-Token': t },
+      body: 'category=' + encodeURIComponent('이벤트')
+          + '&title=' + encodeURIComponent('몰래 쓴 이벤트 글')
+          + '&content=' + encodeURIComponent('내용입니다'),
+      redirect: 'manual',
+    });
+  }, [BASE + '/board', tk]);
+  const sneak = db.prepare("SELECT id, category FROM posts WHERE title='몰래 쓴 이벤트 글'").get();
+  // 글 자체가 안 만들어졌으면 '이벤트가 아니다' 는 저절로 참이 된다.
+  // 그건 확인한 게 아니라 확인을 못 한 것이므로, 만들어졌는지부터 본다.
+  want(sneak, 'BUG', '몰래 보낸 글이 아예 안 만들어져서 말머리를 확인 못 했다');
+  want(!sneak || sneak.category !== '이벤트',
+    'BLOCK', '운영자가 아닌데 이벤트 글이 올라갔다', sneak && sneak.category);
+
+  // 30초에 한 번 규칙. 방금 썼으니 바로 또 쓰면 막혀야 한다.
+  await pg.goto(BASE + '/board/new');
+  await pg.selectOption('select[name=category]', '자유');
+  await pg.fill('input[name=title]', '연달아 쓰는 글');
   await pg.click('.editor');
-  await pg.keyboard.type('저희 업소에서 이번 주 신규 이벤트를 진행합니다. 문의 주세요.');
+  await pg.keyboard.type('내용입니다.');
   await pg.click('form[action="/board"] button[type=submit]');
   await pg.waitForLoadState('load');
-  want(!(await isErrorPage(pg)), 'BLOCK', '이벤트 글을 올리다 오류가 났다');
-  const postUrl = pg.url();
+  want(/초에 한 번씩/.test(await pg.textContent('body')),
+    'BUG', '연달아 써도 안 막힌다 (도배 방지가 안 듣는다)');
+  want(!db.prepare("SELECT 1 FROM posts WHERE title='연달아 쓰는 글'").get(),
+    'BUG', '막혔다고 해 놓고 글은 올라갔다');
 
-  // 내 글에 달린 댓글은 지울 수 있나 (남의 댓글)
+  // 30초를 기다리는 대신, 마지막 글을 뒤로 돌려서 시간이 지난 것처럼 만든다
+  const lunoId = db.prepare("SELECT id FROM users WHERE username='luno'").get().id;
+  const 시간흘리기 = () => db.prepare(
+    `UPDATE posts SET created_at = datetime(created_at, '-5 minutes')
+      WHERE user_id = ? ORDER BY id DESC LIMIT 1`).run(lunoId);
+  시간흘리기();
+
+  // 내 글 점3개 메뉴 (아까 몰래 보낸 그 글이 루노 글이다)
+  const postUrl = `${BASE}/board/${sneak.id}`;
   await pg.goto(postUrl);
   const menus = await pg.$$('button.menu-btn');
   want(menus.length > 0, 'BUG', '내 글인데 점3개 메뉴가 없다');
@@ -388,7 +422,8 @@ persona('P3', '루노 사장 (45) · 업소회원', '데스크톱 1440×900', as
     await shot(pg, '2-내글메뉴');
   }
 
-  // 하루 3개 제한을 넘겨 써 보기 (포인트만 안 주고 글은 올라가야 한다)
+  // 하루 3개 제한을 넘겨 써 보기 (포인트만 안 주고 글은 올라가야 한다).
+  // 30초 규칙에 걸리면 이 검사가 통째로 헛돌기 때문에 매번 시간을 흘려 준다.
   for (let i = 2; i <= 4; i++) {
     await pg.goto(BASE + '/board/new');
     await pg.selectOption('select[name=category]', '자유').catch(() => {});
@@ -397,16 +432,35 @@ persona('P3', '루노 사장 (45) · 업소회원', '데스크톱 1440×900', as
     await pg.keyboard.type('내용입니다.');
     await pg.click('form[action="/board"] button[type=submit]');
     await pg.waitForLoadState('load');
+    시간흘리기();
   }
-  want(!(await isErrorPage(pg)), 'BUG', '하루 4번째 글에서 오류가 났다', '제한은 포인트에만 걸려야 한다');
+  const 쓴글 = db.prepare(
+    "SELECT COUNT(*) c FROM posts WHERE user_id = ? AND title LIKE '업소 안내%'").get(lunoId).c;
+  want(쓴글 === 3, 'BUG', '하루 한도를 넘겼다고 글이 안 올라갔다',
+    `${쓴글}개만 올라감 — 한도는 포인트에만 걸려야 한다`);
   await ctx.close();
 });
 
 // P4 — 운영자 일
-persona('P4', '운영자', '데스크톱 1280×800', async (browser) => {
+persona('P4', '운영자', '데스크톱 1280×800', async (browser, db) => {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const pg = await ctx.newPage();
   await login(pg, 'admin', 'admin1234');
+
+  // 이벤트 말머리는 운영자만 쓴다 — 막는 쪽만 확인하면 '아무도 못 쓰는' 것도 통과한다.
+  // 그래서 쓸 수 있어야 하는 사람 쪽도 같이 본다.
+  await pg.goto(BASE + '/board/new');
+  const adminCats = await pg.$$eval('select[name=category] option', (o) => o.map((e) => e.value));
+  want(adminCats.includes('이벤트'), 'BUG', '운영자인데 이벤트 말머리가 없다', adminCats.join(', '));
+  await pg.selectOption('select[name=category]', '이벤트');
+  await pg.fill('input[name=title]', '이번 주 이벤트 안내');
+  await pg.click('.editor');
+  await pg.keyboard.type('운영자가 올리는 이벤트 안내입니다.');
+  await pg.click('form[action="/board"] button[type=submit]');
+  await pg.waitForLoadState('load');
+  const madeEvent = db.prepare("SELECT category FROM posts WHERE title='이번 주 이벤트 안내'").get();
+  want(madeEvent && madeEvent.category === '이벤트',
+    'BUG', '운영자가 쓴 이벤트 글이 이벤트로 안 들어갔다', madeEvent && madeEvent.category);
 
   await pg.goto(BASE + '/reports');
   want(!(await isErrorPage(pg)), 'BLOCK', '운영자가 신고 관리에 못 들어간다');
@@ -1068,15 +1122,35 @@ persona('P13', '길 잃은 사람', '없는 주소 · 지워진 글 · 이상한
   want(orphan === 0, 'BUG', '없는 글에 댓글이 달렸다', `${orphan}건`);
 
   step('숨긴 글은 남에게 안 보여야 한다');
-  db.prepare('UPDATE posts SET is_hidden = 1 WHERE id = 4').run();
+  // 예전에는 4번 글을 숨겨 놓고 '강남 쪽 카페' 가 사라졌는지 봤다.
+  // 그런데 데모 글이 늘면서 4번은 다른 글이 됐고, '강남 쪽 카페' 는 숨기지도 않은 채
+  // 목록에 그대로 남아 검사가 틀린 곳을 가리켰다.
+  //
+  // 고칠 때도 한 번 헛짚었다. 아무 글이나 골라 숨기면, 그 글이 2쪽에 있는 글이면
+  // 숨기든 말든 1쪽 목록에는 원래 없다. 그래서 '안 보인다' 가 그냥 참이 된다.
+  // 숨기는 기능을 통째로 망가뜨려 놓고 재 봤더니 정말 안 걸렸다.
+  // 그러니 먼저 목록에 보이는 글을 고르고, 숨긴 뒤 사라지는지를 본다.
   const ctx2 = await browser.newContext();
   const pg2 = await ctx2.newPage();
-  const r2 = await pg2.goto(BASE + '/board/4');
+  await pg2.goto(BASE + '/board');
+  const 보이는글 = await pg2.$$eval('a[href^="/board/"]', (as) => as
+    .map((a) => (a.getAttribute('href').match(/^\/board\/(\d+)/) || [])[1])
+    .filter(Boolean).map(Number));
+  const 숨길글 = db.prepare(
+    `SELECT id, title FROM posts
+      WHERE is_notice = 0 AND is_hidden = 0 AND id IN (${보이는글.join(',') || 0})
+      ORDER BY id DESC LIMIT 1`).get();
+  want(숨길글, 'BUG', '목록에 보이는 글을 못 찾아서 숨김 검사를 못 했다');
+  if (!숨길글) { await ctx2.close(); await ctx.close(); return; }
+  want((await pg2.content()).includes(숨길글.title),
+    'BUG', '숨기기 전인데 목록에 없다 (검사가 헛돈다)', 숨길글.title);
+  db.prepare('UPDATE posts SET is_hidden = 1 WHERE id = ?').run(숨길글.id);
+  const r2 = await pg2.goto(`${BASE}/board/${숨길글.id}`);
   want(r2.status() === 404 || /삭제|숨김|찾을 수 없/.test(await pg2.textContent('body')),
     'BUG', '숨긴 글이 비회원에게 그대로 보인다', `HTTP ${r2.status()}`);
   const list = await (await pg2.goto(BASE + '/board')).text();
-  want(!/강남 쪽 카페/.test(list), 'BUG', '숨긴 글이 목록에 남아 있다');
-  db.prepare('UPDATE posts SET is_hidden = 0 WHERE id = 4').run();
+  want(!list.includes(숨길글.title), 'BUG', '숨긴 글이 목록에 남아 있다', 숨길글.title);
+  db.prepare('UPDATE posts SET is_hidden = 0 WHERE id = ?').run(숨길글.id);
   await ctx2.close();
   await ctx.close();
 });

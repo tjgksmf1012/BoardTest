@@ -198,6 +198,11 @@ router.post('/admin/members/:id(\\d+)/ban', requireLogin, (req, res) => {
 const RANK_WHERE = "u.is_admin = 0 AND u.is_banned = 0 AND u.member_type = 'female'";
 const inRanking = (u) => !u.is_admin && !u.is_banned && u.member_type === 'female';
 
+// 몇 명까지 보여줄지. 화면의 'TOP 20' 안내문도 이 값에서 가져다 쓴다.
+// 예전에는 쿼리에 20 을 박고 안내문에도 20 을 따로 적어 뒀는데, 그러면 한쪽만 고쳤을 때
+// 화면이 거짓말을 한다. 랭킹 조건이 그렇게 어긋난 적이 이미 있어서 여기서는 한 곳에 둔다.
+const RANK_LIMIT = 20;
+
 // ---- 포인트 랭킹 -------------------------------------------------------------
 router.get('/ranking', (req, res) => {
   const users = db.prepare(`
@@ -206,8 +211,8 @@ router.get('/ranking', (req, res) => {
       (SELECT COUNT(*) FROM comments c WHERE c.user_id = u.id) AS comment_count
     FROM users u
     WHERE ${RANK_WHERE}
-    ORDER BY u.points DESC, u.id LIMIT 20`).all();
-  res.render('ranking', { users });
+    ORDER BY u.points DESC, u.id LIMIT ?`).all(RANK_LIMIT);
+  res.render('ranking', { users, rankLimit: RANK_LIMIT });
 });
 
 // ---- 공개 프로필 (다른 사람 프로필 보기) --------------------------------------

@@ -137,6 +137,11 @@ if (process.env.VERCEL) {
 if (identity.isHost()) {
   if (!identity.hasSecret()) {
     console.warn('⚠ AUTH_MODE=host 인데 HOST_SSO_SECRET이 없습니다. 아무도 로그인할 수 없어요.');
+  } else if (identity.secretTooShort()) {
+    // 이 키 하나로 '이 사람은 A사이트 회원이 맞다' 를 판단한다.
+    // 짧으면 남이 맞혀서 아무 회원으로나 들어올 수 있는데, 화면에는 아무 표시도 안 난다.
+    console.warn(`⚠ HOST_SSO_SECRET이 너무 짧습니다 (${identity.SECRET_MIN}자 이상 권장).`
+      + ' 이 키를 맞히면 아무 회원으로나 로그인됩니다 — 연동가이드대로 다시 만들어 주세요.');
   }
   app.use((req, res, next) => {
     if (!req.query.sso) return next();

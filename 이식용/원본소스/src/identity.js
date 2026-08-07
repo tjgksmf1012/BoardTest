@@ -104,4 +104,9 @@ module.exports = {
   LOGIN_URL, LOGOUT_URL, TTL_SEC,
   sign, verify, ensureProfile, freeNickname,
   hasSecret: () => !!SECRET,
+  // 연동가이드에 '32자 이상' 이라고 적어 두었는데 아무도 확인하지 않고 있었다.
+  // 짧은 키는 없는 키보다 위험하다 — 없으면 아무도 못 들어오지만,
+  // 짧으면 남이 맞혀서 아무 회원으로나 들어올 수 있고 화면은 멀쩡해 보인다.
+  SECRET_MIN: 32,
+  secretTooShort: () => !!SECRET && SECRET.length < 32,
 };

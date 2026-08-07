@@ -76,6 +76,47 @@ test('고리와 얼굴 크기가 양쪽에서 같다', () => {
     `얼굴 크기가 다릅니다 — 지금 ${Math.round(avatars.FACE * 100)}%, PHP ${face}%`);
 });
 
+// 숫자가 코드에 하나, 문서에 또 하나 적혀 있으면 한쪽만 고쳤을 때 문서가 거짓말을 한다.
+// 선배님은 코드가 아니라 문서를 보고 옮기시므로, 틀린 쪽이 그대로 이식된다.
+// 실제로 한 쪽 글 수를 10 에서 15 로 바꿀 때 문서를 같이 고쳐야 했다.
+const BOARD = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'routes', 'board.js'), 'utf8');
+const USER = fs.readFileSync(
+  path.join(__dirname, '..', 'src', 'routes', 'user.js'), 'utf8');
+const 읽기 = (src, name) => {
+  const m = src.match(new RegExp(`const ${name}\\s*=\\s*(\\d+)`));
+  assert.ok(m, `코드에서 ${name} 를 못 찾았어요`);
+  return Number(m[1]);
+};
+const 문서 = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
+
+test('한 쪽 글 수가 코드와 문서에서 같다', () => {
+  const n = 읽기(BOARD, 'PAGE_SIZE');
+  assert.match(문서('docs/DESIGN.md'), new RegExp(`한 쪽 ${n}개`),
+    `DESIGN.md 가 '한 쪽 ${n}개' 라고 안 적혀 있어요 (코드는 ${n})`);
+});
+
+test('베스트댓글 기준이 코드와 문서에서 같다', () => {
+  const likes = 읽기(BOARD, 'BEST_COMMENT_LIKES');
+  const max = 읽기(BOARD, 'BEST_COMMENT_MAX');
+  assert.match(문서('README.md'),
+    new RegExp(`좋아요 ${likes}개 이상\\*\\*인 댓글 중 \\*\\*상위 ${max}개`),
+    `README 의 베스트댓글 기준이 코드와 달라요 (코드는 ${likes}개 이상 · 상위 ${max}개)`);
+  assert.match(문서('docs/DESIGN.md'), new RegExp(`좋아요 ${likes}↑ 중 상위 ${max}개`),
+    `DESIGN.md 의 베스트댓글 기준이 코드와 달라요 (코드는 ${likes}개 이상 · 상위 ${max}개)`);
+});
+
+test('랭킹 인원이 코드·화면·문서에서 같다', () => {
+  const n = 읽기(USER, 'RANK_LIMIT');
+  // 화면 안내문은 값을 박아 두지 말고 코드에서 받아 써야 한다
+  const view = 문서('views/ranking.ejs');
+  assert.match(view, /TOP <%= rankLimit %>/,
+    '랭킹 화면 안내문에 숫자가 박혀 있어요 — rankLimit 을 받아 쓰게 해주세요');
+  for (const f of ['README.md', 'docs/DESIGN.md']) {
+    assert.match(문서(f), new RegExp(`TOP ${n}`), `${f} 의 랭킹 인원이 코드와 달라요 (코드는 ${n})`);
+  }
+});
+
 test('캐릭터 목록이 양쪽에서 같다', () => {
   // 캐릭터목록.php 는 자동으로 만들지만, 이미지를 늘리고 다시 안 만들면 어긋난다.
   const list = fs.readFileSync(
