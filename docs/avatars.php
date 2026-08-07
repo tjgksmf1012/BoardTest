@@ -9,7 +9,7 @@
 //
 // users.avatar_id · users.border_id · user_items.item_code 에 들어가는 값이 'code' 입니다.
 // 그림 파일은 public/avatars/ 아래 'file'(본문) · 'thumb'(썸네일) 이름으로 있습니다.
-// 총 246개 · 만든 날 2026-08-06
+// 총 246개 · 만든 날 2026-08-07
 
 return array(
   array('code' => 'female-purenatural-1-1', 'kind' => 'character', 'memberType' => 'female', 'name' => '청순 내츄럴 1-1', 'theme' => '청순 내츄럴', 'themeCode' => 'purenatural', 'row' => 1, 'col' => 1, 'free' => false, 'price' => 2000, 'file' => 'female-purenatural-1-1.png', 'thumb' => 'female-purenatural-1-1-t.png'),

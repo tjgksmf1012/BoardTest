@@ -1335,3 +1335,75 @@ test('프로필의 랭킹 순위가 목록과 어긋나지 않는다', async () 
   assert.ok(checkedIn >= 2, '목록에 든 사람을 못 견줬다');
   assert.ok(checkedOut >= 1, '자격 없는 사람을 한 명도 못 견줬다');
 });
+
+// ---- 베스트댓글 ---------------------------------------------------------------
+// 한 번 뺐다가 다시 넣은 기능이다.
+// 처음에는 좋아요 많은 댓글을 맨 위에 '복사해서' 보여 줬는데, 뱃지를 떼자 같은 댓글이
+// 아무 표시 없이 위아래 두 번 나왔다. 그래서 이번엔 복사하지 않고 자리를 옮긴다.
+// 그 차이가 되돌아가지 않게 '한 번만 나오는지' 를 검사에 박아 둔다.
+test('좋아요 5개부터 베스트, 4개는 안 된다', async () => {
+  const jar = makeJar();
+  await signup(jar, 'best_' + Date.now(), '베스트시험');
+  const pid = db.prepare(
+    "INSERT INTO posts (user_id, category, title, content) VALUES (?, '자유', '베스트 시험글', 'x')")
+    .run(db.prepare('SELECT id FROM users LIMIT 1').get().id).lastInsertRowid;
+
+  const uid = db.prepare('SELECT id FROM users LIMIT 1').get().id;
+  const mk = (text) => db.prepare(
+    'INSERT INTO comments (post_id, user_id, parent_id, content) VALUES (?, ?, NULL, ?)')
+    .run(pid, uid, text).lastInsertRowid;
+  const five = mk('좋아요 다섯개짜리');
+  const four = mk('좋아요 네개짜리');
+  const zero = mk('좋아요 없는 것');
+
+  // 좋아요를 넣을 사람들
+  const likers = db.prepare('SELECT id FROM users LIMIT 6').all().map((r) => r.id);
+  const like = db.prepare('INSERT OR IGNORE INTO comment_likes (comment_id, user_id) VALUES (?, ?)');
+  likers.slice(0, 5).forEach((u) => like.run(five, u));
+  likers.slice(0, 4).forEach((u) => like.run(four, u));
+
+  const html = await (await fetch(`${base}/board/${pid}`)).text();
+
+  const bestIds = [...html.matchAll(/<div class="comment[^"]*\bbest\b[^"]*" id="comment-(\d+)"/g)]
+    .map((m) => Number(m[1]));
+  assert.deepEqual(bestIds, [five], '좋아요 5개짜리만 베스트여야 한다');
+  assert.ok(!bestIds.includes(four), '좋아요 4개는 베스트가 되면 안 된다');
+
+  // 같은 댓글이 두 번 나오면 안 된다 (예전에 지적받은 것)
+  for (const id of [five, four, zero]) {
+    const n = (html.match(new RegExp(`id="comment-${id}"`, 'g')) || []).length;
+    assert.strictEqual(n, 1, `댓글 ${id} 가 ${n}번 나온다 — 복사본이 생겼다`);
+  }
+
+  // 베스트는 맨 위에 있어야 한다
+  const order = [...html.matchAll(/id="comment-(\d+)"/g)].map((m) => Number(m[1]));
+  assert.strictEqual(order[0], five, '베스트 댓글이 맨 위에 있어야 한다');
+
+  assert.match(html, /badge-best">베스트</, '베스트 뱃지가 보여야 한다');
+
+  db.prepare('DELETE FROM posts WHERE id = ?').run(pid);
+});
+
+test('답글은 베스트로 떼어 올리지 않는다', async () => {
+  // 답글을 위로 올리면 부모와 떨어져 무슨 말인지 알 수 없게 된다
+  const uid = db.prepare('SELECT id FROM users LIMIT 1').get().id;
+  const pid = db.prepare(
+    "INSERT INTO posts (user_id, category, title, content) VALUES (?, '자유', '답글 시험글', 'x')")
+    .run(uid).lastInsertRowid;
+  const parent = db.prepare(
+    'INSERT INTO comments (post_id, user_id, parent_id, content) VALUES (?, ?, NULL, ?)')
+    .run(pid, uid, '부모 댓글').lastInsertRowid;
+  const reply = db.prepare(
+    'INSERT INTO comments (post_id, user_id, parent_id, content) VALUES (?, ?, ?, ?)')
+    .run(pid, uid, parent, '좋아요 많은 답글').lastInsertRowid;
+
+  const like = db.prepare('INSERT OR IGNORE INTO comment_likes (comment_id, user_id) VALUES (?, ?)');
+  db.prepare('SELECT id FROM users LIMIT 6').all().forEach((r) => like.run(reply, r.id));
+
+  const html = await (await fetch(`${base}/board/${pid}`)).text();
+  const order = [...html.matchAll(/id="comment-(\d+)"/g)].map((m) => Number(m[1]));
+  assert.deepEqual(order, [parent, reply], '답글은 부모 아래에 그대로 있어야 한다');
+  assert.ok(!/class="comment[^"]*\bbest\b/.test(html), '답글은 베스트가 되면 안 된다');
+
+  db.prepare('DELETE FROM posts WHERE id = ?').run(pid);
+});

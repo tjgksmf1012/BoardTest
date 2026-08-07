@@ -131,6 +131,12 @@ const PAGE_SIZE = 15;   // 한 쪽에 보여줄 글 수 (선배님 요청으로 
 const POST_INTERVAL_SEC = 30;
 const COMMENT_PAGE_SIZE = 20; // 한 화면에 보여줄 최상위 댓글 수
 
+/* 베스트댓글이 되는 좋아요 수.
+ * 선배님 요청: "좋아요 4개 이하는 지정 안 되게" → 5개부터.
+ * 숫자를 화면에도 그대로 보여 주므로(안내문) 여기 한 곳만 고치면 된다.
+ */
+const BEST_COMMENT_LIKES = 5;
+
 // 지금 보고 있는 목록의 상태(몇 쪽 · 어떤 말머리 · 정렬 · 검색어)를 주소 조각으로 만든다.
 //
 // 글을 열었다가 '목록'을 누르면 늘 첫 페이지 전체 글로 돌아가 버려서,
@@ -384,13 +390,29 @@ router.get('/:id(\\d+)', (req, res) => {
     WHERE c.post_id = ? ORDER BY c.id`).all(uid, post.id);
   // 댓글이 수백 개가 되면 한 화면에 다 그리는 게 부담이라 최상위 댓글 기준으로 나눈다.
   // 답글은 부모를 따라다녀야 흐름이 끊기지 않으므로 같은 쪽에 함께 싣는다.
-  // 댓글 정렬. 시안에 '최신순 ∨' 선택 상자가 있다.
-  // 예전에는 좋아요 많은 댓글을 맨 위에 복사해 보여줬는데(베스트댓글),
-  // 수정사항에서 베스트 표시를 빼라고 해 같은 댓글이 이유 없이 두 번 나오게 됐다.
-  // 복사본을 없애고, 대신 추천순으로 정렬할 수 있게 했다.
+  /* 댓글 정렬. 시안에 '최신순 ∨' 선택 상자가 있다.
+   *
+   * 베스트댓글은 한 번 뺐다가 다시 넣은 것이다.
+   * 처음에는 좋아요 많은 댓글을 맨 위에 **복사해서** 보여 줬는데, 수정사항 11번으로
+   * 베스트 뱃지를 떼자 같은 댓글이 아무 표시 없이 위아래 두 번 나오게 됐다.
+   * 그래서 복사본을 없앴었다.
+   *
+   * 이번에 다시 넣으면서 그 문제가 안 생기게 방식을 바꿨다.
+   * 복사하지 않고 **원래 자리에서 빼서 맨 위로 옮긴다.** 댓글은 딱 한 번만 나온다.
+   *
+   * 답글은 베스트로 안 올린다. 부모 밑에 있어야 말이 이어지는데 위로 떼어 내면 흐름이 끊긴다.
+   */
   const csort = req.query.csort === 'like' ? 'like' : 'new';
-  const roots = rows.filter((c) => !c.parent_id);
+  let roots = rows.filter((c) => !c.parent_id);
   if (csort === 'like') roots.sort((a, b) => b.like_count - a.like_count || a.id - b.id);
+
+  // 좋아요가 기준에 닿은 댓글을 맨 위로 (지운 댓글 자리는 제외)
+  for (const c of roots) {
+    c.is_best = !c.is_deleted && c.like_count >= BEST_COMMENT_LIKES;
+  }
+  const bests = roots.filter((c) => c.is_best)
+    .sort((a, b) => b.like_count - a.like_count || a.id - b.id);
+  roots = bests.concat(roots.filter((c) => !c.is_best));
   const cTotalPages = Math.max(1, Math.ceil(roots.length / COMMENT_PAGE_SIZE));
   const cPage = Math.min(cTotalPages, Math.max(1, parseInt(req.query.cpage, 10) || 1));
   const comments = roots

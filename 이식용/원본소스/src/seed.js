@@ -197,10 +197,16 @@ function seed() {
   insertComment.run(p5, gold, null, '영화관 알바 재밌긴 한데 주말이 제일 바빠요 ㅋㅋ 참고하세요!');
 
   // 댓글 좋아요 (베스트댓글 데모용)
+  //
+  // 기준이 5개라, 경계가 눈에 보이게 같은 글에 두 개를 둔다.
+  //   c2  좋아요 5개 → 베스트로 맨 위에 올라간다
+  //   cm1 좋아요 4개 → 하나 모자라서 안 올라간다
+  // 자기 댓글에는 좋아요를 안 누르게 글쓴이는 빼고 넣는다.
   const insertClike = db.prepare('INSERT INTO comment_likes (comment_id, user_id) VALUES (?, ?)');
-  [[c2, cherry], [c2, mint], [c2, street], [c2, admin]].forEach(([c, u]) => insertClike.run(c, u));
-  [[cm1, gold], [cm1, cherry], [cm1, admin]].forEach(([c, u]) => insertClike.run(c, u));
-  [[cm4, mint], [cm4, gold], [cm4, street]].forEach(([c, u]) => insertClike.run(c, u));
+  [[c2, cherry], [c2, mint], [c2, street], [c2, admin], [c2, nightcat],   // 5개 → 베스트
+   [cm1, gold], [cm1, cherry], [cm1, admin], [cm1, street],               // 4개 → 하나 모자람
+   [cm4, mint], [cm4, gold], [cm4, street]]
+    .forEach(([c, u]) => insertClike.run(c, u));
 
   // 추천 (익명글 p3 제외)
   [[p1, mint], [p1, street], [p1, gold],

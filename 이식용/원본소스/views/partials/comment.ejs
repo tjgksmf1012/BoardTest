@@ -6,12 +6,13 @@
     <div class="comment-body"><p class="deleted-note">삭제된 댓글이에요.</p></div>
   </div>
 <% } else { %>
-<div class="comment <%= c.parent_id ? 'reply' : '' %>" id="comment-<%= eid %>">
+<div class="comment <%= c.parent_id ? 'reply' : '' %> <%= c.is_best ? 'best' : '' %>" id="comment-<%= eid %>">
   <a class="comment-avatar" href="/users/<%= c.user_id %>" aria-label="<%= c.nickname %>님 프로필">
     <%- renderAvatar(c.avatar_id, c.border_id, c.parent_id ? 32 : 38) %>
   </a>
   <div class="comment-body">
     <div class="comment-head">
+      <% if (c.is_best) { %><span class="badge badge-best">베스트</span><% } %>
       <a class="comment-name" href="/users/<%= c.user_id %>"><strong><%= c.nickname %></strong></a>
       <span class="muted"><%= timeAgo(c.created_at) %></span>
       <% if (c.updated_at) { %><span class="muted edited-mark">· 수정됨</span><% } %>

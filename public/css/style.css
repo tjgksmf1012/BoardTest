@@ -313,6 +313,11 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 .badge-pick { background: var(--pick-bg); color: var(--pick-fg); }
 .badge-lock { background: var(--lock-bg); color: var(--muted); }
 .badge-free { background: var(--primary-soft); color: var(--primary-dark); }
+/* 베스트댓글.
+   복사본을 맨 위에 하나 더 그리지 않고 원래 자리에서 옮겨 오기 때문에,
+   왜 위에 있는지 알 수 있게 뱃지와 옅은 배경으로 표시한다. */
+.badge-best { background: var(--hot-bg); color: var(--hot-fg); }
+.comment.best { background: var(--primary-soft); border-radius: 12px; padding: 10px 12px; }
 
 @keyframes toast-in {
   from { opacity: 0; transform: translate(-50%, -16px); }
@@ -1420,6 +1425,11 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 }
 .shop-back:hover { color: var(--primary-dark); background: var(--primary-soft); }
 .badge-free { background: var(--primary-soft); color: var(--primary-dark); }
+/* 베스트댓글.
+   복사본을 맨 위에 하나 더 그리지 않고 원래 자리에서 옮겨 오기 때문에,
+   왜 위에 있는지 알 수 있게 뱃지와 옅은 배경으로 표시한다. */
+.badge-best { background: var(--hot-bg); color: var(--hot-fg); }
+.comment.best { background: var(--primary-soft); border-radius: 12px; padding: 10px 12px; }
 
 .shop-chips { display: flex; gap: 6px; overflow-x: auto; margin: 12px 0 4px; padding-bottom: 2px; }
 .shop-chips .chip {
