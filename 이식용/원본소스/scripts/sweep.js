@@ -160,6 +160,30 @@ async function inspect(pg) {
       .slice(0, 3)
       .map((e) => (e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 20));
 
+    // 10) 베스트댓글 안의 내용이 다른 댓글과 세로줄이 안 맞는 것
+    //     상자에 안쪽 여백을 주면 얼굴과 글이 그만큼 안으로 밀린다. 오류는 안 나고
+    //     테두리도 멀쩡히 보이는데, 얼굴이 아래 댓글들보다 오른쪽으로 튀어나온다.
+    //     실제로 15px 밀렸을 때 눈에 띄었다. 답글은 원래 들여쓰니까 견주지 않는다.
+    out.offRail = [];
+    const best = document.querySelector('.comment.best');
+    const plain = [...document.querySelectorAll('.comment')]
+      .find((c) => !c.classList.contains('best') && !c.classList.contains('reply'));
+    if (best && plain) {
+      const x = (c, sel) => {
+        const e = c.querySelector(sel);
+        return e ? e.getBoundingClientRect() : null;
+      };
+      for (const [what, sel, edge] of [['얼굴 왼쪽', '.comment-avatar', 'left'],
+                                       ['글 왼쪽', '.comment-body', 'left'],
+                                       ['글 오른쪽', '.comment-body', 'right']]) {
+        const a = x(best, sel);
+        const b = x(plain, sel);
+        if (!a || !b) continue;
+        const gap = Math.round(a[edge] - b[edge]);
+        if (Math.abs(gap) > 1) out.offRail.push(`${what} ${gap > 0 ? '+' : ''}${gap}px`);
+      }
+    }
+
     return out;
   });
 }
@@ -210,6 +234,7 @@ async function crawl(ctx, who, seeds) {
     if (r.stacked.length) add(w, '버튼 글자가 세로로 쌓였다', r.stacked.join(', '));
     if (r.nameless.length) add(w, '이름 없는 링크·버튼이 있다', r.nameless.join(', '));
     if (r.noEdge.length) add(w, '베스트댓글에 테두리가 안 그려졌다', r.noEdge.join(' / '));
+    if (r.offRail.length) add(w, '베스트댓글이 다른 댓글과 세로줄이 안 맞는다', r.offRail.join(' · '));
 
     // 같은 사이트 안의 링크만 따라간다
     const links = await pg.$$eval('a[href]', (as) => as.map((a) => a.getAttribute('href')));
