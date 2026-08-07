@@ -17,6 +17,13 @@
 //   2. 화면 13개를 받아 온다 (필요한 화면은 로그인해서)
 //   3. 링크는 눌러도 안 움직이게 #, 그림·CSS 는 이 폴더 기준 경로로 바꾼다
 //   4. 파일로 저장한다
+//   5. css/style.css 도 같이 복사한다
+//
+// 5번을 뒤늦게 붙인 이유
+//   HTML 만 스크립트로 만들고 CSS 는 손으로 한 번 복사해 두고 잊고 있었다.
+//   그래서 베스트댓글 모양을 넣었는데 이 사본에는 안 들어갔고,
+//   이 사본을 받아 쓰는 cm.css(선배님이 실제로 쓰시는 것)에도 당연히 안 들어갔다.
+//   화면은 우리 쪽에서만 멀쩡했다. 손으로 만든 것은 반드시 낡는다 — 또 겪었다.
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -32,9 +39,10 @@ const BASE = `http://127.0.0.1:${PORT}`;
 const CHECK = process.argv.includes('--check');
 
 // 뽑을 화면. [파일이름, 주소, 로그인할 계정]
+// '글보기' 주소는 아래에서 댓글이 제일 많은 글로 바꿔 끼운다 (@글보기 자리)
 const SCREENS = [
   ['목록', '/board', 'gold'],
-  ['글보기', '/board/1', 'gold'],
+  ['글보기', '@글보기', 'gold'],
   ['글쓰기', '/board/new', 'gold'],
   ['출석체크', '/attendance', 'gold'],
   ['마이페이지', '/profile', 'admin'],
@@ -61,6 +69,21 @@ async function waitUp() {
     await new Promise((r) => setTimeout(r, 300));
   }
   throw new Error('서버가 뜨지 않았어요');
+}
+
+// 댓글이 제일 많은 글을 찾는다.
+// 전에는 '/board/1' 로 박아 뒀는데, 1번 글에는 댓글이 하나도 없다.
+// 그래서 선배님이 받아 보시는 '글보기' 본보기에 댓글도 답글도 베스트댓글도 없었다.
+// 정작 마크업을 제일 옮기기 어려운 부분이 그 셋인데 본보기에 없었던 것이다.
+function busiestPost(dbPath) {
+  const db = require(path.join(ROOT, 'node_modules', 'better-sqlite3'))(dbPath, { readonly: true });
+  const row = db.prepare(`SELECT p.id FROM posts p
+      JOIN comments c ON c.post_id = p.id
+     WHERE p.is_hidden = 0
+     GROUP BY p.id ORDER BY COUNT(c.id) DESC, p.id LIMIT 1`).get();
+  db.close();
+  if (!row) throw new Error('댓글이 달린 글이 하나도 없어요 — 본보기를 못 만듭니다');
+  return '/board/' + row.id;
 }
 
 // 받아 온 HTML 을 '폴더째 열어 보는 용도' 로 바꾼다
@@ -106,7 +129,10 @@ function rewrite(html) {
       return ctx;
     }
 
-    for (const [name, url, who] of SCREENS) {
+    const 글보기 = busiestPost(dbPath);
+
+    for (const [name, rawUrl, who] of SCREENS) {
+      const url = rawUrl === '@글보기' ? 글보기 : rawUrl;
       const ctx = await ctxFor(who);
       const pg = await ctx.newPage();
       // networkidle 은 못 쓴다. 알림 실시간 연결(SSE)이 계속 열려 있어서 영영 안 끝난다.
@@ -125,6 +151,19 @@ function rewrite(html) {
       } else {
         fs.writeFileSync(file, html);
       }
+    }
+
+    // CSS 사본. 이건 서버에서 받을 것도 없이 그냥 지금 파일을 그대로 둔다.
+    // 여기가 낡으면 cm.css 까지 같이 낡는다 (cm.css 를 이 파일에서 만들기 때문).
+    const cssFrom = path.join(ROOT, 'public/css/style.css');
+    const cssTo = path.join(OUT, 'css/style.css');
+    if (CHECK) {
+      const same = fs.existsSync(cssTo)
+        && fs.readFileSync(cssFrom).equals(fs.readFileSync(cssTo));
+      if (!same) stale.push('css/style.css');
+    } else {
+      fs.mkdirSync(path.dirname(cssTo), { recursive: true });
+      fs.copyFileSync(cssFrom, cssTo);
     }
   } finally {
     if (browser) await browser.close();

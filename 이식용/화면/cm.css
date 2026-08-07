@@ -315,6 +315,7 @@
 .cm .badge-pick { background: var(--pick-bg); color: var(--pick-fg); }
 .cm .badge-lock { background: var(--lock-bg); color: var(--muted); }
 .cm .badge-free { background: var(--primary-soft); color: var(--primary-dark); }
+.cm .badge-best { background: var(--hot-bg); color: var(--hot-fg); }
 
 @keyframes toast-in {
   from { opacity: 0; transform: translate(-50%, -16px); }
@@ -487,6 +488,14 @@
 .cm .comment-body { flex: 1; min-width: 0; font-size: 14.5px; }
 .cm .comment-head { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
 .cm .comment.reply { border-bottom: none; margin: 8px 0 0 32px; background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+/* 베스트댓글. 복사본을 위에 하나 더 그리지 않고 원래 자리에서 옮겨 오기 때문에,
+   왜 맨 위에 있는지 알 수 있게 테두리를 둘러 한 칸으로 떼어 놓는다.
+   border 를 네 면에 통째로 주면 위 .comment 의 아래 실선까지 덮여서 네모 상자가 된다.
+   여기 쓰는 두 색은 이 규칙 전용이다 — 뱃지(주황)와 같은 계열이라야 한 덩어리로 보인다. */
+.cm .comment.best {
+  background: var(--trending-bg); border: 1px solid var(--trending-line);
+  border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;
+}
 .cm .comment-actions { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
 .cm .clike {
   display: inline-flex; align-items: center; justify-content: center; gap: 4px;

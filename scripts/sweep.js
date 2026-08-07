@@ -141,6 +141,25 @@ async function inspect(pg) {
       .slice(0, 3)
       .map((e) => (e.className || e.tagName).toString().slice(0, 30));
 
+    // 9) '따로 떼어 놓은 칸' 인데 눈에 보이는 경계가 없는 것
+    //    베스트댓글은 복사본을 위에 하나 더 그리지 않고 원래 자리에서 옮겨 온다.
+    //    그래서 테두리가 없으면 "얘는 왜 순서를 어기고 위에 있지?" 가 설명이 안 된다.
+    //    CSS 는 규칙이 다른 규칙에 우선순위로 져도 오류를 내지 않고 조용히 무시된다.
+    //    (전에 캐릭터 테두리가 딱 이렇게 통째로 무시된 적이 있다.)
+    //    그러니 파일에 그렇게 적혀 있는지가 아니라, 실제로 그려진 값을 잰다.
+    const seenEdge = (e) => {
+      const s = getComputedStyle(e);
+      const sides = ['Top', 'Right', 'Bottom', 'Left'];
+      return sides.every((k) => parseFloat(s['border' + k + 'Width']) > 0
+        && s['border' + k + 'Style'] !== 'none'
+        && s['border' + k + 'Color'] !== s.backgroundColor         // 배경과 같은 색이면 안 보인다
+        && !/,\s*0\)$/.test(s['border' + k + 'Color']));           // 투명해도 안 보인다
+    };
+    out.noEdge = [...document.querySelectorAll('.comment.best')]
+      .filter((e) => !seenEdge(e))
+      .slice(0, 3)
+      .map((e) => (e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 20));
+
     return out;
   });
 }
@@ -190,6 +209,7 @@ async function crawl(ctx, who, seeds) {
     if (r.cutPlaceholder.length) add(w, '입력칸 안내문이 잘린다', r.cutPlaceholder.join(' / '));
     if (r.stacked.length) add(w, '버튼 글자가 세로로 쌓였다', r.stacked.join(', '));
     if (r.nameless.length) add(w, '이름 없는 링크·버튼이 있다', r.nameless.join(', '));
+    if (r.noEdge.length) add(w, '베스트댓글에 테두리가 안 그려졌다', r.noEdge.join(' / '));
 
     // 같은 사이트 안의 링크만 따라간다
     const links = await pg.$$eval('a[href]', (as) => as.map((a) => a.getAttribute('href')));
