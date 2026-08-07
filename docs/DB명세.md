@@ -628,12 +628,22 @@ WHERE p.is_notice = 0 AND p.is_hidden = 0 AND p.category = ?
 ```
 
 ### 검색
-지금 프로그램은 본문을 두 글자씩 잘라 만든 색인으로 후보를 좁히는데, 옛날 MySQL 에는 그 기능이 없다. 그래서 아래 LIKE 방식을 기본으로 적었다. MySQL 5.7 이상이면 `FULLTEXT ... WITH PARSER ngram` 쪽을 권한다.
+제목·본문에 더해 **닉네임으로도** 찾는다.
+
+익명 글은 닉네임으로 안 걸리게 빼야 한다. 안 그러면 닉네임을 검색해서 그 사람 익명 글이 나오고, 화면에 "익명" 이라고 적혀 있어도 누가 썼는지 드러난다.
+
+닉네임을 조건 안에서 users 와 이어 찾으면 OR 때문에 색인을 못 쓰고 글 표를 통째로 훑는다 (글 2만 건에서 0.1ms → 7ms). 그래서 걸리는 사람을 **먼저** 찾아 두고 `user_id IN (...)` 로 잇는다. 걸리는 사람이 없으면 그 줄을 아예 빼면 된다.
+
+두 글자씩 잘라 만든 색인은 옛날 MySQL 에 없어서 아래는 LIKE 로 적었다. MySQL 5.7 이상이면 제목·본문 쪽만 `FULLTEXT ... WITH PARSER ngram` 으로 바꾸면 된다.
 
 ```sql
+-- 1) 닉네임이 걸리는 사람을 먼저 찾는다 (회원 표는 글 표보다 작아서 싸다)
+--    SELECT id FROM users WHERE nickname LIKE '%알바%';
+-- 2) 그 번호를 아래 IN 에 넣는다. 아무도 안 걸리면 OR 뒤쪽을 통째로 뺀다.
 SELECT p.id, p.title FROM posts p
 WHERE p.is_notice = 0 AND p.is_hidden = 0
-  AND (p.title LIKE ? OR p.content_text LIKE ?)
+  AND ( (p.title LIKE ? OR p.content_text LIKE ?)
+        OR (p.is_anonymous = 0 AND p.user_id IN (1, 2, 3)) )
 ORDER BY p.id DESC LIMIT 10
 ```
 

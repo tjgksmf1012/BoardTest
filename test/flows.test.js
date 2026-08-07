@@ -1438,3 +1438,47 @@ test('베스트는 상위 2개까지만 올라간다', async () => {
 
   db.prepare('DELETE FROM posts WHERE id = ?').run(pid);
 });
+
+// ---- 닉네임 검색 --------------------------------------------------------------
+// 닉네임으로도 글을 찾을 수 있어야 한다.
+// 다만 익명 글은 절대 걸리면 안 된다 — 닉네임으로 검색해서 그 사람 익명 글이 나오면
+// 화면에 '익명' 이라고 적혀 있어도 누가 썼는지 드러난다.
+test('닉네임으로 검색하면 그 사람 글이 나온다', async () => {
+  const nick = '검색용닉' + Date.now().toString().slice(-5);
+  const uid = db.prepare(
+    "INSERT INTO users (username, password_hash, nickname, points, avatar_id, is_admin, member_type)"
+    + " VALUES (?, '', ?, 0, '', 0, 'female')")
+    .run('search_' + Date.now(), nick).lastInsertRowid;
+
+  const mk = (title, anon) => db.prepare(
+    'INSERT INTO posts (user_id, category, title, content, content_text, is_anonymous)'
+    + " VALUES (?, '자유', ?, 'zzz', 'zzz', ?)").run(uid, title, anon).lastInsertRowid;
+  const open = mk('닉검색 드러난글', 0);
+  const anon = mk('닉검색 익명글', 1);
+  for (const id of [open, anon]) {
+    const r = db.prepare('SELECT title, content_text FROM posts WHERE id = ?').get(id);
+    require('../src/search').indexPost(id, r.title, r.content_text);
+  }
+
+  const find = async (q) => {
+    const html = await (await fetch(`${base}/board?q=${encodeURIComponent(q)}`)).text();
+    return [...html.matchAll(/href="\/board\/(\d+)/g)].map((m) => Number(m[1]));
+  };
+
+  const hit = await find(nick);
+  assert.ok(hit.includes(open), '닉네임으로 검색하면 그 사람 글이 나와야 한다');
+  assert.ok(!hit.includes(anon),
+    '익명 글이 닉네임 검색에 걸리면 안 된다 — 누가 썼는지 드러난다');
+
+  // 닉네임 일부만 쳐도 찾아진다
+  const part = await find(nick.slice(0, 4));
+  assert.ok(part.includes(open), '닉네임 일부로도 찾아져야 한다');
+
+  // 제목 검색은 그대로 된다 (익명이든 아니든)
+  const byTitle = await find('닉검색');
+  assert.ok(byTitle.includes(open) && byTitle.includes(anon),
+    '제목 검색은 익명 글도 나와야 한다 (누가 썼는지는 안 드러난다)');
+
+  db.prepare('DELETE FROM posts WHERE user_id = ?').run(uid);
+  db.prepare('DELETE FROM users WHERE id = ?').run(uid);
+});

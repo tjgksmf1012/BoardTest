@@ -185,10 +185,34 @@ function listFilter(query, isAdmin) {
   // LIKE의 와일드카드(% _)는 이스케이프해 글자 그대로 찾게 한다.
   const match = q ? toMatchQuery(q) : null;
   const likeCond = `(p.title LIKE @like ESCAPE '\\' OR COALESCE(p.content_text, p.content) LIKE @like ESCAPE '\\')`;
+  const bodyCond = match
+    ? `(p.id IN (SELECT rowid FROM posts_fts WHERE g MATCH @fts) AND ${likeCond})`
+    : likeCond;
+
+  /* 닉네임으로도 찾게 한다.
+   *
+   * 익명 글은 반드시 뺀다. 닉네임으로 검색해서 그 사람 익명 글이 나오면 익명이 아니게 된다.
+   * 화면에는 '익명' 이라고 적혀 있어도 검색으로 누가 썼는지 드러난다.
+   *
+   * 처음에는 조건 안에서 users 를 EXISTS 로 뒤졌는데, 그러면 OR 때문에 SQLite 가
+   * 제목·본문 색인을 못 쓰고 글 표를 통째로 훑는다. 글 2만 건에서 재 보니
+   * 결과가 적은 검색이 0.1ms 에서 7ms 로 느려졌다. 글이 늘면 그만큼 더 느려진다.
+   *
+   * 그래서 닉네임이 걸리는 사람을 **먼저** 찾아 두고 글 번호로 잇는다.
+   * 회원 표는 글 표보다 훨씬 작아서 이쪽이 싸고, posts(user_id) 에 인덱스도 있다.
+   * 걸리는 사람이 없으면 조건 자체가 사라져서 예전과 똑같은 속도로 돈다.
+   */
+  const nickIds = q
+    ? db.prepare("SELECT id FROM users WHERE nickname LIKE ? ESCAPE '\\'")
+      .all(`%${q.replace(/[\\%_]/g, (m) => '\\' + m)}%`).map((r) => Number(r.id))
+    : [];
+  // 값은 우리가 방금 DB 에서 읽은 번호라 문자열로 이어 붙여도 안전하다 (숫자로 한 번 더 걸렀다)
+  const nickCond = nickIds.length
+    ? `(p.is_anonymous = 0 AND p.user_id IN (${nickIds.join(',')}))`
+    : null;
+
   const searchCond = !q ? ''
-    : match
-      ? ` AND p.id IN (SELECT rowid FROM posts_fts WHERE g MATCH @fts) AND ${likeCond}`
-      : ` AND ${likeCond}`;
+    : ` AND (${bodyCond}${nickCond ? ` OR ${nickCond}` : ''})`;
   // 추천순·조회순은 전체 기간으로 줄을 세운다.
   //
   // 한동안 '최근 일주일' 로 잘라 뒀었다. 오래전 인기글이 계속 위에 붙어 새 글이 묻히지

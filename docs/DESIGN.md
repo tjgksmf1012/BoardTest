@@ -19,7 +19,7 @@
 | 뷰 | EJS(SSR) + 순수 CSS |
 | 세션 | express-session + SQLite 저장소 (재기동해도 로그인 유지) |
 | 업로드 | multer (형식·용량·개수 검증) |
-| 테스트 | node --test (단위 + HTTP 통합, 206개) |
+| 테스트 | node --test (단위 + HTTP 통합, 207개) |
 | CI | GitHub Actions (Node 20·22) |
 
 ## 3. 기능 목록
@@ -42,7 +42,8 @@
 - **글쓰기**: 서식 에디터(제목·굵게·밑줄·목록·인용)와 **커서 위치 사진 삽입**.
   본문은 `content_format`으로 구분해 `html`은 정화 후 출력, 옛 `text`는 이스케이프 출력.
   목록은 평문 사본(`content_text`)을 사용.
-  검색은 FTS5 바이그램 색인(`posts_fts`, `src/search.js`)으로 후보를 좁힌 뒤 원문 대조
+  검색은 FTS5 바이그램 색인(`posts_fts`, `src/search.js`)으로 후보를 좁힌 뒤 원문 대조.
+  **닉네임으로도 찾을 수 있고, 익명 글은 닉네임으로 안 걸린다**(누가 썼는지 드러나면 안 되므로)
 - **접근성/보안**: WCAG AA 색 대비, 키보드 포커스, 모션 최소화 존중,
   보안 헤더·SameSite 쿠키·CSRF 토큰(`src/csrf.js`)·파라미터 바인딩·XSS 이스케이프·오픈리다이렉트 차단,
   서식 본문은 `sanitize-html` 허용목록으로 정화(스크립트·style·iframe 제거, 이미지·링크 출처 제한),
@@ -109,7 +110,7 @@ comment_reports(id, comment_id→comments, user_id→users)  -- UNIQUE(comment_i
 # 로컬
 npm install
 npm start          # http://localhost:3000
-npm test           # 테스트 206개
+npm test           # 테스트 207개
 
 # Docker
 docker build -t pointlounge .
