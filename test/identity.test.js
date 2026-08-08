@@ -222,14 +222,28 @@ test('비밀키가 짧으면 뜰 때 경고한다', async () => {
         DB_PATH: path.join(dir, 'x.db'), AUTH_MODE: 'host', HOST_SSO_SECRET: secret },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
+    // 처음에는 1.5초 기다렸다 껐는데, 검사 파일을 한꺼번에 돌리면 서버가 그 안에
+    // 못 떠서 이 검사만 가끔 실패했다 (혼자 돌리면 늘 통과). 시간을 재지 말고
+    // 볼 것이 나왔는지를 보고, 안 나오면 넉넉히 기다렸다 끝낸다.
     let out = '';
-    p.stdout.on('data', (d) => { out += d; });
-    p.stderr.on('data', (d) => { out += d; });
-    setTimeout(() => {
+    let 끝났나 = false;
+    const 끝내기 = () => {
+      if (끝났나) return;
+      끝났나 = true;
+      clearInterval(주기); clearTimeout(마감);
       p.kill();
       fs.rmSync(dir, { recursive: true, force: true });
       resolve(out);
-    }, 1500);
+    };
+    const 받기 = (d) => {
+      out += d;
+      // 경고가 떴거나, 경고 없이 서버가 다 떴으면 더 기다릴 것이 없다
+      if (/너무 짧습니다/.test(out) || /서버 실행 중/.test(out)) 끝내기();
+    };
+    p.stdout.on('data', 받기);
+    p.stderr.on('data', 받기);
+    const 주기 = setInterval(() => {}, 1000);        // 프로세스가 먼저 죽는 것 방지
+    const 마감 = setTimeout(끝내기, 20000);
   });
 
   assert.match(await 띄우기('짧은키'), /너무 짧습니다/,

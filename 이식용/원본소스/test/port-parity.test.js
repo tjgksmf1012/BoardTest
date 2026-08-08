@@ -100,8 +100,8 @@ test('베스트댓글 기준이 코드와 문서에서 같다', () => {
   const likes = 읽기(BOARD, 'BEST_COMMENT_LIKES');
   const max = 읽기(BOARD, 'BEST_COMMENT_MAX');
   assert.match(문서('README.md'),
-    new RegExp(`좋아요 ${likes}개 이상\\*\\*인 댓글 중 \\*\\*상위 ${max}개`),
-    `README 의 베스트댓글 기준이 코드와 달라요 (코드는 ${likes}개 이상 · 상위 ${max}개)`);
+    new RegExp(`좋아요 ${likes}개 이상\\*\\*인 댓글 중 \\*\\*딱 ${max}개`),
+    `README 의 베스트댓글 기준이 코드와 달라요 (코드는 ${likes}개 이상 · ${max}개)`);
   assert.match(문서('docs/DESIGN.md'), new RegExp(`좋아요 ${likes}↑ 중 상위 ${max}개`),
     `DESIGN.md 의 베스트댓글 기준이 코드와 달라요 (코드는 ${likes}개 이상 · 상위 ${max}개)`);
 });

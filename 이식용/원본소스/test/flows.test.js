@@ -1409,9 +1409,10 @@ test('답글은 베스트로 떼어 올리지 않는다', async () => {
   db.prepare('DELETE FROM posts WHERE id = ?').run(pid);
 });
 
-test('베스트는 상위 2개까지만 올라간다', async () => {
-  // 처음 만들었을 때도 상위 2개였다 (에브리타임식).
+test('베스트는 딱 하나만 올라간다 (기준을 넘긴 게 여럿이어도)', async () => {
+  // 인벤식으로 하나만 올린다. 하늘 님이 "베스트 댓글은 하나만" 이라고 하셨다.
   // 기준만 넘으면 전부 올리면 댓글 많은 글에서 절반이 '베스트' 가 되어 뱃지가 뜻을 잃는다.
+  // 처음 만들었을 때는 상위 2개였다 (에브리타임식).
   const uid = db.prepare('SELECT id FROM users LIMIT 1').get().id;
   const pid = db.prepare(
     "INSERT INTO posts (user_id, category, title, content) VALUES (?, '자유', '베스트 개수 시험', 'x')")
@@ -1421,7 +1422,7 @@ test('베스트는 상위 2개까지만 올라간다', async () => {
 
   const like = db.prepare('INSERT OR IGNORE INTO comment_likes (comment_id, user_id) VALUES (?, ?)');
   const ids = [];
-  // 좋아요 8·7·6·5 개짜리 넷 — 전부 기준(5)을 넘는다
+  // 좋아요 8·7·6·5 개짜리 넷 — 전부 기준(4)을 넘는다. 그래도 올라가는 건 1등 하나뿐이다.
   [8, 7, 6, 5].forEach((n, i) => {
     const cid = db.prepare(
       'INSERT INTO comments (post_id, user_id, parent_id, content) VALUES (?, ?, NULL, ?)')
@@ -1433,9 +1434,9 @@ test('베스트는 상위 2개까지만 올라간다', async () => {
   const html = await (await fetch(`${base}/board/${pid}`)).text();
   const bestIds = [...html.matchAll(/<div class="comment[^"]*\bbest\b[^"]*" id="comment-(\d+)"/g)]
     .map((m) => Number(m[1]));
-  assert.strictEqual(bestIds.length, 2,
-    `기준을 넘은 댓글이 4개인데 베스트가 ${bestIds.length}개다 — 상위 2개까지만이어야 한다`);
-  assert.deepEqual(bestIds, [ids[0], ids[1]], '좋아요가 많은 순으로 두 개여야 한다');
+  assert.strictEqual(bestIds.length, 1,
+    `기준을 넘은 댓글이 4개인데 베스트가 ${bestIds.length}개다 — 하나만이어야 한다`);
+  assert.deepEqual(bestIds, [ids[0]], '좋아요가 제일 많은 것 하나여야 한다');
 
   db.prepare('DELETE FROM posts WHERE id = ?').run(pid);
 });
