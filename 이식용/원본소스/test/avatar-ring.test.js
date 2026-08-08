@@ -145,7 +145,11 @@ async function 가려짐세기(file, ringMul, faceMul) {
   const { data, info } = await sharp(path.join(DIR, file))
     .ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const { width: W, height: H, channels: C } = info;
-  const cx = W / 2, cy = H / 2;
+  // 얼굴은 칸 한가운데에 놓인다. 고리는 구멍이 그 자리에 오도록 밀어 그린다.
+  // 그러니 고리 그림 좌표에서 얼굴 중심은 '구멍 중심' 이다 — 그림 한가운데가 아니다.
+  // 이걸 그림 한가운데로 두고 재던 것이 세 번이나 헛짚은 까닭이다.
+  const cx = W / 2 + (avatars.RING_OFF_X / 100) * W;
+  const cy = H / 2 + (avatars.RING_OFF_Y / 100) * H;
   const A = (x, y) => {
     x = Math.round(x); y = Math.round(y);
     if (x < 0 || y < 0 || x >= W || y >= H) return 0;
@@ -176,11 +180,15 @@ test('얼굴 자른 자국이 고리에 가려진다 (떠도 안 되고 삐져�
   for (const b of borders) {
     const r = await 가려짐세기(b.file, RING, FACE);
     const 말 = `${b.code}: 가려짐 ${r.가려짐} · 고리가 뜸 ${r.떠있음} · 얼굴이 삐짐 ${r.삐짐}`;
-    // 지적받은 두 값이 1.20(삐짐 117) 과 1.34(뜸 140) 다. 지금 값 1.26 은 최악 72.
-    // 90 으로 그으면 그 둘은 잡히고 지금 값은 여유가 남는다.
-    assert.ok(r.떠있음 <= 90, `${말} — 고리가 얼굴에서 떨어져 흰 틈이 보입니다`);
-    assert.ok(r.삐짐 <= 90, `${말} — 얼굴이 고리 밖으로 나옵니다`);
-    assert.ok(r.가려짐 >= 180, `${말} — 자른 자국이 절반도 안 가려집니다`);
+    // 고리를 제자리로 밀고 나니 지금 값(1.26)은 나쁜 쪽이 13 까지 내려갔다.
+    // 예전처럼 90 으로 두면 위치가 도로 어긋나도 안 걸린다. 실제로 밀기 전이 72 였다.
+    // 25 로 조인다. 밀고 난 뒤 크기별 나쁜 쪽은 이렇다 —
+    //   1.20:143  1.24:41  1.26:13  1.28:18  1.30:44  1.34:38
+    // 25 면 지금 값과 그 옆(1.28)만 통과하고 나머지는 걸린다.
+    // 밀기를 빼면 1.26 도 72 로 튀어 바로 걸린다.
+    assert.ok(r.떠있음 <= 25, `${말} — 고리가 얼굴에서 떨어져 흰 틈이 보입니다`);
+    assert.ok(r.삐짐 <= 25, `${말} — 얼굴이 고리 밖으로 나옵니다`);
+    assert.ok(r.가려짐 >= 300, `${말} — 자른 자국이 덜 가려집니다`);
   }
 });
 

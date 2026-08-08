@@ -157,6 +157,14 @@ function cm_shop_borders($user_id) {
 define('CM_RING', 126);   // 고리 그림 크기 (%)
 define('CM_FACE', 92);    // 캐릭터 크기 (%)
 
+/* 고리 구멍이 그림 한가운데에 없어서, 그림을 가운데 놓으면 구멍은 가운데가 아닙니다.
+ * 받은 테두리 그림 9종이 전부 오른쪽 위로 같은 만큼 치우쳐 있습니다.
+ * 그대로 두면 오른쪽 위가 뜨고 왼쪽 아래로 캐릭터가 삐져나옵니다.
+ * 크기를 아무리 만져도 안 고쳐지는 문제라, 고리를 이만큼 반대로 밀어 줍니다.
+ * (아래 두 값은 -50% 에 이미 더해 둔 것입니다) */
+define('CM_RING_TX', '-51.09');   // 가로로 미는 양 (%)
+define('CM_RING_TY', '-44.93');   // 세로로 미는 양 (%)
+
 function cm_avatar_url($file) {
     global $CM;
     return $CM['avatar_url'] . '/' . rawurlencode($file);
@@ -203,7 +211,8 @@ function cm_render_avatar($avatar_code, $border_code, $size = 44, $ring_slot = f
         $file = $small ? $b['thumb'] : $b['file'];
         $html .= '<img src="' . htmlspecialchars(cm_avatar_url($file)) . '" alt=""'
                . ' style="position:absolute;left:50%;top:50%;'
-               . 'transform:translate(-50%,-50%);pointer-events:none;'
+               . 'transform:translate(' . CM_RING_TX . '%,' . CM_RING_TY . '%);'
+               . 'pointer-events:none;'
                . 'width:' . CM_RING . '%;height:' . CM_RING . '%;">';
     }
     return $html . '</span>';
