@@ -76,7 +76,7 @@ comment_reports(id, comment_id→comments, user_id→users)  -- UNIQUE(comment_i
 | 메서드·경로 | 설명 |
 |---|---|
 | `GET/POST /signup`, `/login`, `POST /logout` | 인증 |
-| `GET /board` | 목록(검색·카테고리·정렬·인기글·지금 뜨는 글) |
+| `GET /board` | 목록(검색·카테고리·정렬·인기글·🔥 인기 글 TOP5 — 모두 전체 기간) |
 | `GET /board/new`, `POST /board` | 글쓰기 |
 | `GET /board/:id` | 상세. 이전글·다음글은 들어온 목록(말머리·검색·정렬)을 따라감 |
 | `GET/POST /board/:id/edit`, `POST /board/:id/delete` | 수정·삭제 |

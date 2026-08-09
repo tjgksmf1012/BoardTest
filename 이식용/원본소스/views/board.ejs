@@ -9,8 +9,11 @@
 </div>
 
 <% if (trending && trending.length > 0) { %>
-  <section class="trending" aria-label="지금 뜨는 글">
-    <h2 class="trending-head"><%- icon('flame', 15) %> 지금 뜨는 글</h2>
+  <%# '지금 뜨는 글' 이었는데 기간 제한을 빼면서(요청 사항) 이름도 같이 바꿨다.
+      전체 기간에서 뽑으면 한 번 1등 한 글이 계속 1등이라 거의 안 바뀐다.
+      그런 자리에 '지금 뜨는' 이라고 써 두면 화면이 거짓말을 한다. %>
+  <section class="trending" aria-label="인기 글">
+    <h2 class="trending-head"><%- icon('flame', 15) %> 인기 글</h2>
     <ol class="trending-list">
       <% trending.slice(0, 3).forEach(function (t, i) { %>
         <li><a href="/board/<%= t.id %><%= listQS %>">

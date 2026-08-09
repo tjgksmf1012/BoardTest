@@ -1489,3 +1489,29 @@ test('닉네임으로 검색하면 그 사람 글이 나온다', async () => {
   db.prepare('DELETE FROM posts WHERE user_id = ?').run(uid);
   db.prepare('DELETE FROM users WHERE id = ?').run(uid);
 });
+
+// ---- 🔥 인기 글 ---------------------------------------------------------------
+//
+// 원래는 '지금 뜨는 글' 이라는 이름으로 최근 7일만 봤다. 요청으로 기간 제한을 뺐다.
+// 기간 제한이 도로 들어오면 오래된 인기글이 조용히 사라지는데, 화면은 멀쩡해서
+// 아무도 모른다. 그래서 '오래된 글도 뽑히는가' 를 검사에 박아 둔다.
+test('인기 글은 오래된 글도 뽑는다 (기간 제한 없음)', async () => {
+  const uid = db.prepare('SELECT id FROM users LIMIT 1').get().id;
+  // 100일 전에 쓴 글에 추천을 몰아 준다 — 7일로 자르면 절대 못 나온다
+  const old = db.prepare(
+    `INSERT INTO posts (user_id, category, title, content, like_count, created_at)
+     VALUES (?, '자유', '아주 오래된 인기글', 'x', 9999, datetime('now','localtime','-100 days'))`)
+    .run(uid).lastInsertRowid;
+
+  const html = await (await fetch(`${base}/board`)).text();
+  const 인기칸 = (html.match(/<section class="trending"[\s\S]*?<\/section>/) || [''])[0];
+
+  assert.ok(인기칸, '인기 글 칸이 아예 안 그려졌다');
+  assert.ok(인기칸.includes('아주 오래된 인기글'),
+    '100일 전 글이 추천 1위인데 인기 글에 없다 — 기간 제한이 다시 걸린 것 같다');
+  // 이름도 같이 봐 둔다. 기간을 뺐는데 '지금 뜨는' 이라고 써 두면 화면이 거짓말을 한다.
+  assert.ok(!인기칸.includes('지금 뜨는'),
+    "전체 기간에서 뽑으면서 '지금 뜨는 글' 이라고 적혀 있다");
+
+  db.prepare('DELETE FROM posts WHERE id = ?').run(old);
+});

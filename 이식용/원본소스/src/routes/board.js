@@ -229,8 +229,11 @@ function listFilter(query, isAdmin) {
   //
   // 한동안 '최근 일주일' 로 잘라 뒀었다. 오래전 인기글이 계속 위에 붙어 새 글이 묻히지
   // 않게 하려던 것인데, 추천순을 눌렀는데 일주일 전 글에서 끊기는 게 더 이상하다고 하셔서
-  // 다시 전체로 돌렸다. 시간 기준으로 보고 싶으실 때는 '지금 뜨는 글' 이 따로 있다
-  // (그건 이름 그대로 최근 7일만 본다).
+  // 다시 전체로 돌렸다.
+  //
+  // 목록 위의 '🔥 인기 글' 도 같은 이유로 기간 제한을 뺐다.
+  // 그래서 지금은 이 프로그램 어디에도 '최근 며칠' 로 자르는 곳이 없다.
+  // (예전 주석에는 '지금 뜨는 글은 최근 7일만 본다' 고 적혀 있었는데, 그건 이제 틀린 말이다)
   const where = searchCond
     + (hot ? ' AND p.is_popular = 1' : '')
     + (category ? ' AND p.category = @category' : '')
@@ -271,14 +274,25 @@ router.get('/', (req, res) => {
     WHERE p.is_notice = 0 ${where}
     ORDER BY ${orderBy} LIMIT @limit OFFSET @offset`).all(params);
 
-  // 🔥 지금 뜨는 글: 최근 7일 내 추천 많은 글 상위 5개 (첫 페이지·검색/필터 없을 때만)
+  /* 🔥 인기 글: 추천 많은 글 상위 5개 (첫 페이지·검색/필터 없을 때만)
+   *
+   * 원래는 '최근 7일' 이었다. 하늘 님 요청으로 기간 제한을 뺐다.
+   * 정렬(추천순·조회순)을 전체 기간으로 바꾼 것과 같은 맥락이다.
+   *
+   * 기간을 빼면서 이름도 '지금 뜨는 글' 에서 '인기 글' 로 바꿨다.
+   * 전체 기간에서 뽑으면 한 번 1등 한 글이 계속 1등이라 거의 안 바뀌는데,
+   * '지금 뜨는' 이라고 써 두면 화면이 거짓말을 하게 된다.
+   *
+   * 글이 쌓이면 이 자리가 늘 같은 글만 보여 줄 수 있다. 그때는
+   * '최근 30일' 처럼 기간을 다시 두거나, 추천 수 대신 '요즘 얼마나 읽히는지' 로
+   * 바꾸는 것이 낫다 — 여기 한 줄만 고치면 된다.
+   */
   let trending = [];
   if (page === 1 && !q && !hot && !category) {
     trending = db.prepare(`
       SELECT p.id, p.title, p.like_count
       FROM posts p
       WHERE p.is_notice = 0 AND p.is_anonymous = 0 AND p.is_hidden = 0
-        AND p.created_at >= datetime('now', 'localtime', '-7 days')
       ORDER BY p.like_count DESC, p.id DESC LIMIT 5`).all()
       .filter((t) => t.like_count > 0);
   }
