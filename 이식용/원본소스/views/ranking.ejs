@@ -3,7 +3,10 @@
 <div class="board-head">
   <div>
     <h1>포인트 랭킹</h1>
-    <p class="muted">활동 포인트가 높은 여성회원 TOP <%= rankLimit %>이에요. 열심히 활동해서 순위에 도전해보세요!</p>
+    <%# 안내문에 '여성' 을 넣지 않는다 (요청 사항).
+        뽑는 규칙은 그대로 여성회원만이다 — src/routes/user.js 의 RANK_WHERE.
+        화면 글만 중립적으로 둔 것이라, 규칙이 바뀐 줄 알고 여기 맞춰 고치면 안 된다. %>
+    <p class="muted">활동 포인트가 높은 회원 TOP <%= rankLimit %>이에요. 열심히 활동해서 순위에 도전해보세요!</p>
   </div>
 </div>
 
