@@ -1365,16 +1365,21 @@ test('좋아요 4개부터 베스트, 3개는 안 된다', async () => {
 
   const html = await (await fetch(`${base}/board/${pid}`)).text();
 
-  const bestIds = [...html.matchAll(/<div class="comment[^"]*\bbest\b[^"]*" id="comment-(\d+)"/g)]
-    .map((m) => Number(m[1]));
-  assert.deepEqual(bestIds, [four], '좋아요 4개짜리만 베스트여야 한다');
-  assert.ok(!bestIds.includes(three), '좋아요 3개는 베스트가 되면 안 된다');
-
-  // 같은 댓글이 두 번 나오면 안 된다 (예전에 지적받은 것)
+  // 같은 댓글이 두 번 나오면 안 된다 (예전에 지적받은 것).
+  //
+  // 이 검사를 아래 '어느 게 베스트인가' 보다 **먼저** 둔다.
+  // 복사 방식으로 되돌려 보니 아래 것이 먼저 터지면서 "좋아요 4개짜리만 베스트여야 한다"
+  // 라고 나왔다. 사실은 베스트를 잘못 고른 게 아니라 같은 댓글이 두 번 그려진 것인데,
+  // 그 말만 보면 엉뚱한 곳을 뒤지게 된다. 터지는 순서가 곧 사람이 읽는 순서다.
   for (const id of [four, three, zero]) {
     const n = (html.match(new RegExp(`id="comment-${id}"`, 'g')) || []).length;
     assert.strictEqual(n, 1, `댓글 ${id} 가 ${n}번 나온다 — 복사본이 생겼다`);
   }
+
+  const bestIds = [...html.matchAll(/<div class="comment[^"]*\bbest\b[^"]*" id="comment-(\d+)"/g)]
+    .map((m) => Number(m[1]));
+  assert.deepEqual(bestIds, [four], '좋아요 4개짜리만 베스트여야 한다');
+  assert.ok(!bestIds.includes(three), '좋아요 3개는 베스트가 되면 안 된다');
 
   // 베스트는 맨 위에 있어야 한다
   const order = [...html.matchAll(/id="comment-(\d+)"/g)].map((m) => Number(m[1]));
