@@ -198,6 +198,24 @@ async function inspect(pg) {
       }
     }
 
+    // 12) 아이폰에서 누르면 화면이 저절로 확대되는 입력칸
+    //
+    //     사파리는 글자가 16px 보다 작은 입력칸에 손을 대면 읽기 좋게 하려고 화면을 당긴다.
+    //     한 번 당겨지면 저절로 안 돌아와서, 그 뒤로 목록이 옆으로 잘린 채 남는다.
+    //     오류도 없고 안드로이드·컴퓨터에서는 멀쩡해서 못 보고 지나치기 쉽다 —
+    //     실제로 검색칸에서 지적을 받고 나서야 알았고, 세어 보니 여섯 군데였다.
+    out.zoomy = [...document.querySelectorAll('input, textarea, select, [contenteditable]')]
+      .filter((e) => {
+        const t = (e.getAttribute('type') || '').toLowerCase();
+        if (['hidden', 'checkbox', 'radio', 'submit', 'button', 'file'].includes(t)) return false;
+        const s = getComputedStyle(e);
+        if (s.display === 'none' || s.visibility === 'hidden') return false;
+        return parseFloat(s.fontSize) < 16;
+      })
+      .slice(0, 3)
+      .map((e) => `${(e.getAttribute('name') || e.className || e.tagName).toString().slice(0, 20)}`
+        + ` ${parseFloat(getComputedStyle(e).fontSize)}px`);
+
     return out;
   });
 }
@@ -250,6 +268,7 @@ async function crawl(ctx, who, seeds) {
     if (r.noEdge.length) add(w, '베스트댓글에 테두리가 안 그려졌다', r.noEdge.join(' / '));
     if (r.offRail.length) add(w, '베스트댓글이 다른 댓글과 세로줄이 안 맞는다', r.offRail.join(' · '));
     if (r.tailLine.length) add(w, '마지막 댓글 밑에 줄이 남아 있다', r.tailLine.join(', '));
+    if (r.zoomy.length) add(w, '아이폰에서 누르면 화면이 확대되는 입력칸', r.zoomy.join(' / '));
 
     // 같은 사이트 안의 링크만 따라간다
     const links = await pg.$$eval('a[href]', (as) => as.map((a) => a.getAttribute('href')));

@@ -425,7 +425,7 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 .search-ico { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--muted); display: flex; pointer-events: none; }
 .search input {
   flex: 1; width: 100%; border: 1px solid var(--line-strong); border-radius: 10px;
-  padding: 9px 14px 9px 38px; font-size: 14px;
+  padding: 9px 14px 9px 38px; font-size: 16px;
   background: var(--card); color: var(--text); font-family: inherit;
 }
 .search input::-webkit-search-cancel-button { cursor: pointer; }
@@ -535,7 +535,7 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 .reply-form, .comment-form { display: flex; gap: 8px; margin-top: 10px; }
 .reply-form[hidden] { display: none; }
 .reply-form input, .comment-form input {
-  flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 10px; padding: 9px 14px; font-size: 14px;
+  flex: 1; min-width: 0; border: 1px solid var(--line); border-radius: 10px; padding: 9px 14px; font-size: 16px;
 }
 /* 좁은 화면에서 입력칸이 자리를 다 먹으면 '등록' 버튼이 눌려 글자가 세로로 쌓였다(등/록) */
 .reply-form button, .comment-form button { flex-shrink: 0; white-space: nowrap; }
@@ -575,7 +575,7 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 .form { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
 .form label { font-weight: 700; font-size: 14px; display: flex; flex-direction: column; gap: 6px; }
 .form input[type="text"], .form input[type="password"], .form textarea {
-  border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; font-size: 14.5px;
+  border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; font-size: 16px;
   font-family: inherit; font-weight: 400; resize: vertical;
 }
 .form input:focus, .form textarea:focus { outline: 2px solid var(--primary-soft); border-color: var(--primary); }
@@ -995,7 +995,7 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 :root[data-theme="dark"] .cat-info   { --cat-fg: #b3a4ff; --cat-bg: #b3a4ff22; }
 :root[data-theme="dark"] .cat-event  { --cat-fg: #ff9a76; --cat-bg: #ff9a7622; }
 .cat-select {
-  border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; font-size: 14.5px;
+  border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; font-size: 16px;
   font-family: inherit; font-weight: 600; background: var(--card); color: var(--text);
 }
 
@@ -1081,7 +1081,7 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
   appearance: none; -webkit-appearance: none;
   border: 1px solid var(--line-strong); border-radius: 9px;
   background-color: var(--card); color: var(--text);
-  font-size: 13px; font-weight: 600; font-family: inherit;
+  font-size: 16px; font-weight: 600; font-family: inherit;
   padding: 7px 30px 7px 12px; cursor: pointer;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b9a95' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat; background-position: right 9px center;
@@ -1231,7 +1231,7 @@ h3 { letter-spacing: -0.02em; color: var(--ink); }
 .edit-form { display: flex; gap: 6px; margin: 4px 0 6px; flex-wrap: wrap; }
 .edit-form input[type="text"] {
   flex: 1; min-width: 180px; border: 1px solid var(--primary); border-radius: 9px;
-  padding: 8px 12px; font-size: 14px; font-family: inherit;
+  padding: 8px 12px; font-size: 16px; font-family: inherit;
   background: var(--card); color: var(--text);
 }
 .edit-form input:focus { outline: 2px solid var(--primary-soft); }
