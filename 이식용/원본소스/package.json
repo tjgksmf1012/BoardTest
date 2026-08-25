@@ -15,7 +15,8 @@
     "css": "node scripts/make-port-css.js",
     "screens": "node scripts/make-screens.js",
     "portsrc": "node scripts/make-port-src.js",
-    "port": "node scripts/make-screens.js --check && node scripts/make-port-css.js && node scripts/make-port-src.js --check && php 이식용/test/run.php && php 이식용/test/render.php && node scripts/check-php51.js"
+    "port": "node scripts/make-screens.js --check && node scripts/make-port-css.js && node scripts/make-port-src.js --check && node scripts/check-port-doc.js && php 이식용/test/run.php && php 이식용/test/render.php && node scripts/check-php51.js",
+    "portdoc": "node scripts/check-port-doc.js"
   },
   "engines": {
     "node": ">=20.19 <21 || >=22.12 <23"
