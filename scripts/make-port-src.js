@@ -27,7 +27,12 @@ const DIRS = ['src', 'test', 'views', 'api', 'scripts'];
 const FILES = ['server.js', 'package.json', 'README.md', '실행방법.md', '배포방법.md'];
 
 // docs 는 다 넣으면 PDF 까지 딸려 가서 무거워진다. 읽으실 것만 고른다.
-const DOCS = ['DESIGN.md', 'DB명세.md', '연동가이드.md', '테스트계획.md', '시안대조표.md'];
+//
+// 확인요청사항.md 는 드리기 직전까지 빠져 있었다. '아직 답이 필요한 것' 을 적어 둔 글이라
+// 코드보다 먼저 보셔야 하는 것인데, 정작 꾸러미에 안 들어가 있었다.
+// 우리 쪽에서만 보던 문서라 그랬다 — 받는 분에게 필요한 글인지를 기준으로 다시 골랐다.
+const DOCS = ['DESIGN.md', 'DB명세.md', '연동가이드.md', '테스트계획.md', '시안대조표.md',
+  '확인요청사항.md'];
 
 // 화면 모양을 정하는 CSS 는 원본도 같이 드린다 (이식용/화면/cm.css 의 원본이다)
 const EXTRA = [['public/css/style.css', 'public/css/style.css']];
